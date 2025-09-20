@@ -1,0 +1,22 @@
+# Ignorar carpetas de entorno virtual
+env/
+.venv/
+
+# Ignorar archivos temporales y cachés
+__pycache__/
+*.pyc
+*.py0
+*.pyd
+
+# Ignorar configuración oculta
+.env
+
+# Permitir sólo ciertos tipos de archivos
+!*.py
+!*.txt
+!*.json
+!*.jpg
+!*.jpeg
+!*.html
+!*.keras
+!*.h5
