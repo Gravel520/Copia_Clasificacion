@@ -46,7 +46,7 @@ def contar_extensiones(archivos):
     otros = []
 
     for archivo in archivos:
-        ext = os.path.splitext(archivo.lower()[1])
+        ext = os.path.splitext(archivo.lower())[1]
         if ext in ['.jpg', '.jpeg', '.mp4']:
             contador[ext] += 1
         else:

@@ -15,6 +15,7 @@ import hashlib
 ruta_movil = '/sdcard/DCIM/Camera'
 ruta_temporal = 'C:/FotosTemp'
 ruta_final = 'C:/BackupFotos'
+ruta_adb = 'C:\\adb\\platform-tools\\adb'
 
 # Geolocalizador
 geolocalizador = Nominatim(user_agent='clasificador_fotos')
@@ -23,7 +24,9 @@ geolocalizador = Nominatim(user_agent='clasificador_fotos')
 os.makedirs(ruta_temporal, exist_ok=True)
 
 # Paso 2: Listar archivos en el movil
-resultado = subprocess.run(['adb', 'shell', f'ls {ruta_movil}'], capture_output=True, text=True)
+resultado = subprocess.run([ruta_adb, 'shell', f'ls {ruta_movil}'],
+                           capture_output=True,
+                           text=True)
 archivos = resultado.stdout.strip().split('\n')
 
 def convertir_a_grados(valor):
@@ -70,7 +73,7 @@ def obtener_ubicación(gps_info):
 def obtener_fecha_video(nombre_archivo):
     try:
         resultado = subprocess.run(
-            ['adb', 'shell', f'stat -c &y {ruta_movil}/{nombre_archivo}'],
+            [ruta_adb, 'shell', f'stat -c &y {ruta_movil}/{nombre_archivo}'],
             capture_output=True, text=True
         )
         fecha_raw = resultado.stdout.strip()
@@ -106,7 +109,7 @@ for archivo in archivos:
         ruta_local = os.path.join(ruta_temporal, archivo)
 
         # Descargar archivo
-        subprocess.run(['adb', 'pull', ruta_origen, ruta_local])
+        subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
 
         # Clasificación
         if archivo.lower().endswith(('.jpg', '.jpeg')):

@@ -17,7 +17,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_ebc06af5d7096222c4a527681bdea9d6 {
+                #map_b446bd285b97af4b7ce5e4249e6e2fb7 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -54,16 +54,16 @@
 <body>
     
     
-            <div class="folium-map" id="map_ebc06af5d7096222c4a527681bdea9d6" ></div>
+            <div class="folium-map" id="map_b446bd285b97af4b7ce5e4249e6e2fb7" ></div>
         
 </body>
 <script>
     
     
-            var map_ebc06af5d7096222c4a527681bdea9d6 = L.map(
-                "map_ebc06af5d7096222c4a527681bdea9d6",
+            var map_b446bd285b97af4b7ce5e4249e6e2fb7 = L.map(
+                "map_b446bd285b97af4b7ce5e4249e6e2fb7",
                 {
-                    center: [45.5236, -122.675],
+                    center: [37.86203611111111, -25.796530555555556],
                     crs: L.CRS.EPSG3857,
                     ...{
   "zoom": 13,
@@ -78,7 +78,7 @@
 
         
     
-            var tile_layer_8c0d6e1f213dbbd6b94339bfe3f5127d = L.tileLayer(
+            var tile_layer_5c5efa2553270a4650e7a7ff4faf4d5b = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -95,7 +95,31 @@
             );
         
     
-            tile_layer_8c0d6e1f213dbbd6b94339bfe3f5127d.addTo(map_ebc06af5d7096222c4a527681bdea9d6);
+            tile_layer_5c5efa2553270a4650e7a7ff4faf4d5b.addTo(map_b446bd285b97af4b7ce5e4249e6e2fb7);
         
+    
+            var marker_2e033e1f9dc757703497a2a7fe836e04 = L.marker(
+                [37.86203611111111, -25.796530555555556],
+                {
+}
+            ).addTo(map_b446bd285b97af4b7ce5e4249e6e2fb7);
+        
+    
+        var popup_8b9b8f02285e13bcd3d0f0bea7664222 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_7dfc9b29d412c3e935325ff4bc5e2402 = $(`<div id="html_7dfc9b29d412c3e935325ff4bc5e2402" style="width: 100.0%; height: 100.0%;">Vacaciones</div>`)[0];
+                popup_8b9b8f02285e13bcd3d0f0bea7664222.setContent(html_7dfc9b29d412c3e935325ff4bc5e2402);
+            
+        
+
+        marker_2e033e1f9dc757703497a2a7fe836e04.bindPopup(popup_8b9b8f02285e13bcd3d0f0bea7664222)
+        ;
+
+        
+    
 </script>
 </html>

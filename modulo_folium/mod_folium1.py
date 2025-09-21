@@ -17,7 +17,12 @@ especificadas y lo guarda como un archivo HTML.
 '''
 def mapa_simple():
     # Crear el mapa centrado en la localización especificada.
-    m = folium.Map(location=[45.5236, -122.6750], zoom_start=13)
+    latitud = 37.86203611111111
+    longitud = -25.796530555555556
+    m = folium.Map(location=[latitud, longitud], zoom_start=10)
+
+    # Añadir marca.
+    folium.Marker([latitud, longitud], popup="Vacaciones").add_to(m)
 
     # Se guarda el mapa en un archivo HTML.
     m.save(f'{ruta_mapas}mi_primer_mapa.html')
@@ -42,6 +47,6 @@ def mapa_limites_paises():
     # Guardar el mapa
     m.save(f'{ruta_mapas}mapa_con_geojson.html')
 
-#mapa_simple()
+mapa_simple()
 
-mapa_limites_paises()
+#mapa_limites_paises()
