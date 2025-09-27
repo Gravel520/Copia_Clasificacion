@@ -11,7 +11,7 @@ from PIL import Image
 from datetime import datetime
 
 # Ruta de la imagen
-imagen_path = 'C:/BackupFotos/Sin_GPS_&Y-05/IMG_20250506_102006.jpg'
+imagen_path = 'C:/BackupFotos/Cáceres_España_2025-02/IMG_20250214_105750.jpg'
 
 # Abrir imagen y extraer EXIF
 imagen = Image.open(imagen_path)

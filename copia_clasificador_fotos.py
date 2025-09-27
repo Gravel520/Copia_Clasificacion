@@ -31,25 +31,47 @@ archivos = resultado.stdout.strip().split('\n')
 
 def convertir_a_grados(valor):
     d, m, s = valor
-    return d[0]/d[1] + m[0]/d[1]/60 + s[0]/d[1]/360
+    #return d[0]/d[1] + m[0]/d[1]/60 + s[0]/d[1]/360
+    return d + m / 60 + s / 3600
 
+'''
+34853 - es el ID de GPSInfo
+36867 - es el ID de DateTimeOriginal
+
+Dentro de GPSInfo, los sub_IDs relevantes son:
+1: 'GPSLatitudeRef' - Norte o Sur
+2: 'GPSLatitude'
+3: 'GPSLongitudeRef' - Este o West (Oeste)
+4: 'GPSLongitude'
+29: 'GPSDateStamp' (fecha sin hora)
+'''
 def obtener_datos_exif(imagen_path):
     try:
         imagen = Image.open(imagen_path)
         exif_data = imagen._getexif()
         gps_info = {}
         fecha = None
+        
         if exif_data:
-            for tag_id, valor in exif_data.items():
-                tag = TAGS.get(tag_id, tag_id)
-                if tag == 'DateTimeOriginal':
-                    fecha = datetime.strptime(valor, '%Y:%m:%d %H:%M:%S')
-                elif tag == 'GPSInfo':
-                    for key in valor:
-                        sub_tag = GPSTAGS.get(key, key)
-                        gps_info[sub_tag] = valor[key]
+            # Obtener fecha original por ID 36867
+            if 36867 in exif_data:
+                fecha_str = exif_data[36867] # '2025:09:21 10:15:11'
+                fecha = datetime.strptime(fecha_str, '%Y:%m:%d %H:%M:%S')
+            
+            # Obtener GPSInfo por ID 34853
+            if 34853 in exif_data:
+                gps_raw = exif_data[34853]
+                gps_info = {
+                    'GPSLatitudeRef': gps_raw.get(1),
+                    'GPSLatitude': gps_raw.get(2),
+                    'GPSLongitudeRef': gps_raw.get(3),
+                    'GPSLongitude': gps_raw.get(4),
+                    'GPSDateStamp': gps_raw.get(29)
+                }
+
         return gps_info, fecha
-    except:
+    except Exception as e:
+        print(f'Error al leer EXIF: {e}')
         return {}, None
     
 def obtener_ubicación(gps_info):
@@ -63,7 +85,7 @@ def obtener_ubicación(gps_info):
         ubicacion = geolocalizador.reverse((lat, lon), language='es')
         if ubicacion:
             partes = ubicacion.address.split(', ')
-            ciudad = partes[0]
+            ciudad = partes[-4]
             pais = partes[-1]
             return f'{ciudad}_{pais}'
     except:
@@ -115,7 +137,7 @@ for archivo in archivos:
         if archivo.lower().endswith(('.jpg', '.jpeg')):
             gps_info, fecha = obtener_datos_exif(ruta_local)
             ubicacion = obtener_ubicación(gps_info) if gps_info else 'Sin_GPS'
-            fecha_str = fecha.strftime('&Y-%m') if fecha else 'Sin_GPS'
+            fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_GPS'
         else: # .mp4
             fecha = obtener_fecha_video(archivo)
             ubicacion = 'Sin_GPS'

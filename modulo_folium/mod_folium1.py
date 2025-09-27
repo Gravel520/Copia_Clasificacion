@@ -8,6 +8,8 @@ que colorean unidades geográficas según valores agregados.
 '''
 
 import folium
+import webbrowser
+import os
 
 ruta_mapas = './modulo_folium/'
 
@@ -17,15 +19,18 @@ especificadas y lo guarda como un archivo HTML.
 '''
 def mapa_simple():
     # Crear el mapa centrado en la localización especificada.
-    latitud = 37.86203611111111
-    longitud = -25.796530555555556
+    latitud = 39.33658055555556
+    longitud = -5.492363888888889
     m = folium.Map(location=[latitud, longitud], zoom_start=10)
 
     # Añadir marca.
-    folium.Marker([latitud, longitud], popup="Vacaciones").add_to(m)
+    folium.Marker([latitud, longitud], popup="14/02/2025").add_to(m)
 
     # Se guarda el mapa en un archivo HTML.
     m.save(f'{ruta_mapas}mi_primer_mapa.html')
+
+    # Abrir automáticamente en el navegador
+    webbrowser.open(os.path.abspath(f'{ruta_mapas}mi_primer_mapa.html'))
 
 
 '''

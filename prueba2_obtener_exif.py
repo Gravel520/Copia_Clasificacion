@@ -8,9 +8,14 @@ El id de los datos exif correspondiente a las coordenadas es el número
 órdenes son 'GPSLatitude', etc...
 '''
 
+import folium
+import base64
+import os
+import webbrowser
 from PIL import Image
-from PIL.ExifTags import TAGS, GPSTAGS
 from fractions import Fraction
+
+ruta_mapas = './modulo_folium/'
 
 def convertir_a_decimal(dms, ref):
     grados, minutos, segundos = dms
@@ -53,9 +58,35 @@ def extraer_gps(exif_data):
     except KeyError as e:
         print(f'Falta una clave GPS: {e}')
         return None
+
+# Módulo para crear un mapa con una marca que será una imagen de una
+#   fotográfica de un fichero que haya en la carpeta.    
+def mapa_con_marca(latitud, longitud, imagen):
+    try:
+        # Añadir marca con la imagen codificada en base64.
+        with open(imagen, 'rb') as img_file:
+            encoded = base64.b64encode(img_file.read()).decode()
+
+        # Crear el HTML con la imagen embebida
+        imagen_html = f"<img src='data:image/jpeg;base64, {encoded}' width='100' height='80'>"
+        popup = folium.Popup(imagen_html, max_width=100)
+
+        # Crear el mapa y añadir el marcador
+        m = folium.Map(location=[latitud, longitud], zoom_start=15)
+        folium.Marker(location=[latitud, longitud], popup=popup).add_to(m)
+        
+        # Guardar el mapa
+        m.save(f'{ruta_mapas}mapa_marca_foto.html')
+        print('✔ Mapa guardado correctamente.')
+
+        # Abrir automáticamente en el navegador
+        webbrowser.open(os.path.abspath(f'{ruta_mapas}mapa_marca_foto.html'))
+
+    except Exception as e:
+        print(f'❌ Error al guardar el mapa: {e}')
     
 # Ruta de la imagen
-imagen_path = 'C:/BackupFotos/Sin_GPS_&Y-05/IMG_20250506_102006.jpg'
+imagen_path = 'C:/BackupFotos/Cáceres_España_2025-02/IMG_20250214_105750.jpg'
 
 # Abrir imagen y extraer EXIF
 imagen = Image.open(imagen_path)
@@ -66,7 +97,9 @@ coordenadas = extraer_gps(exif_data)
 
 if coordenadas:
     latitud = validar_coordenadas(coordenadas[0])
-    longitud = validar_coordenadas(coordenadas[1])
+    longitud = validar_coordenadas(coordenadas[1])    
     print(f'📍 Coordenadas GPS:\nLatitud: {latitud}\nLongitud: {longitud}')
+    mapa_con_marca(latitud, longitud, imagen_path)
+
 else:
     print('No se pudieron extraer coordenadas GPS.')
