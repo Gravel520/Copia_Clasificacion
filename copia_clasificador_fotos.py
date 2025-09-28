@@ -5,34 +5,40 @@ Script en Python.
 
 import subprocess
 import os
+import shutil
+import hashlib
+import json
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 from datetime import datetime
 from geopy.geocoders import Nominatim
-import shutil
-import hashlib
 
 ruta_movil = '/sdcard/DCIM/Camera'
+ruta_pc = 'C:/Movil_Jesus_A33/Camera'
 ruta_temporal = 'C:/FotosTemp'
 ruta_final = 'C:/BackupFotos'
 ruta_adb = 'C:\\adb\\platform-tools\\adb'
+ruta_historial = './historial.json'
+ruta_duplicados = './duplicados.json'
+ruta_eliminados = './eliminados.json'
 
 # Geolocalizador
 geolocalizador = Nominatim(user_agent='clasificador_fotos')
-
-# Paso 1: Crear carpeta temporal
-os.makedirs(ruta_temporal, exist_ok=True)
-
-# Paso 2: Listar archivos en el movil
-resultado = subprocess.run([ruta_adb, 'shell', f'ls {ruta_movil}'],
-                           capture_output=True,
-                           text=True)
-archivos = resultado.stdout.strip().split('\n')
 
 def convertir_a_grados(valor):
     d, m, s = valor
     #return d[0]/d[1] + m[0]/d[1]/60 + s[0]/d[1]/360
     return d + m / 60 + s / 3600
+
+def cargar_json(ruta):
+    if os.path.exists(ruta):
+        with open(ruta, 'r') as f:
+            return json.load(f)
+    return {}
+
+def guardar_json(data, ruta):
+    with open(ruta, 'w') as f:
+        json.dump(data, f, indent=2)
 
 '''
 34853 - es el ID de GPSInfo
@@ -92,10 +98,10 @@ def obtener_ubicación(gps_info):
         pass
     return 'Sin_GPS'
 
-def obtener_fecha_video(nombre_archivo):
+def obtener_fecha_video(ruta_archivo, nombre_archivo):
     try:
         resultado = subprocess.run(
-            [ruta_adb, 'shell', f'stat -c &y {ruta_movil}/{nombre_archivo}'],
+            [ruta_adb, 'shell', f'stat -c &y {ruta_archivo}/{nombre_archivo}'],
             capture_output=True, text=True
         )
         fecha_raw = resultado.stdout.strip()
@@ -124,40 +130,70 @@ def existe_duplicado(ruta_destino, hash_nuevo):
                 return True
     return False
 
-# Paso 3: Descargar, comprobar duplicados y clasificar
-for archivo in archivos:
-    if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
-        ruta_origen = f'{ruta_movil}/{archivo}'
-        ruta_local = os.path.join(ruta_temporal, archivo)
+def hay_dispositivo_adb():
+    dispositivos = subprocess.run([ruta_adb, 'devices'], capture_output=True, text=True)
+    lineas = dispositivos.stdout.strip().split('\n')
+    # Ignora la cabecera y busca líneas con 'device' al final.
+    dispositivos = [l for l in lineas[1:] if l.strip().endswith('device')]
+    return len(dispositivos) > 0
 
-        # Descargar archivo
-        subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
+def main():
+    # Paso 1: Crear carpeta temporal
+    os.makedirs(ruta_temporal, exist_ok=True)
 
-        # Clasificación
-        if archivo.lower().endswith(('.jpg', '.jpeg')):
-            gps_info, fecha = obtener_datos_exif(ruta_local)
-            ubicacion = obtener_ubicación(gps_info) if gps_info else 'Sin_GPS'
-            fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_GPS'
-        else: # .mp4
-            fecha = obtener_fecha_video(archivo)
-            ubicacion = 'Sin_GPS'
-            fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_GPS'
+    # Paso 2: Listar archivos en el movil o desde el pc.    
+    if hay_dispositivo_adb():
+        ruta_archivos = ruta_movil
+        resultado = subprocess.run([ruta_adb, 'shell', f'ls {ruta_archivos}'],
+                                capture_output=True,
+                                text=True)
+        archivos = resultado.stdout.strip().split('\n')
+    else:    
+        print('💻 No se puedo desde el movil, probar desde el PC...')
+        ruta_archivos = ruta_pc
+        archivos = os.listdir(ruta_archivos)
 
-        # Crear carpeta destino
-        nombre_carpeta = f'{ubicacion}_{fecha_str}'.replace(' ', '_').replace(",", "")
-        ruta_destino = os.path.join(ruta_final, nombre_carpeta)
-        os.makedirs(ruta_destino, exist_ok=True)
+    # Paso 3: Descargar, comprobar duplicados y clasificar
+    for archivo in archivos[:25]:
+        if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
+            ruta_origen = f'{ruta_archivos}/{archivo}'
+            ruta_local = os.path.join(ruta_temporal, archivo)
 
-        # Función archivo duplicado.
-        hash_archivo = calcular_hash_md5(ruta_local)
-        if existe_duplicado(ruta_destino, hash_archivo):
-            print(f'🔁 Duplicado detectado: {archivo} - no se copia...')
-            continue
+            # Descargar archivo desde el movil o copiarlo desde el pc.
+            if hay_dispositivo_adb():
+                subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
 
-        # Copiar archivo
-        shutil.copy2(ruta_local, ruta_destino)
-        print(f'{archivo} ➡ {nombre_carpeta}')
+            else:
+                if os.path.exists(ruta_origen):
+                    shutil.copy2(ruta_origen, ruta_local)
 
-# Limpiar carpeta temporal
-shutil.rmtree(ruta_temporal)
+            # Clasificación
+            if archivo.lower().endswith(('.jpg', '.jpeg')):
+                gps_info, fecha = obtener_datos_exif(ruta_local)
+                ubicacion = obtener_ubicación(gps_info) if gps_info else 'Sin_GPS'
+                fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_GPS'
+            else: # .mp4
+                fecha = obtener_fecha_video(archivo)
+                ubicacion = 'Sin_GPS'
+                fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_GPS'
 
+            # Crear carpeta destino
+            nombre_carpeta = f'{ubicacion}_{fecha_str}'.replace(' ', '_').replace(",", "")
+            ruta_destino = os.path.join(ruta_final, nombre_carpeta)
+            os.makedirs(ruta_destino, exist_ok=True)
+
+            # Función archivo duplicado.
+            hash_archivo = calcular_hash_md5(ruta_local)
+            if existe_duplicado(ruta_destino, hash_archivo):
+                print(f'🔁 Duplicado detectado: {archivo} - no se copia...')
+                continue
+
+            # Copiar archivo
+            shutil.copy2(ruta_local, ruta_destino)
+            print(f'{archivo} ➡ {nombre_carpeta}')
+
+    # Limpiar carpeta temporal
+    shutil.rmtree(ruta_temporal)
+
+if __name__ == '__main__':
+    main()

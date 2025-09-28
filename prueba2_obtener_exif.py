@@ -86,7 +86,7 @@ def mapa_con_marca(latitud, longitud, imagen):
         print(f'❌ Error al guardar el mapa: {e}')
     
 # Ruta de la imagen
-imagen_path = 'C:/BackupFotos/Cáceres_España_2025-02/IMG_20250214_105750.jpg'
+imagen_path = 'C:/Movil_Jesus_A33/Camera/20231216_152749.jpg'
 
 # Abrir imagen y extraer EXIF
 imagen = Image.open(imagen_path)
