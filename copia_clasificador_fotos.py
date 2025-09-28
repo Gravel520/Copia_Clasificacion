@@ -34,7 +34,13 @@ def cargar_json(ruta):
     if os.path.exists(ruta):
         with open(ruta, 'r') as f:
             return json.load(f)
-    return {}
+    return []
+
+def añadir_hash(hash_nuevo, lista_hashes):
+    if hash_nuevo not in lista_hashes:
+        lista_hashes.append(hash_nuevo)
+        return True
+    return False
 
 def guardar_json(data, ruta):
     with open(ruta, 'w') as f:
@@ -120,15 +126,6 @@ def calcular_hash_md5(ruta_archivo):
         return hash_md5.hexdigest()
     except:
         return None
-    
-def existe_duplicado(ruta_destino, hash_nuevo):
-    for archivo in os.listdir(ruta_destino):
-        ruta_existente = os.path.join(ruta_destino, archivo)
-        if os.path.isfile(ruta_existente):
-            hash_existente = calcular_hash_md5(ruta_existente)
-            if hash_existente == hash_nuevo:
-                return True
-    return False
 
 def hay_dispositivo_adb():
     dispositivos = subprocess.run([ruta_adb, 'devices'], capture_output=True, text=True)
@@ -140,6 +137,9 @@ def hay_dispositivo_adb():
 def main():
     # Paso 1: Crear carpeta temporal
     os.makedirs(ruta_temporal, exist_ok=True)
+
+    duplicados = cargar_json(ruta_duplicados)
+    eliminados = cargar_json(ruta_eliminados)
 
     # Paso 2: Listar archivos en el movil o desde el pc.    
     if hay_dispositivo_adb():
@@ -154,12 +154,12 @@ def main():
         archivos = os.listdir(ruta_archivos)
 
     # Paso 3: Descargar, comprobar duplicados y clasificar
-    for archivo in archivos[:25]:
+    for archivo in archivos[:30]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(ruta_temporal, archivo)
 
-            # Descargar archivo desde el movil o copiarlo desde el pc.
+            # Descargar archivo desde el movil o copiarlo desde el pc al directorio temporal.
             if hay_dispositivo_adb():
                 subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
 
@@ -172,6 +172,7 @@ def main():
                 gps_info, fecha = obtener_datos_exif(ruta_local)
                 ubicacion = obtener_ubicación(gps_info) if gps_info else 'Sin_GPS'
                 fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_GPS'
+
             else: # .mp4
                 fecha = obtener_fecha_video(archivo)
                 ubicacion = 'Sin_GPS'
@@ -184,13 +185,16 @@ def main():
 
             # Función archivo duplicado.
             hash_archivo = calcular_hash_md5(ruta_local)
-            if existe_duplicado(ruta_destino, hash_archivo):
-                print(f'🔁 Duplicado detectado: {archivo} - no se copia...')
-                continue
+            if añadir_hash(hash_archivo, duplicados):
+                # Copiar archivo del directorio temporal al definitivo.
+                shutil.copy2(ruta_local, ruta_destino)
+                print(f'{archivo} ➡ {nombre_carpeta}')
 
-            # Copiar archivo
-            shutil.copy2(ruta_local, ruta_destino)
-            print(f'{archivo} ➡ {nombre_carpeta}')
+            else:
+                print(f'🔁 Duplicado detectado: {archivo} - no se copia...')
+
+    # Guardamos la lista de duplicados.
+    guardar_json(duplicados, ruta_duplicados)
 
     # Limpiar carpeta temporal
     shutil.rmtree(ruta_temporal)
