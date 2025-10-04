@@ -1,32 +1,122 @@
 [
-  "e234ddda4cdbe82ce90a247a2e71f385",
-  "cc0ea32c9177b5863cb28903ae4abf98",
-  "e0b5f3ab9c53f7c1d7d775e659aab80d",
-  "1aae9d327e407dd694a599e908a57b4a",
-  "3493dd5e214808131dc8d94f26aaa3af",
-  "206035b144aa4c195446fabb050f9609",
-  "a52b8a4850417f42842e8650908e2132",
-  "f4a06807c3e26ed1f8808aeb6245f4d4",
-  "8dd4a9ed1cad1c60702f9464934560e8",
-  "a93643d6da8fd423629b93622d7fd90e",
-  "fa77bfe3d533532cc32b4a162586ccad",
-  "f9547cf0bafb8dc24d90f771170e3178",
-  "b9acf76759f849e62538822cfcdb9bac",
-  "d9578466c799b0f1e0037eecf16b9839",
-  "ab940e6fb96f8f717262712856ed7683",
-  "1b91e23c0a98510085882045513dc2e8",
-  "53610f934b8c63ac1fcae044e70c47c6",
-  "efee6acbff0bc82ff495fff15dc3eb71",
-  "9ba2327a35fc6b5496e119ccc0bcdbc5",
-  "0debf04a58fc2bf9b3aab5ef224b17f1",
-  "f1171eb6a5353515b36cb0b4a206681c",
-  "c191ca473a3cbfe59b3b8b66d5c20b6d",
-  "76abb4677c452c71a192f8b7d9ced3a8",
-  "9a3fb508bdaad10966dc36051adf405c",
-  "c0500312f86a228bbb016673bf2fd6b2",
-  "2395a3b0a153787d0ef65503a15170e9",
-  "9c80bbdc607c20e47134191f5d6637f7",
-  "6cd03ed2fa4ce76f8047d8a1fd5a1156",
-  "27b5cd41848d4a6370c30acd92e7f908",
-  "cadbe324c2e85de349293900031d9967"
+    {
+        "hash": "e234ddda4cdbe82ce90a247a2e71f385",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_152749.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.2311234,
+        "longitud": -3.59446
+    },
+    {
+        "hash": "cc0ea32c9177b5863cb28903ae4abf98",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_162202.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.2284725,
+        "longitud": -3.5935952
+    },
+    {
+        "hash": "e0b5f3ab9c53f7c1d7d775e659aab80d",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_183541.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.229012599722225,
+        "longitud": -3.595253899722222
+    },
+    {
+        "hash": "1aae9d327e407dd694a599e908a57b4a",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_194616.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.2300605,
+        "longitud": -3.5934504
+    },
+    {
+        "hash": "3493dd5e214808131dc8d94f26aaa3af",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_194618.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.2300605,
+        "longitud": -3.5934504
+    },
+    {
+        "hash": "206035b144aa4c195446fabb050f9609",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_194650.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.2300605,
+        "longitud": -3.5934504
+    },
+    {
+        "hash": "a52b8a4850417f42842e8650908e2132",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_194653.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.2300605,
+        "longitud": -3.5934504
+    },
+    {
+        "hash": "f4a06807c3e26ed1f8808aeb6245f4d4",
+        "ruta": "E:/BackupFotos\\San_Martín_de_la_Vega_España_2023-12\\20231216_194951.jpg",
+        "ubicacion": "San Martín de la Vega_España",
+        "fecha": "2023-12",
+        "latitud": 40.23048239972222,
+        "longitud": -3.593883299722222
+    },
+    {
+        "hash": "8dd4a9ed1cad1c60702f9464934560e8",
+        "ruta": "E:/BackupFotos\\Madrid_España_2023-12\\20231217_192154.jpg",
+        "ubicacion": "Madrid_España",
+        "fecha": "2023-12",
+        "latitud": 40.41246999972222,
+        "longitud": -3.7481463
+    },
+    {
+        "hash": "a93643d6da8fd423629b93622d7fd90e",
+        "ruta": "E:/BackupFotos\\Madrid_España_2023-12\\20231217_192157.jpg",
+        "ubicacion": "Madrid_España",
+        "fecha": "2023-12",
+        "latitud": 40.41246999972222,
+        "longitud": -3.7481463
+    },
+    {
+        "hash": "fa77bfe3d533532cc32b4a162586ccad",
+        "ruta": "E:/BackupFotos\\Madrid_España_2023-12\\20231217_194142.jpg",
+        "ubicacion": "Madrid_España",
+        "fecha": "2023-12",
+        "latitud": 40.4112908,
+        "longitud": -3.7499609
+    },
+    {
+        "hash": "f9547cf0bafb8dc24d90f771170e3178",
+        "ruta": "E:/BackupFotos\\Madrid_España_2023-12\\20231217_194145.jpg",
+        "ubicacion": "Madrid_España",
+        "fecha": "2023-12",
+        "latitud": 40.4112908,
+        "longitud": -3.7499609
+    },
+    {
+        "hash": "b9acf76759f849e62538822cfcdb9bac",
+        "ruta": "E:/BackupFotos\\Madrid_España_2023-12\\20231217_194149.jpg",
+        "ubicacion": "Madrid_España",
+        "fecha": "2023-12",
+        "latitud": 40.4112908,
+        "longitud": -3.7499609
+    },
+    {
+        "hash": "d9578466c799b0f1e0037eecf16b9839",
+        "ruta": "E:/BackupFotos\\Madrid_España_2023-12\\20231217_194835.jpg",
+        "ubicacion": "Madrid_España",
+        "fecha": "2023-12",
+        "latitud": 40.410889599722225,
+        "longitud": -3.7516394
+    },
+    {
+        "hash": "ab940e6fb96f8f717262712856ed7683",
+        "ruta": "E:/BackupFotos\\Fuenlabrada_España_2021-01\\IMG20210106192551.jpg",
+        "ubicacion": "Fuenlabrada_España",
+        "fecha": "2021-01",
+        "latitud": 40.30008313888889,
+        "longitud": -3.811635
+    }
 ]
