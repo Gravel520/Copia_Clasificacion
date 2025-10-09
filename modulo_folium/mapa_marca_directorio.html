@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_0baacf10c14dbd8ae2d81be16baa3a40 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_0baacf10c14dbd8ae2d81be16baa3a40" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_0baacf10c14dbd8ae2d81be16baa3a40 = L.map(
+                "map_0baacf10c14dbd8ae2d81be16baa3a40",
+                {
+                    center: [40.4167047, -3.7035825],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 10,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_2df9204c4a244726477c570fc6ce8d47 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_2df9204c4a244726477c570fc6ce8d47.addTo(map_0baacf10c14dbd8ae2d81be16baa3a40);
+        
+    
+            var marker_be290115d6440e09bdbfef1534030db3 = L.marker(
+                [40.282476, -3.7923422],
+                {
+}
+            ).addTo(map_0baacf10c14dbd8ae2d81be16baa3a40);
+        
+    
+        var popup_afe94de63c3fece3d92354db9a2038c4 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_cc0f5929dd28f07223b839b13935187b = $(`<div id="html_cc0f5929dd28f07223b839b13935187b" style="width: 100.0%; height: 100.0%;">Fuenlabrada - 1 archivos</div>`)[0];
+                popup_afe94de63c3fece3d92354db9a2038c4.setContent(html_cc0f5929dd28f07223b839b13935187b);
+            
+        
+
+        marker_be290115d6440e09bdbfef1534030db3.bindPopup(popup_afe94de63c3fece3d92354db9a2038c4)
+        ;
+
+        
+    
+    
+            marker_be290115d6440e09bdbfef1534030db3.bindTooltip(
+                `<div>
+                     Haz clic para ver
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_24882fc674d9c5512ccd3b729b5ad6d3 = L.marker(
+                [40.4167047, -3.7035825],
+                {
+}
+            ).addTo(map_0baacf10c14dbd8ae2d81be16baa3a40);
+        
+    
+        var popup_74cb8b2b763ea93cbc052788c9e87d21 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_c7918c8418e3d4579bbd7d79b3ed65fd = $(`<div id="html_c7918c8418e3d4579bbd7d79b3ed65fd" style="width: 100.0%; height: 100.0%;">Madrid - 6 archivos</div>`)[0];
+                popup_74cb8b2b763ea93cbc052788c9e87d21.setContent(html_c7918c8418e3d4579bbd7d79b3ed65fd);
+            
+        
+
+        marker_24882fc674d9c5512ccd3b729b5ad6d3.bindPopup(popup_74cb8b2b763ea93cbc052788c9e87d21)
+        ;
+
+        
+    
+    
+            marker_24882fc674d9c5512ccd3b729b5ad6d3.bindTooltip(
+                `<div>
+                     Haz clic para ver
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+    
+            var marker_f93baa7b8904d871e7b3d971d1edb11f = L.marker(
+                [40.2110462, -3.5771806],
+                {
+}
+            ).addTo(map_0baacf10c14dbd8ae2d81be16baa3a40);
+        
+    
+        var popup_4320efa90f96939f1783cb879aacfe76 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_5630ab562bb376320fc5c8e286270961 = $(`<div id="html_5630ab562bb376320fc5c8e286270961" style="width: 100.0%; height: 100.0%;">San Martín de la Vega - 8 archivos</div>`)[0];
+                popup_4320efa90f96939f1783cb879aacfe76.setContent(html_5630ab562bb376320fc5c8e286270961);
+            
+        
+
+        marker_f93baa7b8904d871e7b3d971d1edb11f.bindPopup(popup_4320efa90f96939f1783cb879aacfe76)
+        ;
+
+        
+    
+    
+            marker_f93baa7b8904d871e7b3d971d1edb11f.bindTooltip(
+                `<div>
+                     Haz clic para ver
+                 </div>`,
+                {
+  "sticky": true,
+}
+            );
+        
+</script>
+</html>

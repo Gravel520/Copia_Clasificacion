@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_7994566aa7a9bee5a21f5e530e63a637 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+new QWebChannel(qt.webChannelTransport, function(channel) {
+    window.bridge = channel.objects.bridge;
+});
+function enviarRuta(ruta) {
+    window.bridge.recibirRuta(ruta);
+}
+</script>
+    
+            <div class="folium-map" id="map_7994566aa7a9bee5a21f5e530e63a637" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_7994566aa7a9bee5a21f5e530e63a637 = L.map(
+                "map_7994566aa7a9bee5a21f5e530e63a637",
+                {
+                    center: [40.4167047, -3.7035825],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 10,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_7600193cd9ae9f7ca6e7e360add7e410 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 19,
+  "maxNativeZoom": 19,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors",
+  "subdomains": "abc",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_7600193cd9ae9f7ca6e7e360add7e410.addTo(map_7994566aa7a9bee5a21f5e530e63a637);
+        
+    
+            var marker_0da48c1a47e5fd73a1f553b6d960221e = L.marker(
+                [40.282476, -3.7923422],
+                {
+}
+            ).addTo(map_7994566aa7a9bee5a21f5e530e63a637);
+        
+    
+        var popup_f57e36648a300690a06c5ff6227c8662 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_9f8c5525ba7b6eb5a9b30338afd10edf = $(`<div id="html_9f8c5525ba7b6eb5a9b30338afd10edf" style="width: 100.0%; height: 100.0%;">     <div style="width:250px;" data-directorio="E:/BackupFotos/(Fuenlabrada)(España)(2021-01)">     <b>Fuenlabrada, España - 1 archivos</b><br>     <button onclick="enviarRuta('E:/BackupFotos/(Fuenlabrada)(España)(2021-01)')">Ver archivos</button>     </div>     </div>`)[0];
+                popup_f57e36648a300690a06c5ff6227c8662.setContent(html_9f8c5525ba7b6eb5a9b30338afd10edf);
+            
+        
+
+        marker_0da48c1a47e5fd73a1f553b6d960221e.bindPopup(popup_f57e36648a300690a06c5ff6227c8662)
+        ;
+
+        
+    
+    
+            var marker_712dc82700ede4582fe3097c5f703628 = L.marker(
+                [40.4167047, -3.7035825],
+                {
+}
+            ).addTo(map_7994566aa7a9bee5a21f5e530e63a637);
+        
+    
+        var popup_c8496df2b1858fbc563dec0d61901e25 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_3c0b45e6fa285b725e9d75ded6028e29 = $(`<div id="html_3c0b45e6fa285b725e9d75ded6028e29" style="width: 100.0%; height: 100.0%;">     <div style="width:250px;" data-directorio="E:/BackupFotos/(Madrid)(España)(2023-12)">     <b>Madrid, España - 6 archivos</b><br>     <button onclick="enviarRuta('E:/BackupFotos/(Madrid)(España)(2023-12)')">Ver archivos</button>     </div>     </div>`)[0];
+                popup_c8496df2b1858fbc563dec0d61901e25.setContent(html_3c0b45e6fa285b725e9d75ded6028e29);
+            
+        
+
+        marker_712dc82700ede4582fe3097c5f703628.bindPopup(popup_c8496df2b1858fbc563dec0d61901e25)
+        ;
+
+        
+    
+    
+            var marker_c98714258847eabb949ac7b6dbdf71ac = L.marker(
+                [40.2110462, -3.5771806],
+                {
+}
+            ).addTo(map_7994566aa7a9bee5a21f5e530e63a637);
+        
+    
+        var popup_2b6f138596e22813011c80139699b486 = L.popup({
+  "maxWidth": 300,
+});
+
+        
+            
+                var html_661e0b17565f235059efb1c64c7fc8f0 = $(`<div id="html_661e0b17565f235059efb1c64c7fc8f0" style="width: 100.0%; height: 100.0%;">     <div style="width:250px;" data-directorio="E:/BackupFotos/(San Martín de la Vega)(España)(2023-12)">     <b>San Martín de la Vega, España - 8 archivos</b><br>     <button onclick="enviarRuta('E:/BackupFotos/(San Martín de la Vega)(España)(2023-12)')">Ver archivos</button>     </div>     </div>`)[0];
+                popup_2b6f138596e22813011c80139699b486.setContent(html_661e0b17565f235059efb1c64c7fc8f0);
+            
+        
+
+        marker_c98714258847eabb949ac7b6dbdf71ac.bindPopup(popup_2b6f138596e22813011c80139699b486)
+        ;
+
+        
+    
+</script>
+</html>

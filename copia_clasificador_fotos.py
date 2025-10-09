@@ -22,7 +22,7 @@ archivos seleccionados, ya sea desde el movil o del Pc.
         ser la fecha al haberlo copiado o movido, así que es mejor no
         obtenerla si es un archivo desde el pc.
 5º Creamos la carpeta de destino a través de las variables de ubicación
-    'ciudad_pais' y de la fecha 'año_mes'.
+    '(ciudad)(pais)' y de la fecha '(año_mes)'.
 6º Comprobamos que el archivo que se encuentra en la carpeta temporal y 
     que estamos gestionando, no tiene su hash-mh5, ni en el historial
     de existentes, con lo cual estaríamos duplicándolo, ni en el eliminados,
@@ -150,9 +150,9 @@ def obtener_ubicación(gps_info):
 
         if ubicacion:
             partes = ubicacion.address.split(', ')
-            ciudad = partes[-4]
-            pais = partes[-1]
-            return f'{ciudad}_{pais}', lat, lon
+            ciudad = f'({partes[-4]})' # El nombre de la ciudad tendrá el será (ciudad)
+            pais = f'({partes[-1]})' # El nombre del país será (pais)
+            return f'{ciudad}{pais}', lat, lon
         
     except:
         pass
@@ -229,16 +229,18 @@ def main():
             # Obtención de los metadatos del gps y fecha.
             if archivo.lower().endswith(('.jpg', '.jpeg')):
                 gps_info, fecha = obtener_datos_exif(ruta_local)
-                ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else 'Sin_GPS'
-                fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_Fecha'
+                ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else '(Sin_GPS)'
+                # El string de la fecha será (año-mes)
+                fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
 
             else: # .mp4
                 fecha = obtener_fecha_video(archivo)
-                ubicacion = 'Sin_GPS'
-                fecha_str = fecha.strftime('%Y-%m') if fecha else 'Sin_Fecha'
+                ubicacion = '(Sin_GPS)'
+                # El string de la fecha será (año-mes)
+                fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
 
-            # Crear carpeta destino.
-            nombre_carpeta = f'{ubicacion}_{fecha_str}'.replace(' ', '_').replace(",", "")
+            # Crear carpeta destino.            
+            nombre_carpeta = f'{ubicacion}{fecha_str}'
             ruta_destino = os.path.join(ruta_final, nombre_carpeta)
             os.makedirs(ruta_destino, exist_ok=True)
 
