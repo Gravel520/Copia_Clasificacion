@@ -43,10 +43,10 @@ from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
 
-ruta_movil = '/sdcard/DCIM/Camera'
-ruta_pc = 'C:/Movil_Jesus_A33/Camera'
-ruta_temporal = 'E:/FotosTemp'
-ruta_final = 'E:/BackupFotos'
+ruta_movil = '\\sdcard\\DCIM\\Camera'
+ruta_pc = 'C:\\Movil_Jesus_A33\\Camera'
+ruta_temporal = 'E:\\FotosTemp'
+ruta_final = 'E:\\BackupFotos'
 ruta_adb = 'C:\\adb\\platform-tools\\adb'
 ruta_historial = './historial.json'
 ruta_duplicados = './duplicados.json'

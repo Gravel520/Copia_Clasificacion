@@ -26,13 +26,10 @@ listado de las fotos que hay dentro.
 
 import folium
 import os
-import webbrowser
-import json
-import re
 import time
 from geopy.geocoders import Nominatim
 
-ruta_mapas = './PyQt/'
+ruta_mapas = './PyQt/mapas'
 ruta_principal = 'E:/BackupFotos'
 
 # Iniciamos el geocodificador.

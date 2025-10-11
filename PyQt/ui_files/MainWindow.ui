@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1382</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1480</width>
+    <height>750</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Clasificador de Fotos</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QWidget" name="QWidget_foto" native="true">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>30</y>
+      <width>980</width>
+      <height>631</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="QWidget_listado" native="true">
+    <property name="geometry">
+     <rect>
+      <x>1010</x>
+      <y>30</y>
+      <width>351</width>
+      <height>300</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
+    </property>
+    <widget class="QTableWidget" name="tableWidget">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>29</y>
+       <width>351</width>
+       <height>271</height>
+      </rect>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+     </property>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>170</number>
+     </attribute>
+     <attribute name="horizontalHeaderMinimumSectionSize">
+      <number>50</number>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Nombre de Archivo</string>
+      </property>
+      <property name="font">
+       <font>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+     </column>
+    </widget>
+    <widget class="QLabel" name="labelFechaListado">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>351</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+     </property>
+     <property name="text">
+      <string>Fecha Listado</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="QWidget_visor_foto" native="true">
+    <property name="geometry">
+     <rect>
+      <x>1010</x>
+      <y>340</y>
+      <width>350</width>
+      <height>321</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+    </property>
+    <widget class="QLabel" name="labelVisor">
+     <property name="geometry">
+      <rect>
+       <x>5</x>
+       <y>5</y>
+       <width>340</width>
+       <height>311</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1382</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuClasificar">
+    <property name="title">
+     <string>Clasificar</string>
+    </property>
+    <addaction name="actionDesde_Movil"/>
+    <addaction name="actionDesde_Ruta"/>
+   </widget>
+   <widget class="QMenu" name="menuFiltro">
+    <property name="title">
+     <string>Filtro</string>
+    </property>
+    <addaction name="actionA_o"/>
+    <addaction name="actionMes"/>
+    <addaction name="separator"/>
+    <addaction name="actionLugar"/>
+    <addaction name="separator"/>
+    <addaction name="actionPersona"/>
+   </widget>
+   <widget class="QMenu" name="menuMarcas">
+    <property name="title">
+     <string>Marcas</string>
+    </property>
+    <addaction name="actionFoto"/>
+    <addaction name="actionDirectorio"/>
+   </widget>
+   <widget class="QMenu" name="menuSalir">
+    <property name="title">
+     <string>Salir</string>
+    </property>
+   </widget>
+   <addaction name="menuClasificar"/>
+   <addaction name="menuFiltro"/>
+   <addaction name="menuMarcas"/>
+   <addaction name="menuSalir"/>
+  </widget>
+  <action name="actionA_o">
+   <property name="text">
+    <string>Año</string>
+   </property>
+  </action>
+  <action name="actionMes">
+   <property name="text">
+    <string>Mes</string>
+   </property>
+  </action>
+  <action name="actionLugar">
+   <property name="text">
+    <string>Lugar</string>
+   </property>
+  </action>
+  <action name="actionPersona">
+   <property name="text">
+    <string>Persona</string>
+   </property>
+  </action>
+  <action name="actionFoto">
+   <property name="text">
+    <string>Foto</string>
+   </property>
+  </action>
+  <action name="actionDirectorio">
+   <property name="text">
+    <string>Directorio</string>
+   </property>
+  </action>
+  <action name="actionDesde_Movil">
+   <property name="text">
+    <string>Desde Movil</string>
+   </property>
+  </action>
+  <action name="actionDesde_Ruta">
+   <property name="text">
+    <string>Desde Ruta</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
