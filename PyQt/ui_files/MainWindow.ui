@@ -104,7 +104,20 @@ border-radius: 0px;</string>
       <string>Fecha Listado</string>
      </property>
      <property name="alignment">
-      <set>Qt::AlignCenter</set>
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+    <widget class="Button_Sel" name="button_sel_multiple">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>6</y>
+       <width>91</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Sel. Múltiple</string>
      </property>
     </widget>
    </widget>
@@ -221,6 +234,13 @@ border-radius: 0px;</string>
    </property>
   </action>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Button_Sel</class>
+   <extends>QPushButton</extends>
+   <header>componentes.controles</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

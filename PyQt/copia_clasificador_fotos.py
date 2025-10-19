@@ -54,7 +54,7 @@ ruta_eliminados = './eliminados.json'
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
-geolocalizador = Nominatim(user_agent='clasificador_fotos')
+geolocalizador = Nominatim(user_agent='copia_clasificador_fotos')
 
 # Convierte coordenadas GPS en formato º, m y s, a grados decimales.
 def convertir_a_grados(valor):
@@ -213,7 +213,7 @@ def main():
         archivos = os.listdir(ruta_archivos)
 
     # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos[:15]:
+    for archivo in archivos[50:70]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(ruta_temporal, archivo)
