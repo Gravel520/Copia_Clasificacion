@@ -70,6 +70,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from componentes.controles import Button, CheckBox, Button_Sel
+from copia_clasificador_fotos import cargar_json
 
 RUTA_MAPA_HTML = './PyQt/mapas/mapa_fotos.html'
 RUTA_UI = './PyQt/ui_files/MainWindow.ui'
@@ -77,6 +78,7 @@ MESES = (
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio',
      'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 )
+DUPLICADOS = './duplicados.json'
 ARCHIVOS_SEL = []
 
 class Bridge(QObject):
@@ -89,11 +91,13 @@ class Bridge(QObject):
     @pyqtSlot(str)
     def recibirRuta(self, ruta):
         ARCHIVOS_SEL.clear()
+        self.historial = cargar_json(DUPLICADOS)
+
         if os.path.isdir(ruta):
             archivos = os.listdir(ruta)
             self.numero_archivos = len(archivos)
             self.tabla.setRowCount(self.numero_archivos)
-            self.tabla.setColumnCount(4)
+            self.tabla.setColumnCount(5)
             self.tabla.setStyleSheet("""
                 QTableWidget::item {
                     border: none;
@@ -101,7 +105,7 @@ class Bridge(QObject):
                     margin: 0px;
                 }
             """)
-            self.tabla.setHorizontalHeaderLabels(['Sel','Nombre de Archivo', 'Ruta', 'Acción'])
+            self.tabla.setHorizontalHeaderLabels(['Sel','Nombre de Archivo', 'Ruta', 'Acción', 'Hash'])
             # Cambiamos el tamaño de la columna del nombre
             #   para que quepa el scrollbar a la derecha.
             tamaño = 185 if self.numero_archivos > 8 else 205
@@ -110,6 +114,7 @@ class Bridge(QObject):
             self.tabla.setColumnWidth(3, 140)
             self.tabla.setColumnHidden(0, True)
             self.tabla.setColumnHidden(2, True)
+            self.tabla.setColumnHidden(4, True)
             # Configuramos la selección en la tabla.
             self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems) # Sólo celdas individuales
             self.tabla.setSelectionMode(QAbstractItemView.SingleSelection) # Sólo una celda a la vez
@@ -120,12 +125,19 @@ class Bridge(QObject):
 
             for i, nombre in enumerate(archivos):
                 ruta_completa = os.path.join(ruta, nombre)
+                # Buscar el diccionario que coincide para obtener el hash
+                ruta_conver = ruta_completa.replace('/', '\\') # Conversión para que coincide con datos .json
+                coincidencia = next((r for r in self.historial if r['ruta'] == ruta_conver), None)
+
+                if coincidencia:
+                    hash = coincidencia['hash']
 
                 # Insertar en la tabla.
                 self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
                 self.tabla.setItem(i, 1, QTableWidgetItem(nombre))
                 self.tabla.setItem(i, 2, QTableWidgetItem(ruta_completa))
                 self.tabla.setCellWidget(i, 3, self.botones_accion(i))
+                self.tabla.setItem(i, 4, QTableWidgetItem(hash))
                 self.tabla.setRowHeight(i, 30)
 
         else:
