@@ -60,8 +60,10 @@ Finalmente importamos el módulo normalmente, antes de cargar el archivo .ui.
 
 '''
 
-import sys, os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, QFileDialog
+import sys, os, re
+import shutil
+import mapa_generator
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, QFileDialog, QAction
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QObject, pyqtSlot, QUrl
@@ -70,7 +72,8 @@ from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from componentes.controles import Button, CheckBox, Button_Sel
-from copia_clasificador_fotos import cargar_json
+from copia_clasificador_fotos import cargar_json, guardar_json
+from mapa_generator import extraer_ciudad
 
 RUTA_MAPA_HTML = './PyQt/mapas/mapa_fotos.html'
 RUTA_UI = './PyQt/ui_files/MainWindow.ui'
@@ -79,14 +82,15 @@ MESES = (
      'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 )
 DUPLICADOS = './duplicados.json'
-ARCHIVOS_SEL = []
+ARCHIVOS_SEL = {} # clave: ruta_archivo, valor: hash_archivo
 
 class Bridge(QObject):
-    def __init__(self, tableWidget, labelFechaListado, button_sel_multiple):
+    def __init__(self, tableWidget, labelFechaListado, button_sel_multiple, view):
         super().__init__()
         self.tabla = tableWidget
         self.label = labelFechaListado
         self.boton = button_sel_multiple
+        self.view = view
 
     @pyqtSlot(str)
     def recibirRuta(self, ruta):
@@ -104,6 +108,10 @@ class Bridge(QObject):
                     padding: 0px;
                     margin: 0px;
                 }
+                QTableWidget::item:selected {
+                    color: black;
+                    background-color: lightblue;
+                }
             """)
             self.tabla.setHorizontalHeaderLabels(['Sel','Nombre de Archivo', 'Ruta', 'Acción', 'Hash'])
             # Cambiamos el tamaño de la columna del nombre
@@ -117,7 +125,7 @@ class Bridge(QObject):
             self.tabla.setColumnHidden(4, True)
             # Configuramos la selección en la tabla.
             self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems) # Sólo celdas individuales
-            self.tabla.setSelectionMode(QAbstractItemView.SingleSelection) # Sólo una celda a la vez
+            #self.tabla.setSelectionMode(QAbstractItemView.SingleSelection) # Sólo una celda a la vez
             self.tabla.horizontalHeader().setSectionsClickable(False) # Desactivar la selección de la columna
 
             mes, ano = self.obtener_fecha(ruta)
@@ -194,29 +202,108 @@ class Bridge(QObject):
         return mes, ano
     
     def state_change_ckeckbox(self, row, state_int):
-        ruta_id_index = self.tabla.model().index(row, 2)
-        ruta_archivo = self.tabla.model().data(ruta_id_index)
+        ruta_archivo, hash_archivo = self.obtener_archivo(row)
         state = Qt.CheckState(state_int)
 
         if state == Qt.Checked:
-            if ruta_archivo not in ARCHIVOS_SEL:
-                ARCHIVOS_SEL.append(ruta_archivo)
+            ARCHIVOS_SEL[ruta_archivo] = hash_archivo
         elif state == Qt.Unchecked:
-            if ruta_archivo in ARCHIVOS_SEL:
-                ARCHIVOS_SEL.remove(ruta_archivo)
-    
+            ARCHIVOS_SEL.pop(ruta_archivo, None)
+    '''
+    Función para copiar el o los archivos seleccionados a una carpeta de
+    destino, elegida por el usuario mediante un cuadro de diálogo.
+    '''
     def copiar(self, row):
-        if ARCHIVOS_SEL:
-            print('Copiar archivos:')
-            for archivo in ARCHIVOS_SEL:
-                print(archivo)
+        # Selección de la carpeta de destino. Abre el selector de carpetas.
+        # El argumento 'None' es porque no hereda de un QWidget, ya que hereda
+        #   de 'Bridge'.
+        carpeta_destino = QFileDialog.getExistingDirectory(None, "Seleccionar carpeta de destino")
+        if not carpeta_destino:
+            return # El usuario canceló.
+        
+        # Obtenemos la lista de los archivos o el archivo a copiar.
+        if not ARCHIVOS_SEL:
+            ruta_archivo, hash_archivo = self.obtener_archivo(row)
+            ARCHIVOS_SEL[ruta_archivo] = hash_archivo
+
+        # Extraemos el nombre del archivo con 'basename' para evitar
+        #   duplicar rutas.
+        errores = []
+        for archivo, _ in ARCHIVOS_SEL.items():
+            nombre = os.path.basename(archivo)
+            destino = os.path.join(carpeta_destino, nombre)
+            try:
+                shutil.copy2(archivo, destino)
+                print(f'Copiado: {archivo} ➡ {destino}')
+            except Exception as e:
+                errores.append((archivo, str(e)))
+                print(f'Error al copiar {archivo}: {e}')
+
+        # Mensaje final
+        if errores:
+            mensaje = "Algunos archivos no se pudieron copiar: \n\n"
+            mensaje += "\n".join(f"{a}: {err}" for a, err in errores)
+            QMessageBox.warning(None, "Errores al copiar", mensaje)
         else:
-            archivo = self.obtener_archivo(row)
-            print(f'Copiar: {archivo}')
+            QMessageBox.information(None, "Copia completada", "Todos los archivos copiados\ncorrectamente.")
 
     def mover(self, row):
-        archivo = self.obtener_archivo(row)
-        print(f'Mover: {archivo}')
+        # Seleccionamos la carpeta de destino. Abre el selector de directorios.
+        # El argumento 'None' es porque no hereda de un QWidget, ya que hereda
+        #   de 'Bridge'.
+        carpeta_destino = QFileDialog.getExistingDirectory(None, "Seleccionar carpeta de destino")
+        if not carpeta_destino:
+            return # El usuario canceló.
+        
+        # Obtenemos la lista de los archivos o el archivo a mover.
+        if not ARCHIVOS_SEL:            
+            ruta_archivo, hash_archivo = self.obtener_archivo(row)
+            ARCHIVOS_SEL[ruta_archivo] = hash_archivo
+
+        # Extraemos el nombre del archivo con 'basename' para evitar
+        #   duplicar rutas.
+        errores = []
+        for archivo, hash in ARCHIVOS_SEL.items():
+            nombre = os.path.basename(archivo)
+            origen = os.path.dirname(os.path.abspath(archivo))
+            destino = os.path.join(carpeta_destino, nombre)
+            try:
+                shutil.copy2(archivo, destino)
+                os.remove(archivo)
+                print(f'Movido: {archivo} ➡ {destino}')
+
+                # Actualizar duplicados.json
+                for entrada in self.historial:
+                    if entrada.get('hash') == hash:
+                        destino = destino.replace('/', '\\')
+                        entrada["ruta"] = destino
+                        parentesis = re.findall(r'\([^)]+\)', destino)
+                        resultado = ''.join(parentesis)
+                        ciudad, pais, fecha = extraer_ciudad(resultado)
+                        entrada["ubicacion"] = f"({ciudad})({pais})"
+                        entrada["fecha"] = f"({fecha})"
+                        break
+
+            except Exception as e:
+                errores.append((archivo, str(e)))
+                print(f'Error al mover {archivo}: {e}')
+
+        guardar_json(self.historial, DUPLICADOS)
+
+        if not os.listdir(origen):
+            os.rmdir(origen)
+
+        # Generar mapa con la nueva información y mostrarlo.
+        mapa_generator.main()
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+
+        # Mensaje final
+        if errores:
+            mensaje = "Algunos archivos no se pudiero mover: \n\n"
+            mensaje += "\n".join(f"{a}: {err}" for a, err in errores)
+            QMessageBox.warning(None, "Errores al mover", mensaje)
+        else:
+            QMessageBox.information(None, "Acción completada", "Todos los archivos fueron\nmovidos correctamente.")
 
     def compartir(self, row):
         archivo = self.obtener_archivo(row)
@@ -228,7 +315,10 @@ class Bridge(QObject):
     
     def obtener_archivo(self, row_index):
         ruta_id_index = self.tabla.model().index(row_index, 2)
-        return self.tabla.model().data(ruta_id_index)
+        ruta_archivo = self.tabla.model().data(ruta_id_index)
+        hash_id_index = self.tabla.model().index(row_index, 4)
+        hash_archivo = self.tabla.model().data(hash_id_index)
+        return ruta_archivo, hash_archivo
     
 class MapaWindow(QMainWindow):
     def __init__(self):
@@ -243,7 +333,7 @@ class MapaWindow(QMainWindow):
 
         # Canal web
         self.channel = QWebChannel()
-        self.bridge = Bridge(self.ui.tableWidget, self.ui.labelFechaListado, self.ui.button_sel_multiple)
+        self.bridge = Bridge(self.ui.tableWidget, self.ui.labelFechaListado, self.ui.button_sel_multiple, self.view)
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 
@@ -311,10 +401,22 @@ class MapaWindow(QMainWindow):
                         if checkbox is not None:
                             checkbox.setChecked(state)
 
+    # Evento para confirmar el fín de la ejecución de la aplicación.
+    def closeEvent(self, e):
+        reply = QMessageBox.question(self, "Confirmar salida",
+                                     "¿Estás seguro de salir de la app?",
+                                     QMessageBox.Yes | QMessageBox.No,
+                                     QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            QApplication.quit()
+        else:
+            e.ignore()
+
     def signs_controls(self):
         self.ui.tableWidget.itemClicked.connect(self.mostrar_foto)
         self.ui.tableWidget.currentItemChanged.connect(self.mostrar_foto)
         self.ui.button_sel_multiple.clicked.connect(self.columna_seleccion)
+        self.ui.actionSalir_3.triggered.connect(self.close)
         # Señal para marcar todas las filas de la tabla. Ultimo parámetro (True)
         self.ui.button_sel_multiple.marcarTodos.connect(
             lambda: self.checked_unchecked_all_checkbox(

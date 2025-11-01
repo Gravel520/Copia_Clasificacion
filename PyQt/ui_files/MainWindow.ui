@@ -164,6 +164,8 @@ border-radius: 0px;</string>
     </property>
     <addaction name="actionDesde_Movil"/>
     <addaction name="actionDesde_Ruta"/>
+    <addaction name="separator"/>
+    <addaction name="actionSalir_3"/>
    </widget>
    <widget class="QMenu" name="menuFiltro">
     <property name="title">
@@ -183,15 +185,9 @@ border-radius: 0px;</string>
     <addaction name="actionFoto"/>
     <addaction name="actionDirectorio"/>
    </widget>
-   <widget class="QMenu" name="menuSalir">
-    <property name="title">
-     <string>Salir</string>
-    </property>
-   </widget>
    <addaction name="menuClasificar"/>
    <addaction name="menuFiltro"/>
    <addaction name="menuMarcas"/>
-   <addaction name="menuSalir"/>
   </widget>
   <action name="actionA_o">
    <property name="text">
@@ -231,6 +227,21 @@ border-radius: 0px;</string>
   <action name="actionDesde_Ruta">
    <property name="text">
     <string>Desde Ruta</string>
+   </property>
+  </action>
+  <action name="actionSalir">
+   <property name="text">
+    <string>actionSalir</string>
+   </property>
+  </action>
+  <action name="actionSalir_2">
+   <property name="text">
+    <string>Salir</string>
+   </property>
+  </action>
+  <action name="actionSalir_3">
+   <property name="text">
+    <string>Salir</string>
    </property>
   </action>
  </widget>

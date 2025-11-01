@@ -30,10 +30,12 @@ import time
 from geopy.geocoders import Nominatim
 from folium.plugins import Search
 from collections import defaultdict
+from copia_clasificador_fotos import cargar_json
 
 RUTA_MAPAS = './PyQt/mapas/'
 RUTA_PRINCIPAL = 'E:/BackupFotos/'
 GEOCODIFICADOR = Nominatim(user_agent="copilot-mapa")
+HISTORIAL = './duplicados.json'
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -129,10 +131,22 @@ def generar_mapa(features):
     print("Mapa guardado en: ", f'{RUTA_MAPAS}mapa_fotos.html')
 
 def main():
-    directorios = os.listdir(RUTA_PRINCIPAL)
-    agrupadas = defaultdict(list)
+    '''
+    Utilizamos el json 'duplicados' que es el historial de los 
+    archivos que se van clasificando, porque en el vamos guardando
+    los datos de las ubicaciones de los archivos si han sido 
+    movidos o borrados.
+    '''
+    historial = cargar_json(HISTORIAL)
 
-    for directorio in directorios:
+    agrupadas = defaultdict(list)
+    combinaciones_unicas = set()
+
+    for item in historial:
+        clave = item['ubicacion'] + item['fecha']
+        combinaciones_unicas.add(clave)
+
+    for directorio in combinaciones_unicas:
         ruta_directorio = os.path.join(RUTA_PRINCIPAL, directorio)
         archivos = os.listdir(ruta_directorio)
         ciudad, pais, fecha = extraer_ciudad(directorio)
@@ -146,8 +160,6 @@ def main():
 
         lat, lon = coordenadas
         html = crear_popup_html(ciudad, pais, entradas)
-        #feature = crear_feature(ciudad, pais, fecha, ruta_directorio, len(archivos), lat, lon)
-        #features.append(feature)
         feature = {
             "type": "Feature",
             "properties": {

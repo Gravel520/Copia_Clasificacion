@@ -213,7 +213,7 @@ def main():
         archivos = os.listdir(ruta_archivos)
 
     # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos[50:70]:
+    for archivo in archivos[:70]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(ruta_temporal, archivo)
