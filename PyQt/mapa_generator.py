@@ -31,11 +31,7 @@ from geopy.geocoders import Nominatim
 from folium.plugins import Search
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json
-
-RUTA_MAPAS = './PyQt/mapas/'
-RUTA_PRINCIPAL = 'E:/BackupFotos/'
-GEOCODIFICADOR = Nominatim(user_agent="copilot-mapa")
-HISTORIAL = './duplicados.json'
+from config import RUTA_MAPAS, RUTA_PRINCIPAL, GEOCODIFICADOR, HISTORIAL
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -62,36 +58,28 @@ def obtener_coordenadas(ciudad, pais):
     except Exception as e:
         print(f'Error geolocalizando {nombre_carpeta}: {e}')
         return None
-    
+'''
+Cuando se reneriza en el navegador, las doblas barras invertidas (\\) se
+interpretan como una sola (\), y luego en el navegador escapa esa barra
+invertida como parte de una cadena JavaScript, lo que puede terminar 
+eliminándola o malinterpretándola.
+Para que la ruta se transmita correctamente a PyQt, hay escapar doblemente
+las barras invertidas en el HTML embebido dentro del script Python. Es decir,
+en el string Python, cada (\) debe ser escrita como (\\\\) para que llegue
+como (\\) al HTML, y luego como (\) al JavaScript.
+'''
 def crear_popup_html(ciudad, pais, entradas):
     html = f"<div style='width:250px;'>"
     for fecha, ruta, num in entradas:
+        # Creamos la corrección de las barras barras invertidas para que la
+        #   ruta del directorio se interprete correctamente.
+        ruta = ruta.replace('\\', '\\\\')
         html += f"""
         <b>{ciudad}, {pais} - {fecha} ({num} archivos)</b><br>
         <button onclick="enviarRuta('{ruta}')">Ver archivos</button><br><br>
         """
     html += "</div>"
-    return html
-    
-def crear_feature(ciudad, pais, fecha, ruta_directorio, numero_archivos, lat, lon):
-    # HTML con botón que llama a PyQt
-    html = f"""
-    <div style="width:250px;" data-directorio="{ruta_directorio}">
-    <b>{ciudad}, {pais} - {numero_archivos} archivos</b><br>
-    <button onclick="enviarRuta('{ruta_directorio}')">Ver archivos</button>
-    </div>
-    """
-    return {
-        "type": "Feature",
-        "properties": {
-            "nombre": f"{ciudad} {pais} {fecha}",
-            "popup": html
-        },
-        "geometry": {
-            "type": "Point",
-            "coordinates": [lon, lat]
-        }
-    }
+    return html    
 
 def generar_mapa(features):
     # Inicializamos la localización inicial (Madrid, España).

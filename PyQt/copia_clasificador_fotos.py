@@ -42,15 +42,16 @@ import json # Carga y guarda datos en formato JSON.
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
+from config import *
 
-ruta_movil = '\\sdcard\\DCIM\\Camera'
-ruta_pc = 'C:\\Movil_Jesus_A33\\Camera'
-ruta_temporal = 'E:\\FotosTemp'
-ruta_final = 'E:\\BackupFotos'
-ruta_adb = 'C:\\adb\\platform-tools\\adb'
-ruta_historial = './historial.json'
-ruta_duplicados = './duplicados.json'
-ruta_eliminados = './eliminados.json'
+ruta_movil = RUTA_MOVIL
+ruta_pc = RUTA_PC
+ruta_temporal = RUTA_TEMPORAL
+ruta_final = RUTA_PRINCIPAL
+ruta_adb = RUTA_ADB
+ruta_historial = RUTA_HISTORIAL
+ruta_duplicados = HISTORIAL
+ruta_eliminados = RUTA_ELIMINADOS
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
@@ -192,7 +193,12 @@ def hay_dispositivo_adb():
     return len(dispositivos) > 0
 
 # Función principal.
-def main():
+def main(ruta_pc=None):
+    # Definimos la variable del mensaje que vamos a retornar,
+    #   y el número de archivos copiados.
+    mensaje = ''
+    num_copiados = 0
+
     # Crear carpeta temporal.
     os.makedirs(ruta_temporal, exist_ok=True)
 
@@ -213,7 +219,7 @@ def main():
         archivos = os.listdir(ruta_archivos)
 
     # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos[:70]:
+    for archivo in archivos[:20]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(ruta_temporal, archivo)
@@ -260,13 +266,14 @@ def main():
                         'latitud': float(lat),
                         'longitud': float(lon)
                     })
-                    print(f'{archivo} ➡ {nombre_carpeta}')
+                    mensaje += f'🆗 {archivo} 🔜 {nombre_carpeta}\n'
+                    num_copiados += 1
 
                 else:
-                    print(f'❌ Archivo eliminado: {archivo} - no se copia...')
+                    mensaje += f'🟥 ({archivo}) Archivo eliminado\n'
 
             else:
-                print(f'🔁 Archivo duplicado o eliminado: {archivo} - no se copia...')
+                mensaje += f'🔁 ({archivo}) Archivo duplicado o eliminado\n'
 
     # Guardamos la lista de duplicados y eliminados.
     guardar_json(duplicados, ruta_duplicados)
@@ -274,6 +281,10 @@ def main():
 
     # Limpiar carpeta temporal
     shutil.rmtree(ruta_temporal)
+
+    # Devolvemos el mensaje con la acción realizada,
+    #   copiado o no copiado.
+    return mensaje, num_copiados
 
 # Ejecutamos el script.
 if __name__ == '__main__':

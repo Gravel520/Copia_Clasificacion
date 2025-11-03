@@ -7,7 +7,7 @@ Button: QPushButton que forman cada uno de los dos botones que aparecen
     recibe el nombre del icono, y el color del botón.
 '''
 
-from PyQt5.QtWidgets import QPushButton, QCheckBox, QMenu, QAction
+from PyQt5.QtWidgets import QPushButton, QCheckBox, QMenu, QAction, QDialog, QVBoxLayout, QTextEdit
 from PyQt5.QtGui import QIcon, QCursor
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 
@@ -80,3 +80,19 @@ class CheckBox(QCheckBox):
                 image: url("{assets}checkbox_checked.png");
             }}
         """)
+
+class ScrollableMessageBox(QDialog):
+    def __init__(self, title, message, parent =None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+
+        layout = QVBoxLayout(self)
+
+        text_edit = QTextEdit(self)
+        text_edit.setReadOnly(True)
+        text_edit.setPlainText(message)
+        layout.addWidget(text_edit)
+
+        ok_button = QPushButton('Aceptar', self)
+        ok_button.clicked.connect(self.accept)
+        layout.addWidget(ok_button)

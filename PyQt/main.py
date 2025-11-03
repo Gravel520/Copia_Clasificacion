@@ -63,6 +63,7 @@ Finalmente importamos el módulo normalmente, antes de cargar el archivo .ui.
 import sys, os, re
 import shutil
 import mapa_generator
+import copia_clasificador_fotos
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, QFileDialog, QAction
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
@@ -71,17 +72,12 @@ from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
-from componentes.controles import Button, CheckBox, Button_Sel
+from componentes.controles import Button, CheckBox, Button_Sel, ScrollableMessageBox
 from copia_clasificador_fotos import cargar_json, guardar_json
 from mapa_generator import extraer_ciudad
+from config import *
 
-RUTA_MAPA_HTML = './PyQt/mapas/mapa_fotos.html'
-RUTA_UI = './PyQt/ui_files/MainWindow.ui'
-MESES = (
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio',
-     'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-)
-DUPLICADOS = './duplicados.json'
+DUPLICADOS = HISTORIAL
 ARCHIVOS_SEL = {} # clave: ruta_archivo, valor: hash_archivo
 
 class Bridge(QObject):
@@ -125,7 +121,6 @@ class Bridge(QObject):
             self.tabla.setColumnHidden(4, True)
             # Configuramos la selección en la tabla.
             self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems) # Sólo celdas individuales
-            #self.tabla.setSelectionMode(QAbstractItemView.SingleSelection) # Sólo una celda a la vez
             self.tabla.horizontalHeader().setSectionsClickable(False) # Desactivar la selección de la columna
 
             mes, ano = self.obtener_fecha(ruta)
@@ -319,7 +314,7 @@ class Bridge(QObject):
         hash_id_index = self.tabla.model().index(row_index, 4)
         hash_archivo = self.tabla.model().data(hash_id_index)
         return ruta_archivo, hash_archivo
-    
+
 class MapaWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -401,6 +396,43 @@ class MapaWindow(QMainWindow):
                         if checkbox is not None:
                             checkbox.setChecked(state)
 
+    # Función para seleccionar la carpeta origen para la copia/clasificación
+    #   de las fotos.
+    def select_directory(self):
+        carpeta_origen = QFileDialog.getExistingDirectory(self, "Seleccionar directorio de origen")
+        if not carpeta_origen:
+            return # El usuario canceló.
+        
+        mensaje, num_copiados = copia_clasificador_fotos.main(carpeta_origen)
+
+        # Ajustamos el tamaño del ScrollableMessageBox, según el número
+        #   de líneas y la longitud de las mismas.
+        ancho, alto = self.analizar_mensaje(mensaje)
+        ancho = min(500, 7 * ancho)
+        alto = min(600, 18 * alto)        
+
+        if mensaje:
+            dlg = ScrollableMessageBox(f"Copia desde Ruta: {num_copiados} archivos copiados", mensaje)
+        else:            
+            dlg = ScrollableMessageBox("Copia desde Ruta", "No se pudo realizar la copia, o\nno hay archivos que copiar")
+        
+        dlg.resize(ancho, alto)
+        dlg.exec_()
+
+        # Generar mapa con la nueva información y mostrarlo si se han
+        #   copiado algún archivo.
+        if num_copiados > 0:
+            mapa_generator.main()
+            self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+
+    # Función para obtener el tamaño de ancho y alto del 
+    #   ScrollableMessageBox.
+    def analizar_mensaje(self, message):
+        lineas = message.splitlines()
+        num_lineas = len(lineas)
+        longitud_maxima = max((len(linea) for linea in lineas), default=0)
+        return longitud_maxima, num_lineas
+
     # Evento para confirmar el fín de la ejecución de la aplicación.
     def closeEvent(self, e):
         reply = QMessageBox.question(self, "Confirmar salida",
@@ -416,6 +448,7 @@ class MapaWindow(QMainWindow):
         self.ui.tableWidget.itemClicked.connect(self.mostrar_foto)
         self.ui.tableWidget.currentItemChanged.connect(self.mostrar_foto)
         self.ui.button_sel_multiple.clicked.connect(self.columna_seleccion)
+        self.ui.actionDesde_Ruta.triggered.connect(self.select_directory)
         self.ui.actionSalir_3.triggered.connect(self.close)
         # Señal para marcar todas las filas de la tabla. Ultimo parámetro (True)
         self.ui.button_sel_multiple.marcarTodos.connect(
