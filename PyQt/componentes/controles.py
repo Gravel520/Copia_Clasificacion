@@ -7,9 +7,12 @@ Button: QPushButton que forman cada uno de los dos botones que aparecen
     recibe el nombre del icono, y el color del botón.
 '''
 
-from PyQt5.QtWidgets import QPushButton, QCheckBox, QMenu, QAction, QDialog, QVBoxLayout, QTextEdit
-from PyQt5.QtGui import QIcon, QCursor
+import os
+from PyQt5.QtWidgets import QWidget, QPushButton, QCheckBox, QMenu, QAction, QDialog, QVBoxLayout, QTextEdit, QLabel, QApplication, QListWidget
+from PyQt5.QtGui import QIcon, QCursor, QMovie
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
+from PyQt5.QtCore import Qt, QRect
+from config import RUTA_PRINCIPAL, SPINNER
 
 assets = 'PyQt/assets/'
 
@@ -96,3 +99,85 @@ class ScrollableMessageBox(QDialog):
         ok_button = QPushButton('Aceptar', self)
         ok_button.clicked.connect(self.accept)
         layout.addWidget(ok_button)
+
+class SpinnerOverlay(QWidget):
+    def __init__(self, parent = None):
+        super().__init__(parent)
+
+        # Ventana sin bordes, bloqueante y transparente
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setStyleSheet("background-color: rgba(0, 0, 0, 120); border: none;")
+
+        # Expandirse al tamaño del padre
+        if parent:
+            self.resize(parent.size())
+            self.move(parent.pos())
+        else:
+            self.resize(300, 300)
+
+        # Layout para centrar el spinner
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.label = QLabel(self)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("background: transparent; border: none;")
+
+        self.movie = QMovie(SPINNER)
+        self.label.setMovie(self.movie)
+        self.movie.start()
+        
+        layout.addWidget(self.label)
+
+'''
+Esta clase crea un cuadro de diálogo con el que vamos a poder seleccionar
+la carpeta de destino donde queremos mover los archivos elegidos.
+Nos mostrará una lista de todos los directorios contenidos dentro del
+directorio principal, con lo cual, no podremos mover archivos por
+directorios que no correspondan a la aplicación.
+Se hace una importación local para que no haya problemas importación
+circular.
+Para que no haya un error al mover el archivo a la misma carpeta desde la
+que se quiere mover, no presentamos en el listado la ruta de origen (ruta_actual).
+'''
+class SelectorCarpeta(QDialog):
+    def __init__(self, ruta_actual, parent = None):
+        from main import MapaWindow # Evita importación circular.
+
+        super().__init__(parent)
+        self.setWindowTitle("Seleccionar la carpeta de destino")
+
+        layout = QVBoxLayout(self)
+
+        # Lista con las carpetas del directorio principal.
+        self.list = QListWidget()
+        mensaje = ''
+        for f in os.scandir(RUTA_PRINCIPAL):
+            if f.is_dir():
+                if ruta_actual == f"{RUTA_PRINCIPAL}\\{f.name}": # Comprobar ruta actual.
+                    continue
+                self.list.addItem(f.name)
+                mensaje += f'{f.name}\n' # str con todas las carpetas.
+
+        # Ajustamos el tamaño del QDialog a los datos obtenidos.
+        ancho, alto = MapaWindow.analizar_mensaje(mensaje)
+        ancho = min(500, 7 * ancho)
+        alto = min(600, 25 * alto)
+        self.resize(ancho, alto) # Ajustamos el tamaño del QDialog.
+
+        layout.addWidget(self.list)
+
+        # Botón aceptar
+        btn = QPushButton("Aceptar", self)
+        btn.clicked.connect(self.accept)
+        layout.addWidget(btn)
+
+    # Función donde obtenemos la ruta completa elegida.
+    # A esta función la llamamos desde la función del Bridge 'mover'.
+    def carpeta_seleccionada(self):
+        item = self.list.currentItem()
+        if item:
+            ruta = os.path.join(RUTA_PRINCIPAL, item.text())
+            return ruta

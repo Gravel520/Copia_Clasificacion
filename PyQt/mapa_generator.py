@@ -118,7 +118,7 @@ def generar_mapa(features):
     mapa.save(f'{RUTA_MAPAS}mapa_fotos.html')
     print("Mapa guardado en: ", f'{RUTA_MAPAS}mapa_fotos.html')
 
-def main():
+def generar_mapa_desde_historial():
     '''
     Utilizamos el json 'duplicados' que es el historial de los 
     archivos que se van clasificando, porque en el vamos guardando
@@ -164,5 +164,3 @@ def main():
 
     generar_mapa(features)
 
-if __name__ == "__main__":
-    main()

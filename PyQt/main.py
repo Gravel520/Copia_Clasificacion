@@ -64,15 +64,15 @@ import sys, os, re
 import shutil
 import mapa_generator
 import copia_clasificador_fotos
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, QFileDialog, QAction
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFrame, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, QFileDialog, QAction, QProgressDialog, QDialog, QLabel, QComboBox, QPushButton, QListWidget
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QObject, pyqtSlot, QUrl
+from PyQt5.QtCore import QObject, pyqtSlot, QUrl, QThread, pyqtSignal
 from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
 from PyQt5 import uic
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QMovie
 from PyQt5.QtCore import Qt
-from componentes.controles import Button, CheckBox, Button_Sel, ScrollableMessageBox
+from componentes.controles import Button, CheckBox, Button_Sel, ScrollableMessageBox, SpinnerOverlay, SelectorCarpeta
 from copia_clasificador_fotos import cargar_json, guardar_json
 from mapa_generator import extraer_ciudad
 from config import *
@@ -80,21 +80,46 @@ from config import *
 DUPLICADOS = HISTORIAL
 ARCHIVOS_SEL = {} # clave: ruta_archivo, valor: hash_archivo
 
+class MapaWorker(QThread):
+    terminado = pyqtSignal()
+
+    def run(self):
+        mapa_generator.generar_mapa_desde_historial()
+        self.terminado.emit()
+
+class CopiaWorker(QThread):
+    terminado = pyqtSignal(str, int) # Mensaje, num_copiados
+
+    def __init__(self, carpeta_origen):
+        super().__init__()
+        self.carpeta_origen = carpeta_origen
+
+    def run(self):
+        mensaje, num_copiados = copia_clasificador_fotos.main(self.carpeta_origen)
+        self.terminado.emit(mensaje, num_copiados)
+
 class Bridge(QObject):
+    actualizarFoto = pyqtSignal(str) # Señal que envia la ruta
+
     def __init__(self, tableWidget, labelFechaListado, button_sel_multiple, view):
         super().__init__()
         self.tabla = tableWidget
         self.label = labelFechaListado
         self.boton = button_sel_multiple
         self.view = view
+        self.actual_ruta = None
 
     @pyqtSlot(str)
     def recibirRuta(self, ruta):
+        self.actual_ruta = ruta
+        self.actualizar_tabla()
+
+    def actualizar_tabla(self):
         ARCHIVOS_SEL.clear()
         self.historial = cargar_json(DUPLICADOS)
 
-        if os.path.isdir(ruta):
-            archivos = os.listdir(ruta)
+        if os.path.isdir(self.actual_ruta):
+            archivos = os.listdir(self.actual_ruta)
             self.numero_archivos = len(archivos)
             self.tabla.setRowCount(self.numero_archivos)
             self.tabla.setColumnCount(5)
@@ -123,11 +148,11 @@ class Bridge(QObject):
             self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems) # Sólo celdas individuales
             self.tabla.horizontalHeader().setSectionsClickable(False) # Desactivar la selección de la columna
 
-            mes, ano = self.obtener_fecha(ruta)
+            mes, ano = self.obtener_fecha(self.actual_ruta)
             self.label.setText(f'{mes} de {ano}')
 
             for i, nombre in enumerate(archivos):
-                ruta_completa = os.path.join(ruta, nombre)
+                ruta_completa = os.path.join(self.actual_ruta, nombre)
                 # Buscar el diccionario que coincide para obtener el hash
                 ruta_conver = ruta_completa.replace('/', '\\') # Conversión para que coincide con datos .json
                 coincidencia = next((r for r in self.historial if r['ruta'] == ruta_conver), None)
@@ -144,7 +169,16 @@ class Bridge(QObject):
                 self.tabla.setRowHeight(i, 30)
 
         else:
-            QMessageBox.warning(None, "Error", f"No se encontró el directorio:\n{ruta}")
+            QMessageBox.warning(None, "Error", f"No se encontró el directorio:\n{self.actual_ruta}")
+
+        if self.tabla.rowCount() > 0:
+            # Selecciona la primera fila y primera columna para que cambie
+            #   al color de selección, azul.
+            self.tabla.setCurrentCell(0, 1)
+            # Obtenemos la ruta del archivo que está en la columna 2.
+            ruta_archivo = self.tabla.item(0, 2).text()
+            # Emitir la señal para que MainWindow muestre la foto
+            self.actualizarFoto.emit(ruta_archivo)
 
     def boton_checkbox(self, row):
         check = QWidget()
@@ -243,10 +277,11 @@ class Bridge(QObject):
             QMessageBox.information(None, "Copia completada", "Todos los archivos copiados\ncorrectamente.")
 
     def mover(self, row):
-        # Seleccionamos la carpeta de destino. Abre el selector de directorios.
-        # El argumento 'None' es porque no hereda de un QWidget, ya que hereda
-        #   de 'Bridge'.
-        carpeta_destino = QFileDialog.getExistingDirectory(None, "Seleccionar carpeta de destino")
+        carpeta_destino = ''
+        dlg = SelectorCarpeta(self.actual_ruta, None)
+        if dlg.exec_() == QDialog.Accepted:
+            carpeta_destino = dlg.carpeta_seleccionada()
+        
         if not carpeta_destino:
             return # El usuario canceló.
         
@@ -288,10 +323,6 @@ class Bridge(QObject):
         if not os.listdir(origen):
             os.rmdir(origen)
 
-        # Generar mapa con la nueva información y mostrarlo.
-        mapa_generator.main()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
-
         # Mensaje final
         if errores:
             mensaje = "Algunos archivos no se pudiero mover: \n\n"
@@ -300,6 +331,46 @@ class Bridge(QObject):
         else:
             QMessageBox.information(None, "Acción completada", "Todos los archivos fueron\nmovidos correctamente.")
 
+        self.spinner = SpinnerOverlay(self.view)
+        self.spinner.show()
+
+        self.worker = MapaWorker()
+        self.worker.terminado.connect(self.mapa_generado)
+        self.worker.start()
+
+        self.actualizar_tabla()
+
+    def seleccionar_directorio_destino(self):
+        # Seleccionamos la carpeta de destino. Abre el selector de directorios.
+        # El argumento 'None' es porque no hereda de un QWidget, ya que hereda
+        #   de 'Bridge'.
+        carpeta_destino = QFileDialog.getExistingDirectory(None, "Seleccionar carpeta de destino")
+        if not carpeta_destino:
+            return None
+        
+        # Normalizamos rutas
+        carpeta_destino = os.path.abspath(carpeta_destino)
+
+        # Comprobar que están en el mismo drive.
+        if os.path.splitdrive(carpeta_destino)[0].lower() != os.path.splitdrive(RUTA_PRINCIPAL)[0].lower():
+            QMessageBox.warning(None, "Directorio inválido",
+                                f"Debe seleccionar un directorio dentro de:\n{RUTA_PRINCIPAL}")
+            return None
+
+        # Comprobamos que destino está dentro del principal
+        if os.path.commonpath([carpeta_destino, RUTA_PRINCIPAL]) == RUTA_PRINCIPAL:
+            return carpeta_destino
+        else:
+            QMessageBox.warning(None, "Directorio inválido",
+                                f"Debe seleccionar un directorio dentro de:\n{RUTA_PRINCIPAL}")
+            return None        
+
+    def mapa_generado(self):
+        self.spinner.movie.stop()
+        self.spinner.close()
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+        QMessageBox.information(None, "Mapa actualizado", "El mapa ha sido generado correctamente.")
+
     def compartir(self, row):
         archivo = self.obtener_archivo(row)
         print(f'Compartir: {archivo}')
@@ -307,6 +378,8 @@ class Bridge(QObject):
     def borrar(self, row):
         archivo = self.obtener_archivo(row)
         print(f'Borrar: {archivo}')
+
+        self.actualizar_tabla()
     
     def obtener_archivo(self, row_index):
         ruta_id_index = self.tabla.model().index(row_index, 2)
@@ -332,6 +405,9 @@ class MapaWindow(QMainWindow):
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 
+        # Conectar señal de Bridge con método mostrar_foto
+        self.bridge.actualizarFoto.connect(self.mostrar_foto)
+
         layout = QVBoxLayout(self.ui.QWidget_foto)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.view)
@@ -341,10 +417,31 @@ class MapaWindow(QMainWindow):
     def show(self):
         self.ui.show()
 
-    def mostrar_foto(self):
-        row = self.ui.tableWidget.currentRow()
+    '''
+    Cuando llamamos a esta función desde la señal de Bridge, estamos pasando
+    un str con la ruta del archivo, sin embargo, cuando la llamamos desde
+    la señal de la tabla 'itemclicked' o 'currentItemChanged' estamos
+    pasando directamente un 'QTableWidgetItem' como argumento, con lo cual
+    da error porque no es el str de la ruta del archivo.
+    Tememos que comprobar si el parámetro recibido es un objeto de tabla o
+    un str, para poder obtener desde la columna de la tabla que contiene la
+    ruta del archivo, el texto correspondiente.
+    '''
+    def mostrar_foto(self, item=None):
+        if isinstance(item, QTableWidgetItem):
+            # Si viene de la señal, obtenemos la fila y la columna de la ruta
+            row = item.row()
+            ruta_archivo = self.ui.tableWidget.item(row, 2).text()
+        else:
+            # Si viene de la señal personalizada Bridge o llamada manual
+            if isinstance(item, str):
+                ruta_archivo = item
+            else:
+                row = self.ui.tableWidget.currentRow()
+                if row < 0:
+                    return
+                ruta_archivo = self.ui.tableWidget.item(row, 2).text()
 
-        ruta_archivo = self.ui.tableWidget.item(row, 2).text()
         pixmap = QPixmap(ruta_archivo)
         if not pixmap.isNull():
             self.ui.labelVisor.setPixmap(pixmap)
@@ -403,7 +500,16 @@ class MapaWindow(QMainWindow):
         if not carpeta_origen:
             return # El usuario canceló.
         
-        mensaje, num_copiados = copia_clasificador_fotos.main(carpeta_origen)
+        self.spinner = SpinnerOverlay(self)
+        self.spinner.show()
+        
+        self.worker_copia = CopiaWorker(carpeta_origen)
+        self.worker_copia.terminado.connect(self.copia_finalizada)
+        self.worker_copia.start()
+
+    def copia_finalizada(self, mensaje, num_copiados):
+        self.spinner.movie.stop()
+        self.spinner.close()
 
         # Ajustamos el tamaño del ScrollableMessageBox, según el número
         #   de líneas y la longitud de las mismas.
@@ -422,12 +528,23 @@ class MapaWindow(QMainWindow):
         # Generar mapa con la nueva información y mostrarlo si se han
         #   copiado algún archivo.
         if num_copiados > 0:
-            mapa_generator.main()
+            self.spinner = SpinnerOverlay(self)
+            self.spinner.show()
+
+            self.worker_mapa = MapaWorker()
+            self.worker_mapa.terminado.connect(self.mapa_finalizado)
+            self.worker_mapa.start()
+            
+    def mapa_finalizado(self):
+            self.spinner.movie.stop()
+            self.spinner.close()
             self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+            QMessageBox.information(self, "Mapa actualizado", "El mapa ha sido generado correctamente. ")
 
     # Función para obtener el tamaño de ancho y alto del 
     #   ScrollableMessageBox.
-    def analizar_mensaje(self, message):
+    @staticmethod
+    def analizar_mensaje(message):
         lineas = message.splitlines()
         num_lineas = len(lineas)
         longitud_maxima = max((len(linea) for linea in lineas), default=0)
