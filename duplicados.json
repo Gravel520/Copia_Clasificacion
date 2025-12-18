@@ -1,5 +1,141 @@
 [
     {
+        "hash": "dd2dfd11cc5c290cd354548662c644b3",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250213_201036.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.338255555555556,
+        "longitud": -5.493216666666667
+    },
+    {
+        "hash": "ebdf462f0d7d69838a9b766715f94cc5",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250213_201205.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33805,
+        "longitud": -5.492411111111111
+    },
+    {
+        "hash": "6c97f680bad37336c0a3a440a1fa08d1",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250214_105750.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33658055555556,
+        "longitud": -5.492363888888889
+    },
+    {
+        "hash": "949e4951b190a0c944738789db9072aa",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250215_123600.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33844722222222,
+        "longitud": -5.4928027777777775
+    },
+    {
+        "hash": "0193e007b3a0bb382ce17bde1aed991d",
+        "ruta": "E:\\BackupFotos\\(Sin_GPS)(2025-02)\\IMG_20250215_132106.jpg",
+        "ubicacion": "(Sin_GPS)",
+        "fecha": "(2025-02)",
+        "latitud": 0.0,
+        "longitud": 0.0
+    },
+    {
+        "hash": "c6dba921ec6585ac5db70ded4c2f5e98",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250216_140355.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33844722222222,
+        "longitud": -5.4928
+    },
+    {
+        "hash": "01c4ee25e7855c9185b27c0db03664c5",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_102039.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.337719444444446,
+        "longitud": -5.495641666666667
+    },
+    {
+        "hash": "9442e2d2bfebe74f516e8872cad8640c",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_102653.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.337719444444446,
+        "longitud": -5.495641666666667
+    },
+    {
+        "hash": "cb8252493d7c1200d505695f42c21ba2",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_102940.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.337719444444446,
+        "longitud": -5.495641666666667
+    },
+    {
+        "hash": "a751131582df6a193a4d64738faacce8",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_103021.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.337719444444446,
+        "longitud": -5.495641666666667
+    },
+    {
+        "hash": "00c0a33e4c8518bff314a0b91707b76b",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_103029.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.337719444444446,
+        "longitud": -5.495641666666667
+    },
+    {
+        "hash": "020c16891504cd0a8852d9f00d13a8b6",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_103838.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33658055555556,
+        "longitud": -5.492363888888889
+    },
+    {
+        "hash": "52052e4382d7433208a78348fcc4f31c",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_103849.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33658055555556,
+        "longitud": -5.492363888888889
+    },
+    {
+        "hash": "2918b5857dc8e89499c00c81865cff09",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_105135.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33658055555556,
+        "longitud": -5.492363888888889
+    },
+    {
+        "hash": "3100b58a58b86c9d0d384c70695caa1d",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_105138.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33658055555556,
+        "longitud": -5.492363888888889
+    },
+    {
+        "hash": "5768f2b9be1eedc3ff37304f420fdf68",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_133943.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33844722222222,
+        "longitud": -5.492794444444445
+    },
+    {
+        "hash": "f8effe09b5eed410172d43458e4fd147",
+        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2025-02)\\IMG_20250217_133954.jpg",
+        "ubicacion": "(Cáceres)(España)",
+        "fecha": "(2025-02)",
+        "latitud": 39.33844722222222,
+        "longitud": -5.492794444444445
+    },
+    {
         "hash": "e234ddda4cdbe82ce90a247a2e71f385",
         "ruta": "E:\\BackupFotos\\(San Martín de la Vega)(España)(2023-12)\\20231216_152749.jpg",
         "ubicacion": "(San Martín de la Vega)(España)",
@@ -113,9 +249,9 @@
     },
     {
         "hash": "ab940e6fb96f8f717262712856ed7683",
-        "ruta": "E:\\BackupFotos\\(Madrid)(España)(2023-12)\\IMG20210106192551.jpg",
-        "ubicacion": "(Madrid)(España)",
-        "fecha": "(2023-12)",
+        "ruta": "E:\\BackupFotos\\(Fuenlabrada)(España)(2021-01)\\IMG20210106192551.jpg",
+        "ubicacion": "(Fuenlabrada)(España)",
+        "fecha": "(2021-01)",
         "latitud": 40.30008313888889,
         "longitud": -3.811635
     },
@@ -158,245 +294,5 @@
         "fecha": "(2021-01)",
         "latitud": 40.29241561111111,
         "longitud": -3.8377981111111112
-    },
-    {
-        "hash": "f1171eb6a5353515b36cb0b4a206681c",
-        "ruta": "E:\\BackupFotos\\(Fuenlabrada)(España)(2021-01)\\IMG20210114203011.jpg",
-        "ubicacion": "(Fuenlabrada)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 40.29360961111111,
-        "longitud": -3.840212111111111
-    },
-    {
-        "hash": "c191ca473a3cbfe59b3b8b66d5c20b6d",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124822.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "76abb4677c452c71a192f8b7d9ced3a8",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124827.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "9a3fb508bdaad10966dc36051adf405c",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124831.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "c0500312f86a228bbb016673bf2fd6b2",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124834.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "2395a3b0a153787d0ef65503a15170e9",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124837.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "9c80bbdc607c20e47134191f5d6637f7",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124840.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "6cd03ed2fa4ce76f8047d8a1fd5a1156",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116124844.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338363638888886,
-        "longitud": -5.492794972222222
-    },
-    {
-        "hash": "27b5cd41848d4a6370c30acd92e7f908",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-01)\\IMG20210116130325.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-01)",
-        "latitud": 39.338359805555555,
-        "longitud": -5.492801166666666
-    },
-    {
-        "hash": "cadbe324c2e85de349293900031d9967",
-        "ruta": "E:\\BackupFotos\\(Fuenlabrada)(España)(2021-02)\\IMG20210205184149.jpg",
-        "ubicacion": "(Fuenlabrada)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 40.29804991666666,
-        "longitud": -3.8418340555555557
-    },
-    {
-        "hash": "33f8fd9ef14259b4ad9fa00fd35a1e56",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-02)\\IMG20210227094457.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 39.337257361111114,
-        "longitud": -5.498592833333333
-    },
-    {
-        "hash": "b4e56a40930761aba4c2ff14585b5446",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-02)\\IMG20210227120559.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 39.3383255,
-        "longitud": -5.492885111111111
-    },
-    {
-        "hash": "ea6f70c7f2bbe78a9f5593f782010959",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-02)\\IMG20210227120640.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 39.338359805555555,
-        "longitud": -5.492800222222222
-    },
-    {
-        "hash": "c54629487fdc9d35fa7d3ab76bd1d7e7",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-02)\\IMG20210227120652.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 39.338359805555555,
-        "longitud": -5.492800222222222
-    },
-    {
-        "hash": "4ed7d3a11ef4740253ebcec741c65583",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-02)\\IMG20210227121744.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 39.337257361111114,
-        "longitud": -5.498592833333333
-    },
-    {
-        "hash": "2e5431bd17b9e04cc603d8634dc297c0",
-        "ruta": "E:\\BackupFotos\\(Cáceres)(España)(2021-02)\\IMG20210227121752.jpg",
-        "ubicacion": "(Cáceres)(España)",
-        "fecha": "(2021-02)",
-        "latitud": 39.337257361111114,
-        "longitud": -5.498592833333333
-    },
-    {
-        "hash": "6782785a59b4ad62743e6ea4f199a616",
-        "ruta": "E:\\BackupFotos\\(Fuenlabrada)(España)(2021-03)\\IMG20210320185310.jpg",
-        "ubicacion": "(Fuenlabrada)(España)",
-        "fecha": "(2021-03)",
-        "latitud": 40.297519666666666,
-        "longitud": -3.8386540555555557
-    },
-    {
-        "hash": "1dedaff989ed2c05592b3e6d907bcb08",
-        "ruta": "E:\\BackupFotos\\(Fuenlabrada)(España)(2021-03)\\IMG20210331205014.jpg",
-        "ubicacion": "(Fuenlabrada)(España)",
-        "fecha": "(2021-03)",
-        "latitud": 40.29356383333333,
-        "longitud": -3.8403859444444444
-    },
-    {
-        "hash": "faf73b44390f396fa89e75ca98058fd5",
-        "ruta": "E:\\BackupFotos\\(Fuenlabrada)(España)(2021-03)\\IMG20210331205040.jpg",
-        "ubicacion": "(Fuenlabrada)(España)",
-        "fecha": "(2021-03)",
-        "latitud": 40.29356383333333,
-        "longitud": -3.8403859444444444
-    },
-    {
-        "hash": "95eb033f571c7ceba1853336604f6c1f",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403114438.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "a7c2b2a2a8bd1e537f04d10fc23857a4",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403114443.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "58b8c79336ecabc30f6c3a7ee610241a",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403115552.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "f35fd6df43ec457e06ffc89712a033e7",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403120345.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "cc3955ff0750fd31001cf683244ee039",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403120410.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "df5e5dcc193eedd623ce93396c650198",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403120819.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.60065077777778,
-        "longitud": -4.237390972222222
-    },
-    {
-        "hash": "1adfd712fd671ddc66f66c7ddff26be2",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403120841.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "c37914935b76068661bf52b6f00ed553",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403121505.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.59253691666667,
-        "longitud": -4.237660861111111
-    },
-    {
-        "hash": "cdbf7587572f3bff268698dd3a3013e1",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403123348.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.46852111111111,
-        "longitud": -4.4479579722222224
-    },
-    {
-        "hash": "844b65e49312b581ffc287aea0defb3c",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403123521.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.46852111111111,
-        "longitud": -4.4479579722222224
-    },
-    {
-        "hash": "93d28fb61df0849ceab7c60f3350ff79",
-        "ruta": "E:\\BackupFotos\\(Santa María de la Alameda)(España)(2021-04)\\IMG20210403123530.jpg",
-        "ubicacion": "(Santa María de la Alameda)(España)",
-        "fecha": "(2021-04)",
-        "latitud": 40.46852111111111,
-        "longitud": -4.4479579722222224
     }
 ]

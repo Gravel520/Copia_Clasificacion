@@ -39,17 +39,18 @@ import os # Gestiona rutas y archivos.
 import shutil # Copia y elimina archivos.
 import hashlib # Calcula hashes MD5 para detectar duplicados o eliminados.
 import json # Carga y guarda datos en formato JSON.
+from PyQt5.QtWidgets import QMessageBox
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
 from config import *
+from pathlib import Path
 
 ruta_movil = RUTA_MOVIL
-ruta_pc = RUTA_PC
+#ruta_pc = RUTA_PC
 ruta_temporal = RUTA_TEMPORAL
 ruta_final = RUTA_PRINCIPAL
 ruta_adb = RUTA_ADB
-ruta_historial = RUTA_HISTORIAL
 ruta_duplicados = HISTORIAL
 ruta_eliminados = RUTA_ELIMINADOS
 
@@ -69,18 +70,17 @@ def cargar_json(ruta):
             return json.load(f)
     return []
 
-# Añadimos un hash a la lista de duplicados si no esta ya presente.
-def añadir_hash(hash_nuevo, lista_hashes):
+def comprobar_hash(hash_nuevo, lista_hashes):
+    '''
+    Comprobamos si un hash esta en la lista de duplicados o eliminados.
+    Dependiendo del valor del parámetro 'lista_hashes', que sea
+        duplicados o eliminados.
+    '''
     if any(r['hash'] == hash_nuevo for r in lista_hashes):
         return False
     
     else:
         return True
-
-# Comprobamos que un hash no esta en la lista de los archivos que
-#   HEMOS ELIMINADO NOSOTROS.
-def añadir_hash_eliminado(has_nuevo, lista_hashes):
-    lista_hashes.append(has_nuevo)
 
 # Guarda los datos en formato JSON.
 def guardar_json(data, ruta):
@@ -192,6 +192,18 @@ def hay_dispositivo_adb():
     dispositivos = [l for l in lineas[1:] if l.strip().endswith('device')]
     return len(dispositivos) > 0
 
+def borrar_directorios_vacios():
+    '''
+    Con esta función comprobamos que no se han creado directorios vacíos
+    al momento de copiar y clasificar, ya que primero se crea el directorio
+    y luego se comprueba si ese archivo está duplicado, eliminado o no
+    se puede clasificar. Así que el directorio persiste.
+    '''
+    for subdir in Path(RUTA_PRINCIPAL).iterdir():
+        if subdir.is_dir():
+            if not any(subdir.iterdir()):
+                subdir.rmdir()
+
 # Función principal.
 def main(ruta_pc=None):
     # Definimos la variable del mensaje que vamos a retornar,
@@ -206,44 +218,63 @@ def main(ruta_pc=None):
     duplicados = cargar_json(ruta_duplicados)
     eliminados = cargar_json(ruta_eliminados)
 
-    # Listar archivos desde el movil o pc.    
-    if hay_dispositivo_adb():
-        ruta_archivos = ruta_movil
-        resultado = subprocess.run([ruta_adb, 'shell', f'ls {ruta_archivos}'],
-                                capture_output=True,
-                                text=True)
-        archivos = resultado.stdout.strip().split('\n')
-    else:    
-        print('💻 No se puedo desde el movil, probar desde el PC...')
+    # Listar archivos desde el movil o pc.
+    if ruta_pc:
         ruta_archivos = ruta_pc
-        archivos = os.listdir(ruta_archivos)
+        if os.path.exists(ruta_archivos):
+            archivos = os.listdir(ruta_archivos)
+        else:
+            return f"La ruta {ruta_archivos} no existen en el PC.", 0
+    else:
+        if hay_dispositivo_adb():
+            ruta_archivos = ruta_movil
+            resultado = subprocess.run([ruta_adb, 'shell', f'ls {ruta_archivos}'],
+                                    capture_output=True,
+                                    text=True)
+            archivos = resultado.stdout.strip().split('\n')
+        else:
+            # No hay ningún movil conectado al ordenador.
+            return "No hay ningún móvil conectado al ordenador.", 0
 
     # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos[40:50]:
+    for archivo in archivos[:20]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(ruta_temporal, archivo)
 
             # Descargar archivo desde el movil o copiarlo desde el pc al directorio temporal.
-            if hay_dispositivo_adb():
-                subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
-
-            else:
+            if ruta_pc:
                 if os.path.exists(ruta_origen):
                     shutil.copy2(ruta_origen, ruta_local)
+                else:
+                    return "La ruta seleccionada en el PC no existe.", 0
+            else:
+                if hay_dispositivo_adb():
+                    subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
+                else:
+                    return "No se encontró ninguna fuente válida para copiar.", 0               
 
             # Obtención de los metadatos del gps y fecha.
             if archivo.lower().endswith(('.jpg', '.jpeg')):
                 gps_info, fecha = obtener_datos_exif(ruta_local)
-                ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else '(Sin_GPS)'
+                if gps_info:
+                    ubicacion, lat, lon = obtener_ubicación(gps_info)
+                else:
+                    ubicacion, lat, lon = '(Sin_GPS)', 0, 0
+
                 # El string de la fecha será (año-mes)
                 fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
 
             else: # .mp4
-                fecha = obtener_fecha_video(archivo)
-                ubicacion = '(Sin_GPS)'
-                # El string de la fecha será (año-mes)
-                fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
+                try:
+                    fecha = obtener_fecha_video(ruta_local)
+                    ubicacion, lat, lon = '(Sin_GPS)', 0, 0
+
+                    # El string de la fecha será (año-mes)
+                    fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
+                except Exception as e:
+                    mensaje += f'💥 ({archivo}) No se puedo clasificar.\n'
+                    continue
 
             # Crear carpeta destino.            
             nombre_carpeta = f'{ubicacion}{fecha_str}'
@@ -252,9 +283,9 @@ def main(ruta_pc=None):
 
             # Función archivo duplicado.
             hash_archivo = calcular_hash_md5(ruta_local)
-            if añadir_hash(hash_archivo, duplicados):
+            if comprobar_hash(hash_archivo, duplicados):
                 # Comprobamos que el archivo NO este elimnado por nosotros.
-                if hash_archivo not in eliminados:
+                if comprobar_hash(hash_archivo, eliminados):
                     # Copiar archivo del directorio temporal al definitivo.
                     shutil.copy2(ruta_local, ruta_destino)
                     # Añadimos los datos al historial.
@@ -281,6 +312,9 @@ def main(ruta_pc=None):
 
     # Limpiar carpeta temporal
     shutil.rmtree(ruta_temporal)
+
+    # Limpiar carpetas vacías.
+    borrar_directorios_vacios()
 
     # Devolvemos el mensaje con la acción realizada,
     #   copiado o no copiado.

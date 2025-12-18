@@ -12,11 +12,10 @@ GEOCODIFICADOR = Nominatim(user_agent="copilot-mapa")
 HISTORIAL = './duplicados.json'
 
 # Variables para archivo 'copia_clasificador_fotos.py'
-RUTA_MOVIL = '\\sdcard\\DCIM\\Camera'
-RUTA_PC = 'C:\\Movil_Jesus_A33\\Camera'
+RUTA_MOVIL = '/sdcard/DCIM/Camera'
+#RUTA_PC = 'C:\\Movil_Jesus_A33\\Camera'
 RUTA_TEMPORAL = 'E:\\FotosTemp'
 RUTA_ADB = 'C:\\adb\\platform-tools\\adb'
-RUTA_HISTORIAL = './historial.json'
 RUTA_ELIMINADOS = './eliminados.json'
 
 # Variables para archivo 'main.py'
