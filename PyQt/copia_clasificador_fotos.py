@@ -51,8 +51,11 @@ ruta_movil = RUTA_MOVIL
 ruta_temporal = RUTA_TEMPORAL
 ruta_final = RUTA_PRINCIPAL
 ruta_adb = RUTA_ADB
+#ruta_historial = RUTA_HISTORIAL
 ruta_duplicados = HISTORIAL
 ruta_eliminados = RUTA_ELIMINADOS
+ruta_pendientes = PENDIENTES
+
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
@@ -81,6 +84,11 @@ def comprobar_hash(hash_nuevo, lista_hashes):
     
     else:
         return True
+
+# Comprobamos que un hash no esta en la lista de los archivos que
+#   HEMOS ELIMINADO NOSOTROS.
+def añadir_hash_eliminado(has_nuevo, lista_hashes):
+    lista_hashes.append(has_nuevo)
 
 # Guarda los datos en formato JSON.
 def guardar_json(data, ruta):
@@ -203,7 +211,7 @@ def borrar_directorios_vacios():
         if subdir.is_dir():
             if not any(subdir.iterdir()):
                 subdir.rmdir()
-
+                
 # Función principal.
 def main(ruta_pc=None):
     # Definimos la variable del mensaje que vamos a retornar,
@@ -217,6 +225,7 @@ def main(ruta_pc=None):
     # Cargamos el historial de duplicados y eliminados.
     duplicados = cargar_json(ruta_duplicados)
     eliminados = cargar_json(ruta_eliminados)
+    pendientes = cargar_json(ruta_pendientes)
 
     # Listar archivos desde el movil o pc.
     if ruta_pc:
@@ -237,7 +246,7 @@ def main(ruta_pc=None):
             return "No hay ningún móvil conectado al ordenador.", 0
 
     # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos[:20]:
+    for archivo in archivos[:30]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(ruta_temporal, archivo)
@@ -261,11 +270,10 @@ def main(ruta_pc=None):
                     ubicacion, lat, lon = obtener_ubicación(gps_info)
                 else:
                     ubicacion, lat, lon = '(Sin_GPS)', 0, 0
-
                 # El string de la fecha será (año-mes)
                 fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
 
-            else: # .mp4
+            else: # .mp4                
                 try:
                     fecha = obtener_fecha_video(ruta_local)
                     ubicacion, lat, lon = '(Sin_GPS)', 0, 0
@@ -276,39 +284,60 @@ def main(ruta_pc=None):
                     mensaje += f'💥 ({archivo}) No se puedo clasificar.\n'
                     continue
 
-            # Crear carpeta destino.            
-            nombre_carpeta = f'{ubicacion}{fecha_str}'
+            # Crear carpeta destino.
+            # Si NO hay ubicación, el nombre de la carpeta será, sólamente, '(Sin_GPS)'.
+            if ubicacion == '(Sin_GPS)':
+                nombre_carpeta = f'{ubicacion}'
+            else:
+                nombre_carpeta = f'{ubicacion}{fecha_str}'
             ruta_destino = os.path.join(ruta_final, nombre_carpeta)
             os.makedirs(ruta_destino, exist_ok=True)
 
-            # Función archivo duplicado.
+            # Función obtener el hash del archivo.
             hash_archivo = calcular_hash_md5(ruta_local)
-            if comprobar_hash(hash_archivo, duplicados):
-                # Comprobamos que el archivo NO este elimnado por nosotros.
-                if comprobar_hash(hash_archivo, eliminados):
-                    # Copiar archivo del directorio temporal al definitivo.
-                    shutil.copy2(ruta_local, ruta_destino)
-                    # Añadimos los datos al historial.
-                    duplicados.append({
-                        'hash': hash_archivo,
-                        'ruta': os.path.join(ruta_destino, archivo),
-                        'ubicacion': ubicacion,
-                        'fecha': fecha_str,
-                        'latitud': float(lat),
-                        'longitud': float(lon)
-                    })
-                    mensaje += f'🆗 {archivo} 🔜 {nombre_carpeta}\n'
-                    num_copiados += 1
 
-                else:
-                    mensaje += f'🟥 ({archivo}) Archivo eliminado\n'
+            # Comprobamos si el archivo tienen ubicación, para grabarlo en 
+            #   'pendientes'.
+            if ubicacion == '(Sin_GPS)':
+                if comprobar_hash(hash_archivo, pendientes):
+                    shutil.copy2(ruta_local, ruta_destino)
+                    pendientes.append({
+                        'hash': hash_archivo,
+                        'ruta': os.path.join(ruta_destino, archivo)
+                    })
+                    mensaje += f'❓ {archivo} - Pendiente de clasificar\n'
 
             else:
-                mensaje += f'🔁 ({archivo}) Archivo duplicado o eliminado\n'
+                if comprobar_hash(hash_archivo, duplicados):
+                    # Comprobamos que el archivo NO este elimnado por nosotros.
+
+                    # CÓDIGO PARA COMPROBAR SI ESTA EN EL JSON DE PENDIENTES.
+
+                    if comprobar_hash(hash_archivo, eliminados):
+                        # Copiar archivo del directorio temporal al definitivo.
+                        shutil.copy2(ruta_local, ruta_destino)
+                        # Añadimos los datos al historial.
+                        duplicados.append({
+                            'hash': hash_archivo,
+                            'ruta': os.path.join(ruta_destino, archivo),
+                            'ubicacion': ubicacion,
+                            'fecha': fecha_str,
+                            'latitud': float(lat),
+                            'longitud': float(lon)
+                        })
+                        mensaje += f'🆗 {archivo} 🔜 {nombre_carpeta}\n'
+                        num_copiados += 1
+
+                    else:
+                        mensaje += f'🟥 ({archivo}) Archivo eliminado\n'
+
+                else:
+                    mensaje += f'🔁 ({archivo}) Archivo duplicado o eliminado\n'
 
     # Guardamos la lista de duplicados y eliminados.
     guardar_json(duplicados, ruta_duplicados)
     guardar_json(eliminados, ruta_eliminados)
+    guardar_json(pendientes, ruta_pendientes)
 
     # Limpiar carpeta temporal
     shutil.rmtree(ruta_temporal)

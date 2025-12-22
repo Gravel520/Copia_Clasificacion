@@ -13,7 +13,7 @@ import json
 from PIL import Image
 
 ruta_mapas = './modulo_folium/'
-ruta_duplicados = './duplicados.json'
+ruta_duplicados = './clasificados.json'
 
 # Función para cargar el json con los datos de las fotos.
 def cargar_json(ruta):

@@ -96,28 +96,21 @@ class CopiaWorker(QThread):
         self.carpeta_origen = carpeta_origen
 
     def run(self):
+        # Estas líneas son para depurar dentro de los hilos.
         try:
-            mensaje, num_copiados = copia_clasificador_fotos.main(self.carpeta_origen)
-            self.terminado.emit(mensaje, num_copiados)
-        except Exception as e:
-            # Emitir también en caso de error para que el spinner se detenga.
-            self.terminado.emit(f"Error al clasificar : {e}", 0)
-'''
-class MovilWorker(QThread):
-    terminado = pyqtSignal(str, int) # Mensaje, num_copiados
+            import debugpy
+            debugpy.debug_this_thread()
 
-    def __init__(self, carpeta_origen=None):
-        super().__init__()
-        self.carpeta_origen = carpeta_origen
-
-    def run(self):
-        try:
-            mensaje, num_copiados = copia_clasificador_fotos.main(self.carpeta_origen)
-            self.terminado.emit(mensaje, num_copiados)
+            try:
+                mensaje, num_copiados = copia_clasificador_fotos.main(self.carpeta_origen)
+                self.terminado.emit(mensaje, num_copiados)
+            except Exception as e:
+                # Emitir también en caso de error para que el spinner se detenga.
+                self.terminado.emit(f"Error al clasificar : {e}", 0)
+                
         except Exception as e:
-            # Emitir también en caso de error para que el spinner se detenga.
             self.terminado.emit(f"Error al clasificar : {e}", 0)
-'''
+
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str) # Señal que envia la ruta
 
@@ -610,6 +603,7 @@ class MapaWindow(QMainWindow):
         
         self.worker_copia = CopiaWorker(carpeta_origen)
         self.worker_copia.terminado.connect(self.copia_finalizada)
+        # ESTO ES TEMPORAL, LO CORRECTO ES START EN LUGAR DE RUN
         self.worker_copia.start()
 
     def copia_finalizada(self, mensaje, num_copiados):

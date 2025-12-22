@@ -152,11 +152,17 @@ class SelectorCarpeta(QDialog):
         layout = QVBoxLayout(self)
 
         # Lista con las carpetas del directorio principal.
+        '''
+        Lista todas las carpetas del directorio menos la que coincide
+        con la ruta de origen de la foto que queremos mover, ya que 
+        daría error, y donde están los archivos que no han sido clasificados
+        y están pendiente de ellos (Sin_GPS).
+        '''
         self.list = QListWidget()
         mensaje = ''
         for f in os.scandir(RUTA_PRINCIPAL):
             if f.is_dir():
-                if ruta_actual == f"{RUTA_PRINCIPAL}\\{f.name}": # Comprobar ruta actual.
+                if ruta_actual == f"{RUTA_PRINCIPAL}\\{f.name}" or f.name == '(Sin_GPS)': # Comprobar ruta actual.
                     continue
                 self.list.addItem(f.name)
                 mensaje += f'{f.name}\n' # str con todas las carpetas.
@@ -169,10 +175,23 @@ class SelectorCarpeta(QDialog):
 
         layout.addWidget(self.list)
 
-        # Botón aceptar
-        btn = QPushButton("Aceptar", self)
-        btn.clicked.connect(self.accept)
-        layout.addWidget(btn)
+        # Botón aceptar.
+        self.btn = QPushButton("Aceptar", self)
+        self.btn.setEnabled(False) # Botón deshabilitado.
+        self.btn.clicked.connect(self.accept)
+        layout.addWidget(self.btn)
+
+        # Habilitar el botón cuando se seleccione algo.
+        # Señal que se emite cada vez que cambia la selección.
+        self.list.itemSelectionChanged.connect(self._habilitar_boton)
+
+    '''
+    Función para habilitar si se selecciona una opción de la lista.
+    'currentItem()' devuelve None si no hay nada seleccionado, y
+    con ese valor habilitamos o no el botón.
+    '''
+    def _habilitar_boton(self):
+        self.btn.setEnabled(self.list.currentItem() is not None)
 
     # Función donde obtenemos la ruta completa elegida.
     # A esta función la llamamos desde la función del Bridge 'mover'.
