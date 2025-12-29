@@ -73,30 +73,23 @@ from PyQt5 import uic
 from PyQt5.QtGui import QPixmap, QMovie
 from PyQt5.QtCore import Qt
 from componentes.controles import Button, CheckBox, Button_Sel, ScrollableMessageBox, SpinnerOverlay, SelectorCarpeta
-from copia_clasificador_fotos import cargar_json_unico, guardar_json_unico, actualizar_stats
+from copia_clasificador_fotos import cargar_json, guardar_json
 from mapa_generator import extraer_ciudad
 from config import *
 
+DUPLICADOS = HISTORIAL
+ELIMINADOS = RUTA_ELIMINADOS
 ARCHIVOS_SEL = {} # clave: ruta_archivo, valor: hash_archivo
 
 class MapaWorker(QThread):
     terminado = pyqtSignal()
-    pendientes_actualizados = pyqtSignal(int)
 
     def run(self):
-        mapa_generator.cargar_datos_desde_historial()
-
-        # Cargar JSON unificado
-        data = cargar_json_unico(RUTA_JSON_UNICO)
-        total = len(data["pendientes"]["items"])
-
-        # Emitir señal
-        self.pendientes_actualizados.emit(total)
-
+        mapa_generator.generar_mapa_desde_historial()
         self.terminado.emit()
 
 class CopiaWorker(QThread):
-    terminado = pyqtSignal(str) # Mensaje
+    terminado = pyqtSignal(str, int) # Mensaje, num_copiados
 
     def __init__(self, carpeta_origen=None):
         super().__init__()
@@ -109,14 +102,14 @@ class CopiaWorker(QThread):
             debugpy.debug_this_thread()
 
             try:
-                mensaje = copia_clasificador_fotos.main(self.carpeta_origen)
-                self.terminado.emit(mensaje)
+                mensaje, num_copiados = copia_clasificador_fotos.main(self.carpeta_origen)
+                self.terminado.emit(mensaje, num_copiados)
             except Exception as e:
                 # Emitir también en caso de error para que el spinner se detenga.
-                self.terminado.emit(f"Error al clasificar : {e}")
+                self.terminado.emit(f"Error al clasificar : {e}", 0)
                 
         except Exception as e:
-            self.terminado.emit(f"Error en el debug : {e}")
+            self.terminado.emit(f"Error al clasificar : {e}", 0)
 
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str) # Señal que envia la ruta
@@ -145,24 +138,16 @@ class Bridge(QObject):
 
     def actualizar_tabla(self):
         ARCHIVOS_SEL.clear()
-
-        # Cargar JSON unificado.
-        self.data = cargar_json_unico(RUTA_JSON_UNICO)
-
-        # Extraer listas internas.
-        self.historial = self.data["clasificados"]["items"]
-        self.eliminado = self.data["eliminados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
+        self.historial = cargar_json(DUPLICADOS)
+        self.eliminado = cargar_json(ELIMINADOS)
+        self.pendientes = cargar_json(PENDIENTES)
 
         if self.actual_ruta != None:
             if os.path.isdir(self.actual_ruta):
-
                 archivos = os.listdir(self.actual_ruta)
                 self.numero_archivos = len(archivos)
-
                 self.tabla.setRowCount(self.numero_archivos)
                 self.tabla.setColumnCount(5)
-
                 self.tabla.setStyleSheet("""
                     QTableWidget::item {
                         border: none;
@@ -174,48 +159,37 @@ class Bridge(QObject):
                         background-color: lightblue;
                     }
                 """)
-
-                self.tabla.setHorizontalHeaderLabels(
-                    ['Sel','Nombre de Archivo', 'Ruta', 'Acción', 'Hash']
-                )
-                
+                self.tabla.setHorizontalHeaderLabels(['Sel','Nombre de Archivo', 'Ruta', 'Acción', 'Hash'])
                 # Cambiamos el tamaño de la columna del nombre
                 #   para que quepa el scrollbar a la derecha.
                 tamaño = 185 if self.numero_archivos > 8 else 205
                 self.tabla.setColumnWidth(0, 40)
                 self.tabla.setColumnWidth(1, tamaño)
                 self.tabla.setColumnWidth(3, 140)
-
                 self.tabla.setColumnHidden(0, True)
                 self.tabla.setColumnHidden(2, True)
                 self.tabla.setColumnHidden(4, True)
-
                 # Configuramos la selección en la tabla.
                 self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems) # Sólo celdas individuales
                 self.tabla.horizontalHeader().setSectionsClickable(False) # Desactivar la selección de la columna
 
                 mes, ano = self.obtener_fecha(self.actual_ruta)
-                texto = 'Pendientes' if ano == '0000' else f'{mes} de {ano}'
-                self.label.setText(texto)
+                self.label.setText(f'{mes} de {ano}')
 
                 for i, nombre in enumerate(archivos):
-
                     ruta_completa = os.path.join(self.actual_ruta, nombre)
                     # Buscar el diccionario que coincide para obtener el hash
                     ruta_conver = ruta_completa.replace('/', '\\') # Conversión para que coincide con datos .json
 
-                    # Elegir lista según si es pendiente o clasificado.
                     busqueda_hash = (
                         self.pendientes
                         if '(Sin_GPS)' in ruta_conver
                         else self.historial
                     )
-                    coincidencia = next(
-                        (r for r in busqueda_hash if r['ruta'] == ruta_conver), 
-                        None
-                    )
+                    coincidencia = next((r for r in busqueda_hash if r['ruta'] == ruta_conver), None)
 
-                    hash = coincidencia['hash'] if coincidencia else ""
+                    if coincidencia:
+                        hash = coincidencia['hash']
 
                     # Insertar en la tabla.
                     self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
@@ -336,18 +310,12 @@ class Bridge(QObject):
     def mover(self, row):
         carpeta_destino = ''
         dlg = SelectorCarpeta(self.actual_ruta, None)
-
         if dlg.exec_() == QDialog.Accepted:
             carpeta_destino = dlg.carpeta_seleccionada()
         
         if not carpeta_destino:
             return # El usuario canceló.
         
-        # Cargar JSON unificado
-        self.data = cargar_json_unico(RUTA_JSON_UNICO)
-        self.historial = self.data["clasificados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
-
         # Obtenemos la lista de los archivos o el archivo a mover.
         if not ARCHIVOS_SEL:            
             ruta_archivo, hash_archivo = self.obtener_archivo(row)
@@ -364,56 +332,23 @@ class Bridge(QObject):
                 shutil.copy2(archivo, destino)
                 os.remove(archivo)
 
-                # Normalizar ruta para JSON
-                destino_norm = destino.replace('/', '//')
-
-                # Buscar en clasificados
-                entrada = next((e for e in self.historial if e["hash"] == hash_archivo), None)
-
-                # Si no está en clasificados, buscar en pendientes
-                if entrada is None:
-                    entrada = next((e for e in self.pendientes if e["hash"] == hash_archivo), None)
-                
-                if entrada is None:
-                    print(f'No se encontró el hash {hash_archivo} en el JSON.')
-
-                # Actualizar ruta.
-                entrada["ruta"] = destino_norm
-
-                # Extraer ciudad, país, fecha desde la ruta
-                parentesis = re.findall(r'\([^)]+\)', destino_norm)
-                resultado = ''.join(parentesis)
-                ciudad, pais, fecha = extraer_ciudad(resultado)
-
-                entrada["ubicacion"] = f"({ciudad})({pais})"
-                entrada["fecha"] = f"({fecha})"
-                
-                # --- LOGICA DE CLASIFICACIÓN AUTOMÁTICA ---
-                if ciudad == 'Sin_GPS':
-                    # Mover a pendientes.
-                    if entrada in self.historial:
-                        self.historial.remove(entrada)
-                    if entrada not in self.pendientes:
-                        self.pendientes.append(entrada)
-                else:
-                    # Mover a clasificados.
-                    if entrada in self.pendientes:
-                        self.pendientes.remove(entrada)
-                    if entrada not in self.historial:
-                        self.historial.append(entrada)
+                # Actualizar duplicados.json
+                for entrada in self.historial:
+                    if entrada.get('hash') == hash:
+                        destino = destino.replace('/', '\\')
+                        entrada["ruta"] = destino
+                        parentesis = re.findall(r'\([^)]+\)', destino)
+                        resultado = ''.join(parentesis)
+                        ciudad, pais, fecha = extraer_ciudad(resultado)
+                        entrada["ubicacion"] = f"({ciudad})({pais})"
+                        entrada["fecha"] = f"({fecha})"
+                        break
 
             except Exception as e:
                 errores.append((archivo, str(e)))
                 print(f'Error al mover {archivo}: {e}')
 
-        # Actualizar estadísticas.
-        actualizar_stats(self.data)
-
-        # Guardar JSON unificado
-        guardar_json_unico(RUTA_JSON_UNICO, self.data)
-
-        # Emitir actualización de pendientes.
-        self.actualizar_contador_pendientes()
+        guardar_json(self.historial, DUPLICADOS)
 
         if self.directorio_vacio(origen):
             os.rmdir(origen)
@@ -433,7 +368,6 @@ class Bridge(QObject):
         self.spinner.show()
 
         self.worker = MapaWorker()
-        self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
         self.worker.terminado.connect(self.mapa_generado)
         self.worker.start()
 
@@ -476,19 +410,11 @@ class Bridge(QObject):
 
     def borrar(self, row):
         mensaje = 'Archivo(s):\n'
-
-        # Cargar JSON unificado.
-        self.data = cargar_json_unico(RUTA_JSON_UNICO)
-        self.historial = self.data["clasificados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
-        self.eliminado = self.data["eliminados"]["items"]
-
         # Obtenemos la lista de los archivos o el archivo a borrar.
         if not ARCHIVOS_SEL:
             ruta_archivo, hash_archivo = self.obtener_archivo(row)
             ARCHIVOS_SEL[ruta_archivo] = hash_archivo
 
-        # Construir mensaje de confirmación.
         for archivo, _ in ARCHIVOS_SEL.items():
             nombre = os.path.basename(archivo)
             mensaje += f"- ({nombre}) ❌ Eliminar?.\n"
@@ -499,61 +425,49 @@ class Bridge(QObject):
                                    mensaje,
                                    QMessageBox.Yes | QMessageBox.No,
                                    QMessageBox.No)
-        
-        if res != QMessageBox.Yes:
+        if res == QMessageBox.Yes:
+            for archivo, hash in ARCHIVOS_SEL.items():
+                try:
+                    os.remove(archivo) # Borramos el archivo físico.
+                    # Añadimos el 'hash' al json de eliminados.
+                    self.eliminado.append({
+                        "hash": hash
+                    })
+                    # Borramos el registro del json historial
+                    for i, entrada in enumerate(self.historial):
+                        if entrada.get('hash') == hash:
+                            # Eliminamos la entrada completa de la lista.
+                            del self.historial[i]
+                            break
+                    print(f"{archivo} ❌ Borrado...")
+
+                except Exception as e:
+                    print(f'Error al mover {archivo}: {e}')
+
+            QMessageBox.information(None, "Borrado de archivos", "Borrado Completado con éxito.")
+
+            guardar_json(self.eliminado, ELIMINADOS)
+            guardar_json(self.historial, DUPLICADOS)
+
+            # Comprobamos si existe el directorio para actualizar la
+            #   tabla o no.
+            if self.directorio_vacio(origen):
+                os.rmdir(origen)
+                self.tabla.clearContents()
+                self.labelFoto.setPixmap(QPixmap())
+                self.actual_ruta = None            
+
+            self.spinner = SpinnerOverlay(self.view)
+            self.spinner.show()
+
+            self.worker = MapaWorker()
+            self.worker.terminado.connect(self.mapa_generado)
+            self.worker.start()
+
+            self.actualizar_tabla()
+            
+        else:
             QMessageBox.information(None, "Borrado de archivos", "Borrado cancelado por el usuario.")
-            return
-        
-        # Procesar borrado
-        for archivo, hash in ARCHIVOS_SEL.items():
-            try:
-                os.remove(archivo) # Borramos el archivo físico.
-
-                # Añadir a eliminados si no estaba ya.
-                if not any(e["hash"] == hash for e in self.eliminado):
-                    self.eliminado.append({"hash": hash})
-
-                # Eliminar de clasificados.
-                self.historial[:] = [e for e in self.historial if e["hash"] != hash]
-
-                # Eliminar de pendientes.
-                self.pendientes[:] = [e for e in self.pendientes if e["hash"] != hash]
-
-                print(f"{archivo} ❌ Borrado...")
-
-            except Exception as e:
-                print(f'Error al borrar {archivo}: {e}')
-
-        QMessageBox.information(None, "Borrado de archivos", "Borrado Completado con éxito.")
-
-        # Actualizar estadístitcas.
-        self.data["stats"]["total_clasificados"] = len(self.historial)
-        self.data["stats"]["total_pendientes"] = len(self.pendientes)
-        self.data["stats"]["total_eliminados"] = len(self.eliminado)
-
-        # Guardar JSON unificado.
-        guardar_json_unico(RUTA_JSON_UNICO, self.data)
-
-        # Emitir actualización de pendientes.
-        self.actualizar_contador_pendientes()
-
-        # Comprobamos si existe el directorio para actualizar la
-        #   tabla o no.
-        if self.directorio_vacio(origen):
-            os.rmdir(origen)
-            self.tabla.clearContents()
-            self.labelFoto.setPixmap(QPixmap())
-            self.actual_ruta = None            
-
-        self.spinner = SpinnerOverlay(self.view)
-        self.spinner.show()
-
-        self.worker = MapaWorker()
-        self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
-        self.worker.terminado.connect(self.mapa_generado)
-        self.worker.start()
-
-        self.actualizar_tabla()
 
     def origen_de_seleccion(self, row):
         '''
@@ -583,19 +497,9 @@ class Bridge(QObject):
         return True
     
     def cargar_pendientes(self):
-        data = cargar_json_unico(self.ruta_json)
+        rutas = cargar_json(self.ruta_json)
 
-        pendientes = data["pendientes"]["items"]
-        total = len(pendientes)
-
-        self.pendientes_actualizados.emit(total)
-
-    def actualizar_contador_pendientes(self):
-        total = len(self.data["pendientes"]["items"])
-        self.pendientes_actualizados.emit(total)
-
-    def _reenviar_pendientes(self, total):
-        # Reemite la señal hacia fuera (MainWindow ya está conectado a esta)
+        total = len(rutas)
         self.pendientes_actualizados.emit(total)
 
 class MapaWindow(QMainWindow):
@@ -616,7 +520,7 @@ class MapaWindow(QMainWindow):
                             self.ui.button_sel_multiple,
                             self.view,
                             self.ui.labelVisor,
-                            RUTA_JSON_UNICO)
+                            PENDIENTES)
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 
@@ -732,16 +636,15 @@ class MapaWindow(QMainWindow):
         self.worker_copia.terminado.connect(self.copia_finalizada)
         self.worker_copia.start()
 
-    def copia_finalizada(self, mensaje):
+    def copia_finalizada(self, mensaje, num_copiados):
         self.spinner.movie.stop()
         self.spinner.close()
 
-        if mensaje == '': return
+        if mensaje == '' and num_copiados == 0: return
 
         # Ajustamos el tamaño del ScrollableMessageBox, según el número
         #   de líneas y la longitud de las mismas.
         ancho, alto = self.analizar_mensaje(mensaje)
-        num_copiados = alto # Obtenemos el número de archivos según el número de líneas del mensaje.
         ancho = min(500, 7 * ancho)
         alto = min(600, 18 * alto)        
 
@@ -760,7 +663,6 @@ class MapaWindow(QMainWindow):
             self.spinner.show()
 
             self.worker_mapa = MapaWorker()
-            self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
             self.worker_mapa.terminado.connect(self.mapa_finalizado)
             self.worker_mapa.start()
             

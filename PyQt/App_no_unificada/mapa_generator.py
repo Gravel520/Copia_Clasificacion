@@ -30,8 +30,8 @@ import time
 from geopy.geocoders import Nominatim
 from folium.plugins import Search
 from collections import defaultdict
-from copia_clasificador_fotos import cargar_json_unico
-from config import RUTA_MAPAS, RUTA_PRINCIPAL, GEOCODIFICADOR, RUTA_JSON_UNICO
+from copia_clasificador_fotos import cargar_json
+from config import RUTA_MAPAS, RUTA_PRINCIPAL, GEOCODIFICADOR, HISTORIAL
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -118,15 +118,14 @@ def generar_mapa(features):
     mapa.save(f'{RUTA_MAPAS}mapa_fotos.html')
     print("Mapa guardado en: ", f'{RUTA_MAPAS}mapa_fotos.html')
 
-def cargar_datos_desde_historial():
+def generar_mapa_desde_historial():
     '''
-    Cargamos los datos del archivo unificado. Posteriormente
-        obtenemos los datos de los archivos que ya han sido
-        clasificados, que serán los que fijemos en el mapa.
+    Utilizamos el json 'duplicados' que es el historial de los 
+    archivos que se van clasificando, porque en el vamos guardando
+    los datos de las ubicaciones de los archivos si han sido 
+    movidos o borrados.
     '''
-    data = cargar_json_unico(RUTA_JSON_UNICO)
-
-    historial = data["clasificados"]["items"]
+    historial = cargar_json(HISTORIAL)
 
     agrupadas = defaultdict(list)
     combinaciones_unicas = set()

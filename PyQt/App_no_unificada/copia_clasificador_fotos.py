@@ -46,6 +46,17 @@ from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de 
 from config import *
 from pathlib import Path
 
+ruta_movil = RUTA_MOVIL
+#ruta_pc = RUTA_PC
+ruta_temporal = RUTA_TEMPORAL
+ruta_final = RUTA_PRINCIPAL
+ruta_adb = RUTA_ADB
+#ruta_historial = RUTA_HISTORIAL
+ruta_duplicados = HISTORIAL
+ruta_eliminados = RUTA_ELIMINADOS
+ruta_pendientes = PENDIENTES
+
+
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
 geolocalizador = Nominatim(user_agent='copia_clasificador_fotos')
@@ -56,28 +67,23 @@ def convertir_a_grados(valor):
     return d + m / 60 + s / 3600
 
 # Leemos el archivo JSON, si existe.
-def cargar_json_unico(ruta):
+def cargar_json(ruta):
     if os.path.exists(ruta):
         with open(ruta, 'r', encoding='utf-8') as f:
             return json.load(f)
-    
-    # Si no existe, lo creamos vacío
-    data = {
-        "clasificados": {"items": []},
-        "pendientes": {"items": []},
-        "eliminados": {"items": []},
-        "stats": {
-            "total_clasificados": 0,
-            "total_pendientes": 0,
-            "total_eliminados": 0
-        }
-    }
-    guardar_json_unico(ruta, data)
-    return data
+    return []
 
-def comprobar_hash(hash_nuevo, lista_items):
-    # Comprueba si un has ya existe en una lista.
-    return not any(r["hash"] == hash_nuevo for r in lista_items)
+def comprobar_hash(hash_nuevo, lista_hashes):
+    '''
+    Comprobamos si un hash esta en la lista de duplicados o eliminados.
+    Dependiendo del valor del parámetro 'lista_hashes', que sea
+        duplicados o eliminados.
+    '''
+    if any(r['hash'] == hash_nuevo for r in lista_hashes):
+        return False
+    
+    else:
+        return True
 
 # Comprobamos que un hash no esta en la lista de los archivos que
 #   HEMOS ELIMINADO NOSOTROS.
@@ -85,7 +91,7 @@ def añadir_hash_eliminado(has_nuevo, lista_hashes):
     lista_hashes.append(has_nuevo)
 
 # Guarda los datos en formato JSON.
-def guardar_json_unico(ruta, data):
+def guardar_json(data, ruta):
     with open(ruta, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
@@ -166,7 +172,7 @@ def obtener_ubicación(gps_info):
 def obtener_fecha_video(ruta_archivo, nombre_archivo):
     try:
         resultado = subprocess.run(
-            [RUTA_ADB, 'shell', f'stat -c &y {ruta_archivo}/{nombre_archivo}'],
+            [ruta_adb, 'shell', f'stat -c &y {ruta_archivo}/{nombre_archivo}'],
             capture_output=True, text=True
         )
         fecha_raw = resultado.stdout.strip()
@@ -188,16 +194,11 @@ def calcular_hash_md5(ruta_archivo):
 
 # Ejecuta 'adb devices' y verifica si hay algún dispositivo conectado.
 def hay_dispositivo_adb():
-    dispositivos = subprocess.run([RUTA_ADB, 'devices'], capture_output=True, text=True)
+    dispositivos = subprocess.run([ruta_adb, 'devices'], capture_output=True, text=True)
     lineas = dispositivos.stdout.strip().split('\n')
     # Ignora la cabecera y busca líneas con 'device' al final.
     dispositivos = [l for l in lineas[1:] if l.strip().endswith('device')]
     return len(dispositivos) > 0
-
-def actualizar_stats(data):
-    data["stats"]["total_clasificados"] = len(data["clasificados"]["items"])
-    data["stats"]["total_pendientes"] = len(data["pendientes"]["items"])
-    data["stats"]["total_eliminados"] = len(data["eliminados"]["items"])
 
 def borrar_directorios_vacios():
     '''
@@ -209,19 +210,22 @@ def borrar_directorios_vacios():
     for subdir in Path(RUTA_PRINCIPAL).iterdir():
         if subdir.is_dir():
             if not any(subdir.iterdir()):
-                subdir.rmdir()    
+                subdir.rmdir()
                 
 # Función principal.
 def main(ruta_pc=None):
     # Definimos la variable del mensaje que vamos a retornar,
     #   y el número de archivos copiados.
     mensaje = ''
+    num_copiados = 0
 
     # Crear carpeta temporal.
-    os.makedirs(RUTA_TEMPORAL, exist_ok=True)
+    os.makedirs(ruta_temporal, exist_ok=True)
 
-    # Cargamos el archivo json.
-    data = cargar_json_unico(RUTA_JSON_UNICO)
+    # Cargamos el historial de duplicados y eliminados.
+    duplicados = cargar_json(ruta_duplicados)
+    eliminados = cargar_json(ruta_eliminados)
+    pendientes = cargar_json(ruta_pendientes)
 
     # Listar archivos desde el movil o pc.
     if ruta_pc:
@@ -232,8 +236,8 @@ def main(ruta_pc=None):
             return f"La ruta {ruta_archivos} no existen en el PC.", 0
     else:
         if hay_dispositivo_adb():
-            ruta_archivos = RUTA_MOVIL
-            resultado = subprocess.run([RUTA_ADB, 'shell', f'ls {ruta_archivos}'],
+            ruta_archivos = ruta_movil
+            resultado = subprocess.run([ruta_adb, 'shell', f'ls {ruta_archivos}'],
                                     capture_output=True,
                                     text=True)
             archivos = resultado.stdout.strip().split('\n')
@@ -245,7 +249,7 @@ def main(ruta_pc=None):
     for archivo in archivos[:30]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
-            ruta_local = os.path.join(RUTA_TEMPORAL, archivo)
+            ruta_local = os.path.join(ruta_temporal, archivo)
 
             # Descargar archivo desde el movil o copiarlo desde el pc al directorio temporal.
             if ruta_pc:
@@ -255,7 +259,7 @@ def main(ruta_pc=None):
                     return "La ruta seleccionada en el PC no existe.", 0
             else:
                 if hay_dispositivo_adb():
-                    subprocess.run([RUTA_ADB, 'pull', ruta_origen, ruta_local])
+                    subprocess.run([ruta_adb, 'pull', ruta_origen, ruta_local])
                 else:
                     return "No se encontró ninguna fuente válida para copiar.", 0               
 
@@ -286,61 +290,38 @@ def main(ruta_pc=None):
                 nombre_carpeta = '(Sin_GPS)(Sin_GPS)(0000-00)'
             else:
                 nombre_carpeta = f'{ubicacion}{fecha_str}'
-            ruta_destino = os.path.join(RUTA_PRINCIPAL, nombre_carpeta)
+            ruta_destino = os.path.join(ruta_final, nombre_carpeta)
             os.makedirs(ruta_destino, exist_ok=True)
 
             # Función obtener el hash del archivo.
             hash_archivo = calcular_hash_md5(ruta_local)
 
-            # Creamos las listas separadas.
-            clasificados = data["clasificados"]["items"]
-            pendientes = data["pendientes"]["items"]
-            eliminados = data["eliminados"]["items"]
-
-            # Case 1 ➡ Sin GPS ➡ va a pendientes.
+            # Comprobamos si el archivo tienen ubicación, para grabarlo en 
+            #   'pendientes'.
             if ubicacion == '(Sin_GPS)':
-
-                # 1️⃣ Está en pendientes
-                if not comprobar_hash(hash_archivo, pendientes):
+                if comprobar_hash(hash_archivo, pendientes):
+                    shutil.copy2(ruta_local, ruta_destino)
+                    pendientes.append({
+                        'hash': hash_archivo,
+                        'ruta': os.path.join(ruta_destino, archivo),
+                        'ubicacion': '(Sin_GPS)',
+                        'fecha': '(0000-00)',
+                        'latitud': 0,
+                        'longitud': 0
+                    })
                     mensaje += f'❓ {archivo} - Pendiente de clasificar\n'
-                    continue
 
-                # 2️⃣ Está en clasificados.
-                if not comprobar_hash(hash_archivo, clasificados):
-                    mensaje += f'🔁 ({archivo}) Ya existe en clasificados\n'
-                    continue
+            else:
+                if comprobar_hash(hash_archivo, duplicados):
+                    # Comprobamos que el archivo NO este elimnado por nosotros.
 
-                # 3️⃣ Está en eliminados
-                if not comprobar_hash(hash_archivo, eliminados):
-                    mensaje += f'🟥 ({archivo}) Está eliminado\n'
-                    continue
+                    # CÓDIGO PARA COMPROBAR SI ESTA EN EL JSON DE PENDIENTES.
 
-                # 4️⃣ No está en ninguna lista ➡ añadir a pendientes
-                shutil.copy2(ruta_local, ruta_destino)
-
-                pendientes.append({
-                    'hash': hash_archivo,
-                    'ruta': os.path.join(ruta_destino, archivo),
-                    'ubicacion': '(Sin_GPS)',
-                    'fecha': '(0000-00)',
-                    'latitud': 0,
-                    'longitud': 0
-                })
-
-                mensaje += f'❓ {archivo} - Pendiente de clasificar\n'
-                continue
-
-            # Caso 2 ➡ Tiene ubicación ➡ va a clasificados.
-            if comprobar_hash(hash_archivo, clasificados):
-                # Comprobamos que el archivo NO este elimnado por nosotros.
-                if comprobar_hash(hash_archivo, eliminados):
-
-                    # Comprobar que NO está en pendientes.
-                    if comprobar_hash(hash_archivo, pendientes):
+                    if comprobar_hash(hash_archivo, eliminados):
                         # Copiar archivo del directorio temporal al definitivo.
                         shutil.copy2(ruta_local, ruta_destino)
                         # Añadimos los datos al historial.
-                        clasificados.append({
+                        duplicados.append({
                             'hash': hash_archivo,
                             'ruta': os.path.join(ruta_destino, archivo),
                             'ubicacion': ubicacion,
@@ -349,29 +330,28 @@ def main(ruta_pc=None):
                             'longitud': float(lon)
                         })
                         mensaje += f'🆗 {archivo} 🔜 {nombre_carpeta}\n'
+                        num_copiados += 1
 
                     else:
-                        mensaje += f"🔁 ({archivo}) Estaba en pendientes\n"                        
+                        mensaje += f'🟥 ({archivo}) Archivo eliminado\n'
 
                 else:
-                    mensaje += f'🟥 ({archivo}) Archivo eliminado\n'
+                    mensaje += f'🔁 ({archivo}) Archivo duplicado o eliminado\n'
 
-            else:
-                mensaje += f'🔁 ({archivo}) Archivo duplicado\n'
+    # Guardamos la lista de duplicados y eliminados.
+    guardar_json(duplicados, ruta_duplicados)
+    guardar_json(eliminados, ruta_eliminados)
+    guardar_json(pendientes, ruta_pendientes)
 
-    # Actualizar los stats y guardar el json.
-    actualizar_stats(data)
-    guardar_json_unico(RUTA_JSON_UNICO, data)
-    
     # Limpiar carpeta temporal
-    shutil.rmtree(RUTA_TEMPORAL)
+    shutil.rmtree(ruta_temporal)
 
     # Limpiar carpetas vacías.
     borrar_directorios_vacios()
 
     # Devolvemos el mensaje con la acción realizada,
     #   copiado o no copiado.
-    return mensaje
+    return mensaje, num_copiados
 
 # Ejecutamos el script.
 if __name__ == '__main__':

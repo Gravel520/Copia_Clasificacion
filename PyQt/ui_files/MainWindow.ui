@@ -164,6 +164,7 @@ border-radius: 0px;</string>
     </property>
     <addaction name="actionDesde_Movil"/>
     <addaction name="actionDesde_Ruta"/>
+    <addaction name="actionPendientes"/>
     <addaction name="separator"/>
     <addaction name="actionSalir_3"/>
    </widget>
@@ -242,6 +243,11 @@ border-radius: 0px;</string>
   <action name="actionSalir_3">
    <property name="text">
     <string>Salir</string>
+   </property>
+  </action>
+  <action name="actionPendientes">
+   <property name="text">
+    <string>Pendientes</string>
    </property>
   </action>
  </widget>
