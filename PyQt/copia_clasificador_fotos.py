@@ -242,7 +242,7 @@ def main(ruta_pc=None):
             return "No hay ningún móvil conectado al ordenador.", 0
 
     # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos[:30]:
+    for archivo in archivos[25:60]:
         if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
             ruta_origen = f'{ruta_archivos}/{archivo}'
             ruta_local = os.path.join(RUTA_TEMPORAL, archivo)

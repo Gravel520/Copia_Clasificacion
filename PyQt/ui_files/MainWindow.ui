@@ -50,9 +50,9 @@ border-radius: 0px;</string>
      <property name="geometry">
       <rect>
        <x>0</x>
-       <y>29</y>
+       <y>49</y>
        <width>351</width>
-       <height>271</height>
+       <height>251</height>
       </rect>
      </property>
      <property name="styleSheet">
@@ -86,7 +86,7 @@ border-radius: 0px;</string>
        <x>0</x>
        <y>0</y>
        <width>351</width>
-       <height>31</height>
+       <height>51</height>
       </rect>
      </property>
      <property name="font">
@@ -112,12 +112,22 @@ border-radius: 0px;</string>
       <rect>
        <x>10</x>
        <y>6</y>
-       <width>91</width>
-       <height>20</height>
+       <width>31</width>
+       <height>41</height>
       </rect>
      </property>
-     <property name="text">
-      <string>Sel. Múltiple</string>
+     <property name="icon">
+      <iconset>
+       <normaloff>../assets/checkbox_checked.png</normaloff>../assets/checkbox_checked.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>24</width>
+       <height>24</height>
+      </size>
+     </property>
+     <property name="shortcut">
+      <string>Ctrl+S</string>
      </property>
     </widget>
    </widget>
