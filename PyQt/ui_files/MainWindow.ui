@@ -173,7 +173,7 @@ border-radius: 0px;</string>
      <string>Clasificar</string>
     </property>
     <addaction name="actionDesde_Movil"/>
-    <addaction name="actionDesde_Ruta"/>
+    <addaction name="actionClasificar"/>
     <addaction name="actionPendientes"/>
     <addaction name="separator"/>
     <addaction name="actionSalir_3"/>
@@ -235,9 +235,9 @@ border-radius: 0px;</string>
     <string>Desde Movil</string>
    </property>
   </action>
-  <action name="actionDesde_Ruta">
+  <action name="actionClasificar">
    <property name="text">
-    <string>Desde Ruta</string>
+    <string>Clasificar</string>
    </property>
   </action>
   <action name="actionSalir">

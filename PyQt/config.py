@@ -25,3 +25,6 @@ MESES = (
 )
 SPINNER = 'C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/spinner.gif'
 SPINNER1 = 'C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/spinner1.gif'
+
+CANTIDAD_FOTOS_A_CLASIFICAR = 30
+NUMERO_FOTO_INICIO = 0

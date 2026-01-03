@@ -27,7 +27,6 @@ listado de las fotos que hay dentro.
 import folium
 import os
 import time
-from geopy.geocoders import Nominatim
 from folium.plugins import Search
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
@@ -116,7 +115,6 @@ def generar_mapa(features):
     """))
     
     mapa.save(f'{RUTA_MAPAS}mapa_fotos.html')
-    print("Mapa guardado en: ", f'{RUTA_MAPAS}mapa_fotos.html')
 
 def cargar_datos_desde_historial():
     '''
@@ -163,5 +161,10 @@ def cargar_datos_desde_historial():
         features.append(feature)
         time.sleep(1) # Evitar sobrecarga del geocodificador
 
-    generar_mapa(features)
+    # Filtrar features sin propiedades válidas
+    features = [
+        f for f in features
+        if "properties" in f and "nombre" in f["properties"] and "popup" in f["properties"]
+    ]
 
+    generar_mapa(features)

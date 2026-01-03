@@ -3,7 +3,8 @@
 '''
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from mapa_generator import cargar_datos_desde_historial, cargar_json_unico
+from mapa_generator import cargar_datos_desde_historial
+from copia_clasificador_fotos import cargar_json_unico
 from config import RUTA_JSON_UNICO
 
 class MapaWorker(QThread):
@@ -21,3 +22,4 @@ class MapaWorker(QThread):
         self.pendientes_actualizados.emit(total)
 
         self.terminado.emit()
+        
