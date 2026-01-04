@@ -3,7 +3,10 @@
 '''
 
 import sys, os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
+    QDialog
+    )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QUrl
@@ -11,10 +14,12 @@ from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
+from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from config import *
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from bridge.bridge import Bridge
+from copia_clasificador_fotos import obtener_archivos
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 
@@ -131,7 +136,7 @@ class MapaWindow(QMainWindow):
         self.iniciar_copia(None)
 
     def iniciar_copia(self, carpeta_origen=None):
-        self.spinner = SpinnerOverlay(self)
+        self.spinner = SpinnerOverlay(self, "Clasificando archivos...")
         self.spinner.show()
 
         self.worker_copia = CopiaWorker(carpeta_origen)
@@ -158,7 +163,7 @@ class MapaWindow(QMainWindow):
         dlg.exec_()
 
         if num_copiados > 0:
-            self.spinner = SpinnerOverlay(self)
+            self.spinner = SpinnerOverlay(self, "Generando el mapa...")
             self.spinner.show()
 
             self.worker_mapa = MapaWorker()
@@ -180,9 +185,29 @@ class MapaWindow(QMainWindow):
         carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta para clasificar")
         if not carpeta:
             return
+        
+        # 1️⃣ Obtener lista de archivos
+        archivos = obtener_archivos(carpeta)
+        total = len(archivos)
 
-        # Iniciar clasificación con barra de progreso
-        self.bridge.iniciar_clasificacion(carpeta)
+        if total == 0:
+            QMessageBox.warning(self, "Sin archivos", "No se encontraron archivos para clasificar.")
+            return
+        
+        # 2️⃣ Mostrar diálogo de selección
+        dlg = DialogoSeleccionCantidad(total, self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        
+        seleccion = dlg.obtener_resultado()
+
+        # 3️⃣ Pasar parámetros al Bridge
+        self.bridge.iniciar_clasificacion(
+            carpeta,
+            seleccion["modo"],
+            seleccion["inicio"],
+            seleccion["fin"]
+            )
 
     # ============================================================
     # CLASIFICAR PENDIENTES
@@ -238,8 +263,7 @@ class MapaWindow(QMainWindow):
         self.ui.tableWidget.currentItemChanged.connect(self.mostrar_foto)
         self.ui.button_sel_multiple.clicked.connect(self.columna_seleccion)
 
-        #self.ui.actionDesde_Ruta.triggered.connect(self.select_directory)
-        #self.ui.actionDesde_Movil.triggered.connect(self.select_movil)
+        self.ui.actionDesde_Movil.triggered.connect(self.select_movil)
 
         self.ui.actionClasificar.triggered.connect(self.clasificar_archivos)
 

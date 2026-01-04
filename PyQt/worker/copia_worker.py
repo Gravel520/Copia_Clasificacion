@@ -23,9 +23,12 @@ class CopiaWorker(QThread):
     progreso = pyqtSignal(int)      # Archivos procesados
     total = pyqtSignal(int)         # Total de archivos
 
-    def __init__(self, carpeta_origen=None):
+    def __init__(self, carpeta_origen, modo, inicio, fin):
         super().__init__()
         self.carpeta_origen = carpeta_origen
+        self.modo = modo
+        self.inicio = inicio
+        self.fin = fin
 
     def run(self):
         # Estas líneas son para depurar dentro de los hilos.
@@ -35,7 +38,10 @@ class CopiaWorker(QThread):
 
             # 1️⃣ Obtener lista de archivos antes de clasificar
             archivos = obtener_archivos(self.carpeta_origen)
-            archivos = archivos[NUMERO_FOTO_INICIO:(NUMERO_FOTO_INICIO + CANTIDAD_FOTOS_A_CLASIFICAR)]
+            if self.modo == "todos":
+                archivos = archivos
+            else:
+                archivos = archivos[self.inicio:self.fin]
 
             archivos = [
                 a for a in archivos

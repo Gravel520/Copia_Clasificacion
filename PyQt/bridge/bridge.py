@@ -184,9 +184,9 @@ class Bridge(QObject):
     # ============================================================
     # CLASIFICACIÓN CON PROGRESO
     # ============================================================
-    def iniciar_clasificacion(self, ruta):
+    def iniciar_clasificacion(self, ruta, modo, inicio, fin):
         """Lanza el worker de clasificación con barra de progreso."""
-        self.worker_copia = CopiaWorker(ruta)
+        self.worker_copia = CopiaWorker(ruta, modo, inicio, fin)
 
         self.worker_copia.total.connect(self._crear_dialogo_progreso)
         self.worker_copia.progreso.connect(self._actualizar_dialogo_progreso)
@@ -212,7 +212,7 @@ class Bridge(QObject):
 
         self.cargar_pendientes()
 
-        self.spinner = SpinnerOverlay(self.view)
+        self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
         self.worker = MapaWorker()
@@ -354,7 +354,7 @@ class Bridge(QObject):
         else:
             QMessageBox.information(None, "Acción completada", "Todos los archivos fueron\nmovidos correctamente.")
 
-        self.spinner = SpinnerOverlay(self.view)
+        self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
         self.worker = MapaWorker()
@@ -435,7 +435,7 @@ class Bridge(QObject):
             self.labelFoto.setPixmap(QPixmap())
             self.actual_ruta = None            
 
-        self.spinner = SpinnerOverlay(self.view)
+        self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
         self.worker = MapaWorker()

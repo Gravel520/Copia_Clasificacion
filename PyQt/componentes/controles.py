@@ -101,7 +101,7 @@ class ScrollableMessageBox(QDialog):
         layout.addWidget(ok_button)
 
 class SpinnerOverlay(QWidget):
-    def __init__(self, parent = None):
+    def __init__(self, parent = None, mensaje="Procesando..."):
         super().__init__(parent)
 
         # Ventana sin bordes, bloqueante y transparente
@@ -120,7 +120,20 @@ class SpinnerOverlay(QWidget):
         # Layout para centrar el spinner
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignCenter)
 
+        # TEXTO
+        self.label_texto = QLabel(mensaje, self)
+        self.label_texto.setAlignment(Qt.AlignCenter)
+        self.label_texto.setStyleSheet('''
+                                    color: black;
+                                    font-size: 12px;
+                                    font-weight: bold;
+                                    background: transparent;
+                                    margin-bottom: 30px;
+                                       ''')
+        
+        # GIF
         self.label = QLabel(self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("background: transparent; border: none;")
@@ -129,7 +142,13 @@ class SpinnerOverlay(QWidget):
         self.label.setMovie(self.movie)
         self.movie.start()
         
-        layout.addWidget(self.label)
+        # Añadir al layout        
+        layout.addWidget(self.label_texto)
+        layout.addWidget(self.label)        
+
+    def setMensaje(self, mensaje):
+        # Permite cambiar el texto dinámicamente.
+        self.label_texto.setText(mensaje)
 
 '''
 Esta clase crea un cuadro de diálogo con el que vamos a poder seleccionar

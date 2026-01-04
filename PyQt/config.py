@@ -27,4 +27,4 @@ SPINNER = 'C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/spinn
 SPINNER1 = 'C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/spinner1.gif'
 
 CANTIDAD_FOTOS_A_CLASIFICAR = 30
-NUMERO_FOTO_INICIO = 0
+NUMERO_FOTO_INICIO = 30

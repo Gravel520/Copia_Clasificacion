@@ -280,7 +280,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             return f'🟥 ({archivo}) Archivo eliminado\n'
 
     return f'🔁 ({archivo}) Archivo duplicado\n'
-
+'''
 #===============================================================#
 # CLASIFICAR LOTE (OPCIONAL)                                    #
 #===============================================================#
@@ -324,3 +324,4 @@ def main(ruta_pc=None):
 # Ejecutamos el script.
 if __name__ == '__main__':
     main()
+'''
