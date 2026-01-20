@@ -18,6 +18,7 @@ from config import *
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from componentes.progreso_dialog import ProgresoClasificacion
+from componentes.custom_mensage_box import CustomMessageBox
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 
@@ -25,16 +26,20 @@ class Bridge(QObject):
     actualizarFoto = pyqtSignal(str)
     pendientes_actualizados = pyqtSignal(int)
 
-    def __init__(self, tableWidget, labelFechaListado, button_sel_multiple,
-                 view, labelFoto, ruta_json):
+    def __init__(self, tableWidget, labelFechaListado, labelMapaActualizado, 
+                 button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
+                 set_mapa_habilitado_callback):
         super().__init__()
         self.tabla = tableWidget
         self.label = labelFechaListado
+        self.labelStatus = labelMapaActualizado
+        self.boton_generar_mapa = button_generar_mapa
         self.boton = button_sel_multiple
         self.view = view
         self.labelFoto = labelFoto
         self.ruta_json = ruta_json
         self.actual_ruta = None
+        self.set_mapa_habilitado = set_mapa_habilitado_callback
 
     # ============================================================
     # RECEPCIÓN DE RUTA DESDE JS
@@ -208,7 +213,9 @@ class Bridge(QObject):
             self.dialogo_progreso.close()
 
     def _clasificacion_finalizada(self, mensaje):
-        QMessageBox.information(None, "Clasificación finalizada", mensaje)
+        dlg = CustomMessageBox("Clasificación finalizada", mensaje, None)
+        dlg.exec_()
+        #QMessageBox.information(None, "Clasificación finalizada", mensaje)
 
         self.cargar_pendientes()
 
@@ -354,6 +361,18 @@ class Bridge(QObject):
         else:
             QMessageBox.information(None, "Acción completada", "Todos los archivos fueron\nmovidos correctamente.")
 
+        respuesta = self.pregunta_generar_mapa()
+
+        if respuesta == QMessageBox.No:
+            # Deshabilitar mapa y opciones relacionadas
+            self.set_mapa_habilitado(False)
+
+            self.actualizar_tabla()
+            return
+
+        # Generar el mapa
+        self.set_mapa_habilitado(True)
+
         self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
@@ -433,7 +452,19 @@ class Bridge(QObject):
             os.rmdir(origen)
             self.tabla.clearContents()
             self.labelFoto.setPixmap(QPixmap())
-            self.actual_ruta = None            
+            self.actual_ruta = None
+
+        respuesta = self.pregunta_generar_mapa()
+
+        if respuesta == QMessageBox.No:
+            # Deshabilitar mapa y opciones relacionadas
+            self.set_mapa_habilitado(False)
+
+            self.actualizar_tabla()
+            return
+
+        # Generar el mapa
+        self.set_mapa_habilitado(True)            
 
         self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
@@ -486,7 +517,21 @@ class Bridge(QObject):
         self.pendientes_actualizados.emit(total)
 
     def mapa_generado(self):
-        self.spinner.movie.stop()
-        self.spinner.close()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
-        QMessageBox.information(None, "Mapa actualizado", "El mapa ha sido generado correctamente.")
+        if hasattr(self, "spinner"):
+            self.spinner.close()
+            self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+            QMessageBox.information(None, "Mapa actualizado", "El mapa ha sido generado correctamente.")
+
+        self.set_mapa_habilitado(True)
+
+    def pregunta_generar_mapa(self):
+        respuesta = QMessageBox.question(
+            None,
+            "Actualizar mapa",
+            "¿Quieres genera el mapa ahora?\n\n"
+            "Si eliges NO, podrás seguir moviendo/borrardo archivos más rápido.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        return respuesta
+    

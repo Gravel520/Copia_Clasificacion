@@ -5,7 +5,7 @@
 import sys, os
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
-    QDialog
+    QDialog, QLabel
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
@@ -39,13 +39,21 @@ class MapaWindow(QMainWindow):
         self.bridge = Bridge(
             self.ui.tableWidget,
             self.ui.labelFechaListado,
+            self.ui.labelMapaActualizado,
+            self.ui.button_generar_mapa,
             self.ui.button_sel_multiple,
             self.view,
             self.ui.labelVisor,
-            RUTA_JSON_UNICO
+            RUTA_JSON_UNICO,
+            self.set_mapa_habilitado
         )
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
+
+        # Estado del mapa (actualizado o NO)
+        self.mapa_actualizado = True
+        self.set_mapa_habilitado(True) # También se actualiza 'Pendientes' al abrir
+        self.ui.button_generar_mapa.setVisible(False)        
 
         # Señales
         self.bridge.actualizarFoto.connect(self.mostrar_foto)
@@ -56,13 +64,57 @@ class MapaWindow(QMainWindow):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.view)
 
-        # Actualizar menú al abrir
-        self.bridge.cargar_pendientes()
-
         self.signs_controls()
 
     def show(self):
         self.ui.show()
+
+    # ============================================================
+    # HABILITAR APLICACIÓN
+    # ============================================================ 
+    def set_mapa_habilitado(self, habilitado):
+        # Deshabilitar el visor del mapa.
+        self.view.setEnabled(habilitado)
+
+        # Deshabilitar acciones del menú.
+        self.ui.actionDesde_Movil.setEnabled(habilitado)
+        self.ui.actionClasificar.setEnabled(habilitado)
+        # Actualizamos el habilitado de 'Pendientes' por separado.
+        self.bridge.cargar_pendientes()
+        self.ui.actionPendientes.setEnabled(habilitado)
+
+        self.ui.menuFiltro.setEnabled(habilitado)
+        self.ui.menuMarcas.setEnabled(habilitado)
+
+        if habilitado:
+            self.ui.labelMapaActualizado.setText("Mapa actualizado")
+            self.ui.labelMapaActualizado.setStyleSheet("color: green; font-weight: bold;")        
+            self.ui.button_generar_mapa.setVisible(False)
+            self.mapa_actualizado = True
+        else:
+            self.ui.labelMapaActualizado.setText("Mapa desactualizado")
+            self.ui.labelMapaActualizado.setStyleSheet("color: red; font-weight: bold;")        
+            self.ui.button_generar_mapa.setVisible(True)
+            self.mapa_actualizado = False
+
+    # ============================================================
+    # GENERAR MAPA MANUALMENTE
+    # ============================================================ 
+    def generar_mapa_manual(self):
+        self.mapa_actualizado = True
+
+        self.ui.labelMapaActualizado.setText("Generando mapa...")
+        self.ui.labelMapaActualizado.setStyleSheet("color: orange; font-weight: bold;")
+
+        self.ui.button_generar_mapa.setVisible(False)
+
+        self.spinner = SpinnerOverlay(self.view, "Generando mapa...")
+        self.spinner.show()
+
+        self.worker_mapa = MapaWorker()
+        self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
+        self.worker_mapa.terminado.connect(self.mapa_finalizado)
+        self.worker_mapa.start()
 
     # ============================================================
     # MOSTRAR FOTO
@@ -177,6 +229,8 @@ class MapaWindow(QMainWindow):
         self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
         QMessageBox.information(self, "Mapa actualizado", "El mapa ha sido generado correctamente.")
 
+        self.set_mapa_habilitado(True)
+
     # ============================================================
     # CLASIFICAR ARCHIVOS
     # ============================================================
@@ -269,6 +323,8 @@ class MapaWindow(QMainWindow):
 
         self.ui.actionPendientes.triggered.connect(self.clasificar_pendientes)
         self.ui.actionSalir_3.triggered.connect(self.close)
+
+        self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 
         self.ui.button_sel_multiple.marcarTodos.connect(
             lambda: self.checked_unchecked_all_checkbox(

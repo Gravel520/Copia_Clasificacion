@@ -8,7 +8,9 @@ Button: QPushButton que forman cada uno de los dos botones que aparecen
 '''
 
 import os
-from PyQt5.QtWidgets import QWidget, QPushButton, QCheckBox, QMenu, QAction, QDialog, QVBoxLayout, QTextEdit, QLabel, QApplication, QListWidget
+from PyQt5.QtWidgets import (QWidget, QPushButton, QCheckBox, QMenu,
+                             QAction, QDialog, QVBoxLayout, QHBoxLayout, 
+                             QTextEdit, QLabel, QApplication, QListWidget)
 from PyQt5.QtGui import QIcon, QCursor, QMovie
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtCore import Qt, QRect
@@ -194,11 +196,22 @@ class SelectorCarpeta(QDialog):
 
         layout.addWidget(self.list)
 
+        # Layout conjunto botones añadir y aceptar.
+        layout_btn = QHBoxLayout()
+        layout_btn.addStretch()
+
+        # Botón añadir carpeta.
+        self.btn_anadir = QPushButton("➕ Añadir", self)
+        self.btn_anadir.clicked.connect(self._abrir_dialogo_crear_carpeta)
+        layout_btn.addWidget(self.btn_anadir)
+
         # Botón aceptar.
-        self.btn = QPushButton("Aceptar", self)
-        self.btn.setEnabled(False) # Botón deshabilitado.
-        self.btn.clicked.connect(self.accept)
-        layout.addWidget(self.btn)
+        self.btn_aceptar = QPushButton("Aceptar", self)
+        self.btn_aceptar.setEnabled(False) # Botón deshabilitado.
+        self.btn_aceptar.clicked.connect(self.accept)
+        layout_btn.addWidget(self.btn_aceptar)
+
+        layout.addLayout(layout_btn)
 
         # Habilitar el botón cuando se seleccione algo.
         # Señal que se emite cada vez que cambia la selección.
@@ -210,7 +223,7 @@ class SelectorCarpeta(QDialog):
     con ese valor habilitamos o no el botón.
     '''
     def _habilitar_boton(self):
-        self.btn.setEnabled(self.list.currentItem() is not None)
+        self.btn_aceptar.setEnabled(self.list.currentItem() is not None)
 
     # Función donde obtenemos la ruta completa elegida.
     # A esta función la llamamos desde la función del Bridge 'mover'.
@@ -219,3 +232,27 @@ class SelectorCarpeta(QDialog):
         if item:
             ruta = os.path.join(RUTA_PRINCIPAL, item.text())
             return ruta
+        
+    def _abrir_dialogo_crear_carpeta(self):
+        from componentes.dialogo_crear_carpeta import DialogoCrearCarpeta
+
+        dlg = DialogoCrearCarpeta(self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        
+        ciudad, pais, fecha = dlg.resultado
+        nombre_carpeta = f"({ciudad})({pais})({fecha})"
+        ruta = os.path.join(RUTA_PRINCIPAL, nombre_carpeta)
+
+        # Crear carpeta si no existe.
+        if not os.path.exists(ruta):
+            os.makedirs(ruta)
+
+        # Añadir a la lista.
+        self.list.addItem(nombre_carpeta)
+
+        # Seleccionarla automáticamente.
+        items = self.list.findItems(nombre_carpeta, Qt.MatchExactly)
+        if items:
+            self.list.setCurrentItem(items[0])
+            

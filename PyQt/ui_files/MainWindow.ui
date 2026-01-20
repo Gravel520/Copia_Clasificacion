@@ -158,6 +158,32 @@ border-radius: 0px;</string>
      </property>
     </widget>
    </widget>
+   <widget class="QLabel" name="labelMapaActualizado">
+    <property name="geometry">
+     <rect>
+      <x>1230</x>
+      <y>-1</y>
+      <width>131</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Mapa actualizado</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="button_generar_mapa">
+    <property name="geometry">
+     <rect>
+      <x>1060</x>
+      <y>4</y>
+      <width>101</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Generar Mapa</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
