@@ -5,7 +5,7 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 from mapa_generator import cargar_datos_desde_historial
 from copia_clasificador_fotos import cargar_json_unico
-from config import RUTA_JSON_UNICO
+from config_paths import ruta_json_unico
 
 class MapaWorker(QThread):
     terminado = pyqtSignal()
@@ -15,7 +15,7 @@ class MapaWorker(QThread):
         cargar_datos_desde_historial()
 
         # Cargar JSON unificado
-        data = cargar_json_unico(RUTA_JSON_UNICO)
+        data = cargar_json_unico(ruta_json_unico())
         total = len(data["pendientes"]["items"])
 
         # Emitir señal

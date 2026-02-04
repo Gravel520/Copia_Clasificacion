@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QComboBox, QPushButton, QMessageBox,
                              QCompleter)
 from PyQt5.QtCore import Qt, QTimer
+from geopy.geocoders import Nominatim
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
 import datetime
 
@@ -13,6 +14,7 @@ class DialogoCrearCarpeta(QDialog):
     def __init__(self, parent = None):
         super().__init__(parent)
         self.setWindowTitle("Crear nueva carpeta de destino")
+        self.resize(300, 150)
 
         self.timer = QTimer()
         self.timer.setSingleShot(True)
@@ -47,6 +49,7 @@ class DialogoCrearCarpeta(QDialog):
         btn_ok = QPushButton("Crear")
         btn_cancel = QPushButton("Cancelar")
 
+        btn_ok.clicked.connect(self._validar)
         btn_cancel.clicked.connect(self.reject)
 
         botones.addStretch()
@@ -55,6 +58,7 @@ class DialogoCrearCarpeta(QDialog):
 
         layout.addLayout(botones)
 
+        self.resultado = None
 
     def actualizar_ciudades(self):
         pais = self.input_pais.text().strip()
@@ -70,3 +74,35 @@ class DialogoCrearCarpeta(QDialog):
 
         self.input_ciudad.setCompleter(completer_ciudades)
 
+    def _validar(self):
+        ciudad = self.input_ciudad.text().strip()
+        pais = self.input_pais.text().strip()
+        fecha = self.input_fecha.text().strip()
+
+        if not ciudad or not pais or not fecha:
+            QMessageBox.warning(self, "Error", "Todos los campos son obligatorios.")
+            return
+        
+        # Validar ubicación con Nominatim
+        geolocator = Nominatim(user_agent="clasificador_fotos")
+        location = geolocator.geocode(f"{ciudad}, {pais}")
+
+        if not location:
+            QMessageBox.warning(self, "Error", "No se encontró esa ubicación.")
+            return
+
+        # Normalizar nombre de ciudad y pais con Nominatim
+        address = location.address.split(', ')
+        ciudad = address[-3]
+        pais = address[-1]
+        
+        # Validar fecha.
+        try:
+            datetime.datetime.strptime(fecha, "%Y-%m")
+        except ValueError:
+            QMessageBox.warning(self, "Error", "La fecha debe tener formato (YYYY-MM).")
+            return
+        
+        # Todo OK ➡ devolver datos
+        self.resultado = (ciudad, pais, fecha)
+        self.accept()

@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QMessageBox
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
-from config import *
+from config_paths import ruta_adb, get_ruta_principal, get_ruta_temporal, ruta_movil
 from pathlib import Path
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
@@ -114,7 +114,7 @@ def obtener_ubicación(gps_info):
 def obtener_fecha_video(ruta_archivo):
     try:
         resultado = subprocess.run(
-            [RUTA_ADB, 'shell', f'stat -c %y "{ruta_archivo}"'],
+            [ruta_adb(), 'shell', f'stat -c %y "{ruta_archivo}"'],
             capture_output=True, text=True
         )
         fecha_raw = resultado.stdout.strip()
@@ -136,7 +136,7 @@ def calcular_hash_md5(ruta_archivo):
 
 # Ejecuta 'adb devices' y verifica si hay algún dispositivo conectado.
 def hay_dispositivo_adb():
-    dispositivos = subprocess.run([RUTA_ADB, 'devices'], capture_output=True, text=True)
+    dispositivos = subprocess.run([ruta_adb(), 'devices'], capture_output=True, text=True)
     lineas = dispositivos.stdout.strip().split('\n')
     # Ignora la cabecera y busca líneas con 'device' al final.
     dispositivos = [l for l in lineas[1:] if l.strip().endswith('device')]
@@ -148,7 +148,7 @@ def actualizar_stats(data):
     data["stats"]["total_eliminados"] = len(data["eliminados"]["items"])
 
 def borrar_directorios_vacios():
-    for subdir in Path(RUTA_PRINCIPAL).iterdir():
+    for subdir in Path(get_ruta_principal()).iterdir():
         if subdir.is_dir() and not any(subdir.iterdir()):
             subdir.rmdir()
 
@@ -165,7 +165,7 @@ def obtener_archivos(ruta_pc=None):
 
     if hay_dispositivo_adb():
         resultado = subprocess.run(
-            [RUTA_ADB, 'shell', f'ls {RUTA_MOVIL}'],
+            [ruta_adb(), 'shell', f'ls {ruta_movil()}'],
             capture_output=True, text=True)
         return resultado.stdout.strip().split('\n')
 
@@ -179,7 +179,7 @@ def obtener_archivos(ruta_pc=None):
 def clasificar_archivo(archivo, ruta_archivos, data):
     mensaje = ""
 
-    ruta_local = os.path.join(RUTA_TEMPORAL, archivo)
+    ruta_local = os.path.join(get_ruta_temporal(), archivo)
     ruta_origen = f'{ruta_archivos}/{archivo}'
 
     # Copiar o descargar
@@ -213,7 +213,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
     else:
         nombre_carpeta = f'{ubicacion}{fecha_str}'
 
-    ruta_destino = os.path.join(RUTA_PRINCIPAL, nombre_carpeta)
+    ruta_destino = os.path.join(get_ruta_principal(), nombre_carpeta)
     os.makedirs(ruta_destino, exist_ok=True)
 
     # Función obtener el hash del archivo.
@@ -280,48 +280,3 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             return f'🟥 ({archivo}) Archivo eliminado\n'
 
     return f'🔁 ({archivo}) Archivo duplicado\n'
-'''
-#===============================================================#
-# CLASIFICAR LOTE (OPCIONAL)                                    #
-#===============================================================#
-        
-# Función principal.
-def main(ruta_pc=None):
-    # Definimos la variable del mensaje que vamos a retornar,
-    #   y el número de archivos copiados.
-    mensaje = ''
-
-    # Crear carpeta temporal.
-    os.makedirs(RUTA_TEMPORAL, exist_ok=True)
-
-    # Cargamos el archivo json.
-    data = cargar_json_unico(RUTA_JSON_UNICO)
-
-    archivos = obtener_archivos(ruta_pc)
-    ruta_archivos = ruta_pc if ruta_pc else RUTA_MOVIL
-
-    archivos = archivos[NUMERO_FOTO_INICIO:(NUMERO_FOTO_INICIO + CANTIDAD_FOTOS_A_CLASIFICAR)]
-
-    # Descargar, comprobar duplicados y clasificar.
-    for archivo in archivos:
-        if archivo.lower().endswith(('.jpg', '.jpeg', '.mp4')):
-            mensaje += clasificar_archivo(archivo, ruta_archivos, data)
-
-    # Actualizar los stats y guardar el json.
-    actualizar_stats(data)
-    guardar_json_unico(RUTA_JSON_UNICO, data)
-    
-    # Limpiar carpeta temporal
-    shutil.rmtree(RUTA_TEMPORAL)
-
-    # Limpiar carpetas vacías.
-    borrar_directorios_vacios()
-
-    # Devolvemos el mensaje con la acción realizada,
-    #   copiado o no copiado.
-    return mensaje
-
-# Ejecutamos el script.
-if __name__ == '__main__':
-    main()
-'''

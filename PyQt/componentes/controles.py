@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QCheckBox, QMenu,
 from PyQt5.QtGui import QIcon, QCursor, QMovie
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtCore import Qt, QRect
-from config import RUTA_PRINCIPAL, SPINNER
+from config_paths import get_ruta_principal, get_spinner
 
 assets = 'PyQt/assets/'
 
@@ -140,7 +140,7 @@ class SpinnerOverlay(QWidget):
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("background: transparent; border: none;")
 
-        self.movie = QMovie(SPINNER)
+        self.movie = QMovie(get_spinner())
         self.label.setMovie(self.movie)
         self.movie.start()
         
@@ -181,9 +181,9 @@ class SelectorCarpeta(QDialog):
         '''
         self.list = QListWidget()
         mensaje = ''
-        for f in os.scandir(RUTA_PRINCIPAL):
+        for f in os.scandir(get_ruta_principal()):
             if f.is_dir():
-                if ruta_actual == f"{RUTA_PRINCIPAL}\\{f.name}" or f.name == '(Sin_GPS)': # Comprobar ruta actual.
+                if ruta_actual == f"{get_ruta_principal()}\\{f.name}" or f.name == '(Sin_GPS)': # Comprobar ruta actual.
                     continue
                 self.list.addItem(f.name)
                 mensaje += f'{f.name}\n' # str con todas las carpetas.
@@ -230,7 +230,7 @@ class SelectorCarpeta(QDialog):
     def carpeta_seleccionada(self):
         item = self.list.currentItem()
         if item:
-            ruta = os.path.join(RUTA_PRINCIPAL, item.text())
+            ruta = os.path.join(get_ruta_principal(), item.text())
             return ruta
         
     def _abrir_dialogo_crear_carpeta(self):
@@ -239,10 +239,10 @@ class SelectorCarpeta(QDialog):
         dlg = DialogoCrearCarpeta(self)
         if dlg.exec_() != QDialog.Accepted:
             return
-        
+
         ciudad, pais, fecha = dlg.resultado
         nombre_carpeta = f"({ciudad})({pais})({fecha})"
-        ruta = os.path.join(RUTA_PRINCIPAL, nombre_carpeta)
+        ruta = os.path.join(get_ruta_principal(), nombre_carpeta)
 
         # Crear carpeta si no existe.
         if not os.path.exists(ruta):

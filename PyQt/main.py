@@ -3,6 +3,8 @@
 '''
 
 import sys, os
+import config_manager
+from config_manager import settings
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
     QDialog, QLabel
@@ -15,11 +17,12 @@ from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
-from config import *
+from config_paths import get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, get_ruta_principal
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from bridge.bridge import Bridge
-from copia_clasificador_fotos import obtener_archivos
+from copia_clasificador_fotos import obtener_archivos, cargar_json_unico
+from componentes.dialogo_configuracion import ConfigDialog
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 
@@ -27,12 +30,12 @@ class MapaWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.ui = uic.loadUi(RUTA_UI)
+        self.ui = uic.loadUi(get_ruta_ui())
         self.ui.showMaximized()
 
         # Visor web
         self.view = QWebEngineView()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
 
         # Canal web
         self.channel = QWebChannel()
@@ -44,16 +47,21 @@ class MapaWindow(QMainWindow):
             self.ui.button_sel_multiple,
             self.view,
             self.ui.labelVisor,
-            RUTA_JSON_UNICO,
-            self.set_mapa_habilitado
+            ruta_json_unico(),
+            self.set_mapa_habilitado,
+            self.contar_pendientes,
         )
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 
+
+        # Inicializar el config.ini.
+        self.iniciar_config_ini()
+
         # Estado del mapa (actualizado o NO)
-        self.mapa_actualizado = True
-        self.set_mapa_habilitado(True) # También se actualiza 'Pendientes' al abrir
-        self.ui.button_generar_mapa.setVisible(False)        
+        self.mapa_actualizado = None
+        mapa_ok = settings.value("Estado/mapa_generado") == "True"
+        self.set_mapa_habilitado(mapa_ok) # También se actualiza 'Pendientes' al abrir
 
         # Señales
         self.bridge.actualizarFoto.connect(self.mostrar_foto)
@@ -63,6 +71,8 @@ class MapaWindow(QMainWindow):
         layout = QVBoxLayout(self.ui.QWidget_foto)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.view)
+
+        self.contar_pendientes()
 
         self.signs_controls()
 
@@ -96,7 +106,15 @@ class MapaWindow(QMainWindow):
             self.ui.labelMapaActualizado.setStyleSheet("color: red; font-weight: bold;")        
             self.ui.button_generar_mapa.setVisible(True)
             self.mapa_actualizado = False
-
+        '''
+        # Comprobamos si hay archivos clasificados para deshabilitar los controles
+        #   de generación de mapas y habilitar los de clasificación.
+        if self.contar_clasificados() == 0:
+            self.ui.actionDesde_Movil.setEnabled(True)
+            self.ui.actionClasificar.setEnabled(True)
+            self.ui.labelMapaActualizado.setText("")
+            self.ui.button_generar_mapa.setVisible(False)
+        '''
     # ============================================================
     # GENERAR MAPA MANUALMENTE
     # ============================================================ 
@@ -226,17 +244,23 @@ class MapaWindow(QMainWindow):
     def mapa_finalizado(self):
         self.spinner.movie.stop()
         self.spinner.close()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
         QMessageBox.information(self, "Mapa actualizado", "El mapa ha sido generado correctamente.")
 
+        config_manager.settings.setValue("Estado/mapa_generado", "True")
+        config_manager.settings.sync()        
+
         self.set_mapa_habilitado(True)
+
+        self.contar_pendientes()
 
     # ============================================================
     # CLASIFICAR ARCHIVOS
     # ============================================================
     def clasificar_archivos(self):
         # El usuario elige una carpeta y se lanza la clasificación.
-        carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta para clasificar")
+        ultima_carpeta = settings.value("General/ultima_origen")
+        carpeta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta para clasificar", ultima_carpeta)
         if not carpeta:
             return
         
@@ -262,6 +286,9 @@ class MapaWindow(QMainWindow):
             seleccion["inicio"],
             seleccion["fin"]
             )
+        
+        config_manager.settings.setValue("Estado/ultimo_intervalo", f"{seleccion['inicio']}-{seleccion['fin']}")
+        config_manager.settings.sync()
 
     # ============================================================
     # CLASIFICAR PENDIENTES
@@ -271,7 +298,7 @@ class MapaWindow(QMainWindow):
         self.bridge.cargar_pendientes()
 
         # 2️⃣ Ruta de la carpeta de pendientes (Sin_GPS)
-        ruta_pendientes = os.path.join(RUTA_PRINCIPAL, "(Sin_GPS)(Sin_GPS)(0000-00)")
+        ruta_pendientes = os.path.join(get_ruta_principal(), "(Sin_GPS)(Sin_GPS)(0000-00)")
 
         if not os.path.isdir(ruta_pendientes):
             QMessageBox.warning(self, "Pendientes", f"No existe la carpeta de pendientes:\n{ruta_pendientes}")
@@ -280,12 +307,56 @@ class MapaWindow(QMainWindow):
         # 3️⃣ Decirle al Bridge que esa es la carpeta actual
         self.bridge.recibirRuta(ruta_pendientes)
 
+    def contar_pendientes(self):
+        data = cargar_json_unico(ruta_json_unico())
+        total_pendientes = data["stats"]["total_pendientes"]
+        self.actualizar_menu_pendientes(total_pendientes)
+
+    def contar_clasificados(self):
+        data = cargar_json_unico(ruta_json_unico())
+        return data["stats"]["total_clasificados"]
+
     # ============================================================
     # MENÚ PENDIENTES
     # ============================================================
     def actualizar_menu_pendientes(self, total):
         self.ui.actionPendientes.setText(f'Pendientes ({total})')
         self.ui.actionPendientes.setEnabled(total > 0)
+
+    # ============================================================
+    # CONFIGURACIÓN
+    # ============================================================
+    def settings_form(self):
+        dlg_settings = ConfigDialog()
+        
+        if dlg_settings.exec_():
+            cfg = config_manager.load_config()
+
+            # Convertir mapa_generado a booleano
+            mapa_ok = cfg["mapa_generado"] == "True"
+
+            # Actualizar la interfaz
+            self.set_mapa_habilitado(mapa_ok)
+
+    def iniciar_config_ini(self):
+        if os.path.exists("config.ini"):
+            return
+        
+        drivers = ConfigDialog.get_windows_drivers(self)
+        unidad = drivers[0]
+        
+        data = {
+            "origen": unidad,
+            "destino": unidad,
+            "unidad": unidad,
+            "pantalla": "Estandar",
+            "ultimo_intervalo": "0-0",
+            "mapa_generado": "True",
+            "ultima_origen": unidad,
+            "ultima_destino": unidad,
+        }
+
+        config_manager.save_config(data)
 
     # ============================================================
     # UTILIDADES
@@ -322,6 +393,9 @@ class MapaWindow(QMainWindow):
         self.ui.actionClasificar.triggered.connect(self.clasificar_archivos)
 
         self.ui.actionPendientes.triggered.connect(self.clasificar_pendientes)
+
+        self.ui.actionConfiguracion.triggered.connect(self.settings_form)
+
         self.ui.actionSalir_3.triggered.connect(self.close)
 
         self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)

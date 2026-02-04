@@ -4,6 +4,7 @@
 
 import os, re
 import shutil
+import config_manager
 from PyQt5.QtWidgets import (
     QHBoxLayout, QWidget, QMessageBox, QFileDialog, QDialog
 )
@@ -14,7 +15,7 @@ from PyQt5.QtCore import Qt
 from componentes.controles import Button, CheckBox, SpinnerOverlay, SelectorCarpeta
 from copia_clasificador_fotos import cargar_json_unico, guardar_json_unico, actualizar_stats
 from mapa_generator import extraer_ciudad
-from config import *
+from config_paths import ruta_json_unico, meses, get_ruta_mapa_html
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from componentes.progreso_dialog import ProgresoClasificacion
@@ -28,7 +29,7 @@ class Bridge(QObject):
 
     def __init__(self, tableWidget, labelFechaListado, labelMapaActualizado, 
                  button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
-                 set_mapa_habilitado_callback):
+                 set_mapa_habilitado_callback, contar_pendientes):
         super().__init__()
         self.tabla = tableWidget
         self.label = labelFechaListado
@@ -40,6 +41,7 @@ class Bridge(QObject):
         self.ruta_json = ruta_json
         self.actual_ruta = None
         self.set_mapa_habilitado = set_mapa_habilitado_callback
+        self.contar_pendientes = contar_pendientes
 
     # ============================================================
     # RECEPCIÓN DE RUTA DESDE JS
@@ -55,7 +57,7 @@ class Bridge(QObject):
     def actualizar_tabla(self):
         ARCHIVOS_SEL.clear()
 
-        self.data = cargar_json_unico(RUTA_JSON_UNICO)
+        self.data = cargar_json_unico(ruta_json_unico())
         self.historial = self.data["clasificados"]["items"]
         self.eliminado = self.data["eliminados"]["items"]
         self.pendientes = self.data["pendientes"]["items"]
@@ -174,7 +176,7 @@ class Bridge(QObject):
         fecha = dato.split(')')[2][1:]
         lugar = dato.split('(')[1].split(')')[0]
         ano = fecha[0:4]
-        mes = MESES[int(fecha[5:]) - 1]
+        mes = meses()[int(fecha[5:]) - 1]
         return mes, ano, lugar
 
     def state_change_ckeckbox(self, row, state_int):
@@ -215,7 +217,6 @@ class Bridge(QObject):
     def _clasificacion_finalizada(self, mensaje):
         dlg = CustomMessageBox("Clasificación finalizada", mensaje, None)
         dlg.exec_()
-        #QMessageBox.information(None, "Clasificación finalizada", mensaje)
 
         self.cargar_pendientes()
 
@@ -276,7 +277,7 @@ class Bridge(QObject):
             return # El usuario canceló.
         
         # Cargar JSON unificado
-        self.data = cargar_json_unico(RUTA_JSON_UNICO)
+        self.data = cargar_json_unico(ruta_json_unico())
         self.historial = self.data["clasificados"]["items"]
         self.pendientes = self.data["pendientes"]["items"]
 
@@ -342,7 +343,7 @@ class Bridge(QObject):
         actualizar_stats(self.data)
 
         # Guardar JSON unificado
-        guardar_json_unico(RUTA_JSON_UNICO, self.data)
+        guardar_json_unico(ruta_json_unico(), self.data)
 
         # Emitir actualización de pendientes.
         self.actualizar_contador_pendientes()
@@ -367,6 +368,9 @@ class Bridge(QObject):
             # Deshabilitar mapa y opciones relacionadas
             self.set_mapa_habilitado(False)
 
+            config_manager.settings.setValue("Estado/mapa_generado", "False")
+            config_manager.settings.sync()            
+
             self.actualizar_tabla()
             return
 
@@ -387,7 +391,7 @@ class Bridge(QObject):
         mensaje = 'Archivo(s):\n'
 
         # Cargar JSON unificado.
-        self.data = cargar_json_unico(RUTA_JSON_UNICO)
+        self.data = cargar_json_unico(ruta_json_unico())
         self.historial = self.data["clasificados"]["items"]
         self.pendientes = self.data["pendientes"]["items"]
         self.eliminado = self.data["eliminados"]["items"]
@@ -428,8 +432,6 @@ class Bridge(QObject):
                 # Eliminar de pendientes.
                 self.pendientes[:] = [e for e in self.pendientes if e["hash"] != hash]
 
-                print(f"{archivo} ❌ Borrado...")
-
             except Exception as e:
                 print(f'Error al borrar {archivo}: {e}')
 
@@ -441,7 +443,7 @@ class Bridge(QObject):
         self.data["stats"]["total_eliminados"] = len(self.eliminado)
 
         # Guardar JSON unificado.
-        guardar_json_unico(RUTA_JSON_UNICO, self.data)
+        guardar_json_unico(ruta_json_unico(), self.data)
 
         # Emitir actualización de pendientes.
         self.actualizar_contador_pendientes()
@@ -459,6 +461,9 @@ class Bridge(QObject):
         if respuesta == QMessageBox.No:
             # Deshabilitar mapa y opciones relacionadas
             self.set_mapa_habilitado(False)
+
+            config_manager.settings.setValue("Estado/mapa_generado", "False")
+            config_manager.settings.sync()
 
             self.actualizar_tabla()
             return
@@ -519,10 +524,14 @@ class Bridge(QObject):
     def mapa_generado(self):
         if hasattr(self, "spinner"):
             self.spinner.close()
-            self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{RUTA_MAPA_HTML}")))
+            self.view.load(QUrl.fromLocalFile(os.path.abspath(get_ruta_mapa_html())))
             QMessageBox.information(None, "Mapa actualizado", "El mapa ha sido generado correctamente.")
 
         self.set_mapa_habilitado(True)
+        self.contar_pendientes()
+
+        config_manager.settings.setValue("Estado/mapa_generado", "True")
+        config_manager.settings.sync()
 
     def pregunta_generar_mapa(self):
         respuesta = QMessageBox.question(

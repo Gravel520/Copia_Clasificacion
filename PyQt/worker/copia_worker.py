@@ -9,14 +9,11 @@ from copia_clasificador_fotos import (
     cargar_json_unico,
     actualizar_stats,
     guardar_json_unico,
-    borrar_directorios_vacios,
-    RUTA_JSON_UNICO,
-    RUTA_TEMPORAL,
-    RUTA_MOVIL
+    borrar_directorios_vacios
 )
+from config_paths import ruta_json_unico, get_ruta_temporal, ruta_movil
 import os
 import shutil
-from config import NUMERO_FOTO_INICIO, CANTIDAD_FOTOS_A_CLASIFICAR
 
 class CopiaWorker(QThread):
     terminado = pyqtSignal(str)     # Mensaje final
@@ -56,9 +53,9 @@ class CopiaWorker(QThread):
                 return
 
             # 2️⃣ preparar el entorno.
-            os.makedirs(RUTA_TEMPORAL, exist_ok=True)
-            data = cargar_json_unico(RUTA_JSON_UNICO)
-            ruta_archivos = self.carpeta_origen if self.carpeta_origen else RUTA_MOVIL
+            os.makedirs(get_ruta_temporal(), exist_ok=True)
+            data = cargar_json_unico(ruta_json_unico())
+            ruta_archivos = self.carpeta_origen if self.carpeta_origen else ruta_movil()
 
             # 3️⃣ Clasificar uno por uno
             procesados = 0
@@ -71,9 +68,9 @@ class CopiaWorker(QThread):
 
             # 4️⃣ Guardar cambios.
             actualizar_stats(data)
-            guardar_json_unico(RUTA_JSON_UNICO, data)
+            guardar_json_unico(ruta_json_unico(), data)
 
-            shutil.rmtree(RUTA_TEMPORAL)
+            shutil.rmtree(get_ruta_temporal())
             borrar_directorios_vacios()
 
             self.terminado.emit(mensaje)
