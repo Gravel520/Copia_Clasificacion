@@ -202,6 +202,8 @@ border-radius: 0px;</string>
     <addaction name="actionClasificar"/>
     <addaction name="actionPendientes"/>
     <addaction name="separator"/>
+    <addaction name="actionConfiguracion"/>
+    <addaction name="separator"/>
     <addaction name="actionSalir_3"/>
    </widget>
    <widget class="QMenu" name="menuFiltro">
@@ -284,6 +286,16 @@ border-radius: 0px;</string>
   <action name="actionPendientes">
    <property name="text">
     <string>Pendientes</string>
+   </property>
+  </action>
+  <action name="actionConfiguraci_n">
+   <property name="text">
+    <string>Configuración</string>
+   </property>
+  </action>
+  <action name="actionConfiguracion">
+   <property name="text">
+    <string>Configuración</string>
    </property>
   </action>
  </widget>

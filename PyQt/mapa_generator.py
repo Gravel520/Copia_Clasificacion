@@ -30,7 +30,7 @@ import time
 from folium.plugins import Search
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
-from config import RUTA_MAPAS, RUTA_PRINCIPAL, GEOCODIFICADOR, RUTA_JSON_UNICO
+from config_paths import get_ruta_mapa_html, get_ruta_principal, geocodificador, ruta_json_unico
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -46,7 +46,7 @@ def extraer_ciudad(nombre):
 def obtener_coordenadas(ciudad, pais):
     nombre_carpeta = f'{ciudad}, {pais}'
     try:
-        location = GEOCODIFICADOR.geocode(nombre_carpeta, timeout=10)
+        location = geocodificador().geocode(nombre_carpeta, timeout=10)
         if location:
             return location.latitude, location.longitude
         
@@ -82,7 +82,7 @@ def crear_popup_html(ciudad, pais, entradas):
 
 def generar_mapa(features):
     # Inicializamos la localización inicial (Madrid, España).
-    location = GEOCODIFICADOR.geocode('Madrid, España', timeout=10)
+    location = geocodificador().geocode('Madrid, España', timeout=10)
     mapa = folium.Map(location=[location.latitude, location.longitude], zoom_start=10)
     
     # Crear capa GeoJSON
@@ -114,7 +114,7 @@ def generar_mapa(features):
     </script>
     """))
     
-    mapa.save(f'{RUTA_MAPAS}mapa_fotos.html')
+    mapa.save(f'{get_ruta_mapa_html()}')
 
 def cargar_datos_desde_historial():
     '''
@@ -122,7 +122,7 @@ def cargar_datos_desde_historial():
         obtenemos los datos de los archivos que ya han sido
         clasificados, que serán los que fijemos en el mapa.
     '''
-    data = cargar_json_unico(RUTA_JSON_UNICO)
+    data = cargar_json_unico(ruta_json_unico())
 
     historial = data["clasificados"]["items"]
 
@@ -134,7 +134,7 @@ def cargar_datos_desde_historial():
         combinaciones_unicas.add(clave)
 
     for directorio in combinaciones_unicas:
-        ruta_directorio = os.path.join(RUTA_PRINCIPAL, directorio)
+        ruta_directorio = os.path.join(get_ruta_principal(), directorio)
         archivos = os.listdir(ruta_directorio)
         ciudad, pais, fecha = extraer_ciudad(directorio)
         agrupadas[(ciudad, pais)].append((fecha, ruta_directorio, len(archivos)))

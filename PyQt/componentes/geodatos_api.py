@@ -58,7 +58,6 @@ def obtener_ciudades(pais_es):
     pais_en = dic.get(pais_es)
 
     if not pais_en:
-        print(f"No se pudo traducir el país: {pais_es}")
         return []
     
     url = "https://countriesnow.space/api/v0.1/countries"    
