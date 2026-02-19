@@ -4,6 +4,7 @@
 
 import sys, os
 import config_manager
+import vlc
 from config_manager import settings
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
@@ -11,12 +12,13 @@ from PyQt5.QtWidgets import (
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
+from componentes.video_player_vlc import VideoPlayer
 from config_paths import get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, get_ruta_principal
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
@@ -32,6 +34,10 @@ class MapaWindow(QMainWindow):
 
         self.ui = uic.loadUi(get_ruta_ui())
         self.ui.showMaximized()
+
+        # VLC Player
+        self.vlc_instance = vlc.Instance()
+        self.vlc_player = self.vlc_instance.media_player_new()
 
         # Visor web
         self.view = QWebEngineView()
@@ -135,7 +141,7 @@ class MapaWindow(QMainWindow):
         self.worker_mapa.start()
 
     # ============================================================
-    # MOSTRAR FOTO
+    # MOSTRAR FOTO O VIDEO
     # ============================================================
     def mostrar_foto(self, item=None):
         if isinstance(item, QTableWidgetItem):
@@ -150,10 +156,62 @@ class MapaWindow(QMainWindow):
                     return
                 ruta_archivo = self.ui.tableWidget.item(row, 2).text()
 
+        if not ruta_archivo:
+            return
+        
+        extension = ruta_archivo.lower().split(".")[-1]
+
+        # Imagen
+        if extension in ["jpg", "jpeg", "png", "bmp", "gif"]:
+            self.vlc_player.stop()
+            self.mostrar_imagen(ruta_archivo)
+            return
+        
+        # Video
+        if extension in ["mp4", "avi", "mkv", "mov", "mts"]:
+            self.mostrar_video(ruta_archivo)
+            return
+        
+        print("Tipo de archivo no soportado: ", ruta_archivo)
+
+    def mostrar_imagen(self, ruta_archivo):
         pixmap = QPixmap(ruta_archivo)
         if not pixmap.isNull():
             self.ui.labelVisor.setPixmap(pixmap)
             self.ui.labelVisor.setScaledContents(True)
+            self.ui.labelVisor.show()
+
+    def mostrar_video(self, ruta_archivo):
+        self.ui.labelVisor.clear()
+        self.ui.labelVisor.show()
+
+        media = self.vlc_instance.media_new(ruta_archivo)
+        self.vlc_player.set_media(media)
+
+        # Asignar el widget donde se verá el video
+        if sys.platform.startswith("linux"):
+            self.vlc_player.set_xwindow(self.ui.labelVisor.winId())
+        elif sys.platform == "win32":
+            self.vlc_player.set_hwnd(self.ui.labelVisor.winId())
+        elif sys.platform == "darwin":
+            self.vlc_player.set_nsobject(int(self.ui.labelVisor.winId()))
+
+        self.vlc_player.play()
+
+    def ver_video(self, row, column):
+        ruta_archivo = self.ui.tableWidget.item(row, 2).text()
+
+        # Detener el vídeo del visor principal si está reproduciendo.
+        try:
+            if self.vlc_player.is_playing():
+                self.vlc_player.stop()
+
+        except:
+            pass
+
+        # Abrir el reproductor externo.
+        self.vp = VideoPlayer(ruta_archivo)
+        self.vp.show()
 
     # ============================================================
     # COLUMNA SELECCIÓN
@@ -386,6 +444,8 @@ class MapaWindow(QMainWindow):
     def signs_controls(self):
         self.ui.tableWidget.itemClicked.connect(self.mostrar_foto)
         self.ui.tableWidget.currentItemChanged.connect(self.mostrar_foto)
+        self.ui.tableWidget.cellDoubleClicked.connect(self.ver_video)
+
         self.ui.button_sel_multiple.clicked.connect(self.columna_seleccion)
 
         self.ui.actionDesde_Movil.triggered.connect(self.select_movil)

@@ -180,14 +180,71 @@
         ]
     },
     "pendientes": {
-        "items": []
+        "items": [
+            {
+                "hash": "8593587fa31244f7a75ec1b6963120ee",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210109-WA0002.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            },
+            {
+                "hash": "821597482dd82a24a0e29d07984b4182",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210109-WA0011.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            },
+            {
+                "hash": "dc8f9883715f90c5c7a44dc0fc944aca",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210109-WA0020.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            },
+            {
+                "hash": "5cc68ac69a569161d36f0cc7975026e0",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210131-WA0000.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            },
+            {
+                "hash": "782fc84f7d87af348b3ee1331503fb51",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210324-WA0002.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            },
+            {
+                "hash": "9c7ea86ab9bc76f9f720f4792346c559",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210402-WA0012.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            },
+            {
+                "hash": "526d9169866ed663d2a188b566d4c75a",
+                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210403-WA0043.mp4",
+                "ubicacion": "(Sin_GPS)",
+                "fecha": "(0000-00)",
+                "latitud": 0,
+                "longitud": 0
+            }
+        ]
     },
     "eliminados": {
         "items": []
     },
     "stats": {
         "total_clasificados": 22,
-        "total_pendientes": 0,
+        "total_pendientes": 7,
         "total_eliminados": 0
     }
 }

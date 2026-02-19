@@ -14,9 +14,7 @@ __pycache__/
 # Permitir sólo ciertos tipos de archivos
 !*.py
 !*.txt
-!*.json
 !*.jpg
 !*.jpeg
-!*.html
 !*.keras
 !*.h5
