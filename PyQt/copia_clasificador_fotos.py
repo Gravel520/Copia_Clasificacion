@@ -81,6 +81,10 @@ def obtener_datos_exif(imagen_path):
                     'GPSDateStamp': gps_raw.get(29)
                 }
 
+                # Si todos los valores son None > no hay GPS real
+                if all(v is None for v in gps_info.values()):
+                    gps_info = {}
+
         return gps_info, fecha
     
     except Exception as e:
