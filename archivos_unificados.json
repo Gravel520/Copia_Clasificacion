@@ -176,35 +176,35 @@
                 "fecha": "(2021-01)",
                 "latitud": 39.338363638888886,
                 "longitud": -5.492794972222222
-            }
-        ]
-    },
-    "pendientes": {
-        "items": [
+            },
             {
                 "hash": "8593587fa31244f7a75ec1b6963120ee",
-                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210109-WA0002.mp4",
-                "ubicacion": "(Sin_GPS)",
-                "fecha": "(0000-00)",
+                "ruta": "E:\\\\BackupFotos\\(Fuenlabrada)(España)(2021-01)\\VID-20210109-WA0002.mp4",
+                "ubicacion": "(Fuenlabrada)(España)",
+                "fecha": "(2021-01)",
                 "latitud": 0,
                 "longitud": 0
             },
             {
                 "hash": "821597482dd82a24a0e29d07984b4182",
-                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210109-WA0011.mp4",
-                "ubicacion": "(Sin_GPS)",
-                "fecha": "(0000-00)",
+                "ruta": "E:\\\\BackupFotos\\(Fuenlabrada)(España)(2021-01)\\VID-20210109-WA0011.mp4",
+                "ubicacion": "(Fuenlabrada)(España)",
+                "fecha": "(2021-01)",
                 "latitud": 0,
                 "longitud": 0
             },
             {
                 "hash": "dc8f9883715f90c5c7a44dc0fc944aca",
-                "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210109-WA0020.mp4",
-                "ubicacion": "(Sin_GPS)",
-                "fecha": "(0000-00)",
+                "ruta": "E:\\\\BackupFotos\\(Fuenlabrada)(España)(2021-01)\\VID-20210109-WA0020.mp4",
+                "ubicacion": "(Fuenlabrada)(España)",
+                "fecha": "(2021-01)",
                 "latitud": 0,
                 "longitud": 0
-            },
+            }
+        ]
+    },
+    "pendientes": {
+        "items": [
             {
                 "hash": "5cc68ac69a569161d36f0cc7975026e0",
                 "ruta": "E:\\\\BackupFotos\\(Sin_GPS)(Sin_GPS)(0000-00)\\VID-20210131-WA0000.mp4",
@@ -243,8 +243,8 @@
         "items": []
     },
     "stats": {
-        "total_clasificados": 22,
-        "total_pendientes": 7,
+        "total_clasificados": 25,
+        "total_pendientes": 4,
         "total_eliminados": 0
     }
 }

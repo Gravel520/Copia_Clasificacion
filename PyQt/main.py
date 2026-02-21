@@ -5,14 +5,17 @@
 import sys, os
 import config_manager
 import vlc
+os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
+
+import mpv
 from config_manager import settings
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
-    QDialog, QLabel
+    QDialog, QWidget
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import QUrl
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
@@ -39,6 +42,20 @@ class MapaWindow(QMainWindow):
         self.vlc_instance = vlc.Instance()
         self.vlc_player = self.vlc_instance.media_player_new()
 
+        # Crear un contenedor para el widget de MPV
+        self.mpv_container = QWidget(self.ui.labelVisor)
+        self.mpv_container.setGeometry(self.ui.labelVisor.rect())
+        self.mpv_container.hide()
+
+        # Crear instancia MPV embebida en el labelVisor
+        self.mpv_player = mpv.MPV(
+            wid=str(int(self.mpv_container.winId())),
+            vo='gpu', # salida de video moderna
+            hwdec='auto', # aceleración por hardware
+            log_handler=None, # sin logs molestos
+            ytdl=False
+        )
+
         # Visor web
         self.view = QWebEngineView()
         self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
@@ -59,7 +76,6 @@ class MapaWindow(QMainWindow):
         )
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
-
 
         # Inicializar el config.ini.
         self.iniciar_config_ini()
@@ -112,15 +128,7 @@ class MapaWindow(QMainWindow):
             self.ui.labelMapaActualizado.setStyleSheet("color: red; font-weight: bold;")        
             self.ui.button_generar_mapa.setVisible(True)
             self.mapa_actualizado = False
-        '''
-        # Comprobamos si hay archivos clasificados para deshabilitar los controles
-        #   de generación de mapas y habilitar los de clasificación.
-        if self.contar_clasificados() == 0:
-            self.ui.actionDesde_Movil.setEnabled(True)
-            self.ui.actionClasificar.setEnabled(True)
-            self.ui.labelMapaActualizado.setText("")
-            self.ui.button_generar_mapa.setVisible(False)
-        '''
+
     # ============================================================
     # GENERAR MAPA MANUALMENTE
     # ============================================================ 
@@ -175,43 +183,44 @@ class MapaWindow(QMainWindow):
         print("Tipo de archivo no soportado: ", ruta_archivo)
 
     def mostrar_imagen(self, ruta_archivo):
+        # Pausar MPV si estaba reproduciendo
+        try:
+            self.mpv_player.pause = True
+        except:
+            pass
+
+        self.mpv_container.hide()
+
         pixmap = QPixmap(ruta_archivo)
         if not pixmap.isNull():
             self.ui.labelVisor.setPixmap(pixmap)
             self.ui.labelVisor.setScaledContents(True)
-            self.ui.labelVisor.show()
 
     def mostrar_video(self, ruta_archivo):
+        # Limpiar imagen previa.
         self.ui.labelVisor.clear()
-        self.ui.labelVisor.show()
+        self.mpv_container.show()
 
-        media = self.vlc_instance.media_new(ruta_archivo)
-        self.vlc_player.set_media(media)
-
-        # Asignar el widget donde se verá el video
-        if sys.platform.startswith("linux"):
-            self.vlc_player.set_xwindow(self.ui.labelVisor.winId())
-        elif sys.platform == "win32":
-            self.vlc_player.set_hwnd(self.ui.labelVisor.winId())
-        elif sys.platform == "darwin":
-            self.vlc_player.set_nsobject(int(self.ui.labelVisor.winId()))
-
-        self.vlc_player.play()
+        # Reproducir con MPV
+        self.mpv_player.pause = False
+        self.mpv_player.play(ruta_archivo)
 
     def ver_video(self, row, column):
         ruta_archivo = self.ui.tableWidget.item(row, 2).text()
-
-        # Detener el vídeo del visor principal si está reproduciendo.
+        
+        # Pausar MPV
         try:
-            if self.vlc_player.is_playing():
-                self.vlc_player.stop()
-
+            self.mpv_player.pause = True
         except:
             pass
 
         # Abrir el reproductor externo.
         self.vp = VideoPlayer(ruta_archivo)
         self.vp.show()
+
+    def resizeEvent(self, a0):
+        super().resizeEvent(a0)
+        self.mpv_container.setGeometry(self.ui.labelVisor.rect())
 
     # ============================================================
     # COLUMNA SELECCIÓN

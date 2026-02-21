@@ -18,3 +18,5 @@ __pycache__/
 !*.jpeg
 !*.keras
 !*.h5
+
+PyQt/libmpv-2.dll
