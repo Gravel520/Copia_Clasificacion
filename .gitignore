@@ -11,6 +11,14 @@ __pycache__/
 # Ignorar configuración oculta
 .env
 
+# Ignorar archivos que NO queremos subir
+config.ini
+*.json
+*.html
+
+# Ignorar la DLL grande
+PyQt/libmpv-2.dll
+
 # Permitir sólo ciertos tipos de archivos
 !*.py
 !*.txt
@@ -18,5 +26,3 @@ __pycache__/
 !*.jpeg
 !*.keras
 !*.h5
-
-PyQt/libmpv-2.dll
