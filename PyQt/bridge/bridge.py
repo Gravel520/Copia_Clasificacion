@@ -121,9 +121,15 @@ class Bridge(QObject):
             )
 
             hash_val = coincidencia['hash'] if coincidencia else ""
+            fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
+
+            # Nombre del archivo con el tooltip de la fecha.
+            item_nombre = QTableWidgetItem(nombre)
+            if fecha_val:
+                item_nombre.setToolTip(fecha_val)
 
             self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
-            self.tabla.setItem(i, 1, QTableWidgetItem(nombre))
+            self.tabla.setItem(i, 1, item_nombre)
             self.tabla.setItem(i, 2, QTableWidgetItem(ruta_completa))
             self.tabla.setCellWidget(i, 3, self.botones_accion(i))
             self.tabla.setItem(i, 4, QTableWidgetItem(hash_val))
@@ -155,9 +161,13 @@ class Bridge(QObject):
         layout.setSpacing(5)
 
         copiar_button = Button('copy', '#B2B3AD')
+        copiar_button.setToolTip("Copiar")
         mover_button = Button('move', '#AEB626')
+        mover_button.setToolTip("Mover")
         compartir_button = Button('share', '#0BAFBA')
+        compartir_button.setToolTip("Compartir")
         borrar_button = Button('delete', '#f08080')
+        borrar_button.setToolTip("Borrar")
 
         copiar_button.clicked.connect(lambda _, r=row: self.copiar(r))
         mover_button.clicked.connect(lambda _, r=row: self.mover(r))

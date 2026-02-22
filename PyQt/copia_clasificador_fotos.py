@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QMessageBox
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
-from config_paths import ruta_adb, get_ruta_principal, get_ruta_temporal, ruta_movil
+from config_paths import ruta_adb, get_ruta_principal, get_ruta_temporal, ruta_movil, extensiones_validas
 from pathlib import Path
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
@@ -193,20 +193,20 @@ def clasificar_archivo(archivo, ruta_archivos, data):
         return f"❌ No existe: {archivo}"
 
     # Obtención de los metadatos del gps y fecha.
-    if archivo.lower().endswith(('.jpg', '.jpeg')):
+    if archivo.lower().endswith(extensiones_validas("imagen")): # Archivos de imagen
         gps_info, fecha = obtener_datos_exif(ruta_local)
         ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
         # El string de la fecha será (año-mes)
-        fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
+        fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
 
-    else: # .mp4                
+    else: # Archivos de video
         try:
             fecha = obtener_fecha_video(ruta_origen)
             ubicacion, lat, lon = '(Sin_GPS)', 0, 0
 
             # El string de la fecha será (año-mes)
-            fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(Sin_Fecha)'
+            fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
         except Exception as e:
             mensaje += f'💥 ({archivo}) No se puedo clasificar.\n'            
 
@@ -228,7 +228,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
     pendientes = data["pendientes"]["items"]
     eliminados = data["eliminados"]["items"]
 
-    # Case 1 ➡ Sin GPS ➡ va a pendientes.
+    # Case 1 ➡ Sin GPS.
     if ubicacion == '(Sin_GPS)':
 
         # 1️⃣ Está en pendientes
@@ -250,14 +250,14 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             'hash': hash_archivo,
             'ruta': os.path.join(ruta_destino, archivo),
             'ubicacion': '(Sin_GPS)',
-            'fecha': '(0000-00)',
+            'fecha': fecha_str, # Grabamos la fecha para usarlo como ToolTip.
             'latitud': 0,
             'longitud': 0
         })
 
         return f'❓ {archivo} - Pendiente de clasificar\n'
 
-    # Caso 2 ➡ Tiene ubicación ➡ va a clasificados.
+    # Caso 2 ➡ Tiene ubicación.
     if comprobar_hash(hash_archivo, clasificados):
         # Comprobamos que el archivo NO este elimnado por nosotros.
         if comprobar_hash(hash_archivo, eliminados):

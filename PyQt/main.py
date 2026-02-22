@@ -207,6 +207,7 @@ class MapaWindow(QMainWindow):
 
     def ver_video(self, row, column):
         ruta_archivo = self.ui.tableWidget.item(row, 2).text()
+        datos = self.ui.labelFechaListado.text()
         
         # Pausar MPV
         try:
@@ -215,7 +216,7 @@ class MapaWindow(QMainWindow):
             pass
 
         # Abrir el reproductor externo.
-        self.vp = VideoPlayer(ruta_archivo)
+        self.vp = VideoPlayer(ruta_archivo, datos)
         self.vp.show()
 
     def resizeEvent(self, a0):

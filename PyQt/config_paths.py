@@ -42,8 +42,27 @@ def ruta_json_unico():
     return './archivos_unificados.json'
 
 def meses():
-    MESES = (
+    return (
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio',
      'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     )
-    return MESES
+
+def extensiones_validas(tipo="todas"):
+    EXTENSIONES_IMAGEN = (
+        ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp", ".tiff", 
+        ".tif", ".ppm", ".pgm", ".pbm", ".pnm", ".tga", ".svg"
+    )
+
+    EXTENSIONES_VIDEO = (
+        ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
+        ".mpeg", ".mpg", ".m4v", ".3gp", ".mts", ".m2ts", ".ts", ".ogv"
+    )
+
+    if tipo == "imagen":
+        return EXTENSIONES_IMAGEN
+    elif tipo == "video":
+        return EXTENSIONES_VIDEO
+    else:
+        # Devuelve ambas juntas
+        return EXTENSIONES_IMAGEN + EXTENSIONES_VIDEO
+    
