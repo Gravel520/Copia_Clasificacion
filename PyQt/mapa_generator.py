@@ -93,27 +93,140 @@ def generar_mapa(features):
         tooltip=folium.GeoJsonTooltip(fields=["nombre"])
     ).add_to(mapa)
 
-    # Añadir buscador
-    Search(
-        layer=geojson_layer,
-        search_label='nombre',
-        placeholder='Buscar por ciudad, país o fecha',
-        collapsed=False
-    ).add_to(mapa)
+    mapa_name = mapa.get_name()
+    geojson_name = geojson_layer.get_name()
 
     # Agregar canal de comunicación con PyQt
     mapa.get_root().html.add_child(folium.Element("""
-    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
-    <script>
-    new QWebChannel(qt.webChannelTransport, function(channel) {
-        window.bridge = channel.objects.bridge;
-    });
-    function enviarRuta(ruta) {
-        window.bridge.recibirRuta(ruta);
-    }
-    </script>
+        <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+        <script>
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+            window.bridge = channel.objects.bridge;
+        });
+        function enviarRuta(ruta) {
+            window.bridge.recibirRuta(ruta);
+        }
+        </script>
     """))
-    
+
+    # Definimos el panel de busqueda.
+    mapa.get_root().html.add_child(folium.Element(f"""
+        <style>
+        #panelFiltros {{
+            position: fixed;
+            top: 8px;
+            left: 8px;
+            z-index: 9999;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 6px 8px;
+            border-radius: 6px;
+            box-shadow: 0 0 4px rgba(0,0,0,0.25);
+            font-family: sans-serif;
+            font-size: 11px;
+            line-height: 1.2;
+        }}
+        #panelFiltros input {{
+            width: 120px;
+            font-size: 11px;
+            padding: 2px 4px;
+            margin-top: 2px;
+        }}
+        #panelFiltros button {{
+            font-size: 11px;
+            padding: 3px 6px;
+            margin-top: 4px;
+        }}
+        </style>
+
+        <div id="panelFiltros">
+            <label><b>Ciudad</b></label><br>
+            <input type="text" id="fCiudad"><br>
+
+            <label><b>País</b></label><br>
+            <input type="text" id="fPais"><br>
+
+            <label><b>Fecha</b></label><br>
+            <input type="text" id="fFecha"><br>
+
+            <button onclick="filtrar()">Filtrar</button>
+            <button onclick="resetear()">Resetear</button>
+        </div>
+
+        <script>
+        function filtrar() {{
+            let c = document.getElementById("fCiudad").value.toLowerCase();
+            let p = document.getElementById("fPais").value.toLowerCase();
+            let f = document.getElementById("fFecha").value.toLowerCase();
+
+            let visibles = [];
+            let total = 0;
+
+            {geojson_name}.eachLayer(function(layer) {{
+                if (!layer.feature || !layer.feature.properties) return;
+
+                let props = layer.feature.properties;
+
+                let coincide =
+                    props.ciudad.toLowerCase().includes(c) &&
+                    props.pais.toLowerCase().includes(p) &&
+                    props.fecha.toLowerCase().includes(f);
+
+                if (coincide) {{
+                    if (!{mapa_name}.hasLayer(layer)) {mapa_name}.addLayer(layer);
+                    if (layer.getLatLng) visibles.push(layer.getLatLng());
+                    total++;
+                }} else {{
+                    if ({mapa_name}.hasLayer(layer)) {mapa_name}.removeLayer(layer);
+                }}
+            }});
+
+            if (total === 0) {{
+                document.getElementById("noResultados").style.display = "block";
+            }} else {{
+                document.getElementById("noResultados").style.display = "none";
+            }}
+
+            if (visibles.length === 1) {{
+                {mapa_name}.setView(visibles[0], 10);
+            }} else if (visibles.length > 1) {{
+                let bounds = L.latLngBounds(visibles);
+                {mapa_name}.fitBounds(bounds);
+            }}
+        }}
+
+        function resetear() {{
+            document.getElementById("fCiudad").value = "";
+            document.getElementById("fPais").value = "";
+            document.getElementById("fFecha").value = "";
+
+            document.getElementById("noResultados").style.display = "none";
+
+            let visibles = [];
+
+            {geojson_name}.eachLayer(function(layer) {{
+                if (!layer.feature || !layer.feature.properties) return;
+                if (!{mapa_name}.hasLayer(layer)) {mapa_name}.addLayer(layer);
+                if (layer.getLatLng) visibles.push(layer.getLatLng());
+            }});
+
+            if (visibles.length === 1) {{
+                {mapa_name}.setView(visibles[0], 8);
+            }} else if (visibles.length > 1) {{
+                let bounds = L.latLngBounds(visibles);
+                {mapa_name}.fitBounds(bounds, {{ maxZoom: 10 }});
+            }}
+        }}
+        </script>
+
+        <div id="noResultados" 
+            style="display:none; position:fixed; top:10px; right:10px; 
+                    background:rgba(255,80,80,0.9); color:white; 
+                    padding:6px 10px; border-radius:6px; 
+                    font-size:12px; z-index:9999;">
+            No hay coincidencias
+        </div>
+    """))
+
     mapa.save(f'{get_ruta_mapa_html()}')
 
 def cargar_datos_desde_historial():
@@ -151,6 +264,9 @@ def cargar_datos_desde_historial():
             "type": "Feature",
             "properties": {
                 "nombre": f"{ciudad} {pais}",
+                "ciudad": ciudad,
+                "pais": pais,
+                "fecha": ", ".join([e[0] for e in entradas]),
                 "popup": html
             },
             "geometry": {
@@ -158,6 +274,7 @@ def cargar_datos_desde_historial():
                 "coordinates": [lon, lat]
             }
         }
+        
         features.append(feature)
         time.sleep(1) # Evitar sobrecarga del geocodificador
 
