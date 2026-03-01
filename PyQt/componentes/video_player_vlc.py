@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (
     QSlider, QLabel, QFrame
 )
 from PyQt5.QtCore import Qt, QTime, QTimer, QSize
-from PyQt5.QtGui import QFont, QIcon, QPixmap
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform
 from config_paths import extensiones_validas
 
 assets = 'PyQt/assets/'
@@ -20,6 +20,10 @@ class VideoPlayer(QWidget):
         nombre_archivo = archivo.split("\\")[-1]
         self.setWindowTitle(nombre_archivo)
         self.resize(1000, 650)
+
+        # Añadimos atributos para rotar la imagen.
+        self.archivo_original = archivo
+        self.pixmap_actual = None
 
         # Comprobamos si es imagen o video.
         self.es_imagen = archivo.lower().endswith(extensiones_validas("imagen"))
@@ -64,6 +68,7 @@ class VideoPlayer(QWidget):
         # --------------------------
         # BOTONES GRANDES CON ICONOS
         # --------------------------
+        # Botones del video.
         self.play_btn = QPushButton()
         self.play_btn.setIcon(QIcon(f'{assets}play.png'))
         self.play_btn.setToolTip("Reproducir / Pausa")
@@ -79,7 +84,23 @@ class VideoPlayer(QWidget):
         self.play_btn.clicked.connect(self.play_pause)
         self.stop_btn.clicked.connect(self.stop)
 
-        # Datos del video
+        # Botones de la imagen.
+        self.rotar_izq_btn = QPushButton()
+        self.rotar_izq_btn.setIcon(QIcon(f'{assets}girar_izquierda.png'))
+        self.rotar_izq_btn.setToolTip("Girar Izquierda")
+        self.rotar_izq_btn.setIconSize(QSize(32, 32))
+        self.rotar_izq_btn.setFixedSize(50, 50)
+
+        self.rotar_der_btn = QPushButton()
+        self.rotar_der_btn.setIcon(QIcon(f'{assets}girar_derecha.png'))
+        self.rotar_der_btn.setToolTip("Girar Derecha")
+        self.rotar_der_btn.setIconSize(QSize(32, 32))
+        self.rotar_der_btn.setFixedSize(50, 50)
+
+        self.rotar_izq_btn.clicked.connect(lambda: self.rotar_imagen(-90))
+        self.rotar_der_btn.clicked.connect(lambda: self.rotar_imagen(90))
+
+        # Datos del archivo.
         self.datos_lb = QLabel(datos)
         self.datos_lb.setStyleSheet("color: #bbb; font-size: 18px;")
 
@@ -123,6 +144,8 @@ class VideoPlayer(QWidget):
         control_layout.addSpacing(10)
         control_layout.addWidget(self.vol_icon)
         control_layout.addWidget(self.volumen_slider)
+        control_layout.addWidget(self.rotar_izq_btn)
+        control_layout.addWidget(self.rotar_der_btn)
 
         # Layout inferior
         bottom_layout = QVBoxLayout()
@@ -137,13 +160,11 @@ class VideoPlayer(QWidget):
 
         # Comprobar si es imagen.
         if self.es_imagen:
-            self.play_btn.setEnabled(False)
-            self.stop_btn.setEnabled(False)
-            self.position_slider.setEnabled(False)
-            self.volumen_slider.setEnabled(False)
+            self.update_controls(True) # Habilitar controles de imagen.
             self.mostrar_imagen(archivo)
 
         else:
+            self.update_controls(False) # Habilitar controles de video.
             # Timer para actualizar la UI
             self.timer = QTimer(self)
             self.timer.setInterval(500)
@@ -158,16 +179,38 @@ class VideoPlayer(QWidget):
     def mostrar_imagen(self, archivo):
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
+
         pix = QPixmap(archivo)
-        self.image_label.setPixmap(pix.scaled(
+        self.pixmap_actual = pix # Guardamos el pixmap original
+
+        # Mostramos en pantalla.
+        self.mostrar_imagen_pantalla(pix)
+
+        layout = QVBoxLayout(self.video_frame)
+        layout.addWidget(self.image_label)
+
+    def mostrar_imagen_pantalla(self, pix):
+            self.image_label.setPixmap(pix.scaled(
             self.video_frame.size(),
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
         ))
-
-        layout = QVBoxLayout(self.video_frame)
-        layout.addWidget(self.image_label)
+    # ---------------------------------
+    # FUNCIONES DEL VISUALIZADOR IMAGEN
+    # ---------------------------------
+    def rotar_imagen(self, grados):
+        if not self.es_imagen or self.pixmap_actual is None:
+            return
         
+        transform = QTransform().rotate(grados)
+        self.pixmap_actual = self.pixmap_actual.transformed(transform, Qt.SmoothTransformation)
+
+        # Mostrar en pantalla
+        self.mostrar_imagen_pantalla(self.pixmap_actual)
+
+        # Guardar en el archivo original
+        self.pixmap_actual.save(self.archivo_original)
+
     # -----------------------------
     # FUNCIONES DEL REPRODUCTOR VLC
     # -----------------------------
@@ -231,6 +274,17 @@ class VideoPlayer(QWidget):
 
         if fmt(length) == fmt(time):
             self.stop()
+
+    # -----------------------------
+    # ACTUALIZAR BARRA DE CONTROLES
+    # -----------------------------
+    def update_controls(self, valor):
+        self.play_btn.setEnabled(not valor)
+        self.stop_btn.setEnabled(not valor)
+        self.rotar_izq_btn.setEnabled(valor)
+        self.rotar_der_btn.setEnabled(valor)
+        self.position_slider.setEnabled(not valor)
+        self.volumen_slider.setEnabled(not valor)
 
     def closeEvent(self, a0):
         try:

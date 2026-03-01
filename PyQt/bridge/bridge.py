@@ -72,6 +72,7 @@ class Bridge(QObject):
         archivos = os.listdir(self.actual_ruta)
         self.numero_archivos = len(archivos)
 
+        self.tabla.setVisible(True)
         self.tabla.setRowCount(self.numero_archivos)
         self.tabla.setColumnCount(5)
 
@@ -359,10 +360,7 @@ class Bridge(QObject):
         self.actualizar_contador_pendientes()
 
         if self.directorio_vacio(origen):
-            os.rmdir(origen)
-            self.tabla.clearContents()
-            self.labelFoto.setPixmap(QPixmap())
-            self.actual_ruta = None
+            self.limpiar_tabla(origen)
 
         # Mensaje final
         if errores:
@@ -461,10 +459,7 @@ class Bridge(QObject):
         # Comprobamos si existe el directorio para actualizar la
         #   tabla o no.
         if self.directorio_vacio(origen):
-            os.rmdir(origen)
-            self.tabla.clearContents()
-            self.labelFoto.setPixmap(QPixmap())
-            self.actual_ruta = None
+            self.limpiar_tabla(origen)            
 
         respuesta = self.pregunta_generar_mapa()
 
@@ -490,6 +485,13 @@ class Bridge(QObject):
         self.worker.start()
 
         self.actualizar_tabla()
+
+    def limpiar_tabla(self, origen):
+        os.rmdir(origen)
+        self.tabla.clearContents()
+        self.tabla.setVisible(False)
+        self.labelFoto.setPixmap(QPixmap())
+        self.actual_ruta = None
 
     def origen_de_seleccion(self, row):
         '''

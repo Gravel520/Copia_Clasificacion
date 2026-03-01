@@ -38,6 +38,9 @@ class MapaWindow(QMainWindow):
         self.ui = uic.loadUi(get_ruta_ui())
         self.ui.showMaximized()
 
+        # Referenciar al VideoPlayer abierto
+        self.vp = None
+
         # VLC Player
         self.vlc_instance = vlc.Instance()
         self.vlc_player = self.vlc_instance.media_player_new()
@@ -201,6 +204,11 @@ class MapaWindow(QMainWindow):
         self.ui.labelVisor.clear()
         self.mpv_container.show()
 
+        @self.mpv_player.property_observer('time-pos')
+        def time_observer(_name, value):
+            if value is not None and value >=5:
+                self.mpv_player.pause = True
+
         # Reproducir con MPV
         self.mpv_player.pause = False
         self.mpv_player.play(ruta_archivo)
@@ -215,7 +223,12 @@ class MapaWindow(QMainWindow):
         except:
             pass
 
-        # Abrir el reproductor externo.
+        # Si hay un reproductos abierto lo cerramos
+        if self.vp is not None:
+            self.vp.close()
+            self.vp = None
+
+        # Creamos uno nuevo.
         self.vp = VideoPlayer(ruta_archivo, datos)
         self.vp.show()
 
