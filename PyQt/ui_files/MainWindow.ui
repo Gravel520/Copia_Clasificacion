@@ -20,170 +20,476 @@
    <string>Clasificador de Fotos</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QWidget" name="QWidget_foto" native="true">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>30</y>
-      <width>980</width>
-      <height>631</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">border: 2px solid #444;
-border-radius: 0px;</string>
-    </property>
-   </widget>
-   <widget class="QWidget" name="QWidget_listado" native="true">
-    <property name="geometry">
-     <rect>
-      <x>1010</x>
-      <y>30</y>
-      <width>351</width>
-      <height>300</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true"/>
-    </property>
-    <widget class="QTableWidget" name="tableWidget">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>49</y>
-       <width>351</width>
-       <height>251</height>
-      </rect>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">border: 2px solid #444;
-border-radius: 0px;</string>
-     </property>
-     <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>170</number>
-     </attribute>
-     <attribute name="horizontalHeaderMinimumSectionSize">
-      <number>50</number>
-     </attribute>
-     <attribute name="verticalHeaderVisible">
-      <bool>false</bool>
-     </attribute>
-     <column>
-      <property name="text">
-       <string>Nombre de Archivo</string>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QStackedWidget" name="stackedWidget">
+      <property name="currentIndex">
+       <number>1</number>
       </property>
-      <property name="font">
-       <font>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
-      </property>
-     </column>
-    </widget>
-    <widget class="QLabel" name="labelFechaListado">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>351</width>
-       <height>51</height>
-      </rect>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>12</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">border: 2px solid #444;
+      <widget class="QWidget" name="pagePrincipal">
+       <widget class="QWidget" name="QWidget_foto" native="true">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>1</y>
+          <width>980</width>
+          <height>631</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: 2px solid #444;
 border-radius: 0px;</string>
-     </property>
-     <property name="text">
-      <string>Fecha Listado</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-     </property>
-    </widget>
-    <widget class="Button_Sel" name="button_sel_multiple">
-     <property name="geometry">
-      <rect>
-       <x>10</x>
-       <y>6</y>
-       <width>31</width>
-       <height>41</height>
-      </rect>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>../assets/checkbox_checked.png</normaloff>../assets/checkbox_checked.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>24</width>
-       <height>24</height>
-      </size>
-     </property>
-     <property name="shortcut">
-      <string>Ctrl+S</string>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QWidget" name="QWidget_visor_foto" native="true">
-    <property name="geometry">
-     <rect>
-      <x>1010</x>
-      <y>340</y>
-      <width>350</width>
-      <height>321</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">border: 2px solid #444;
+        </property>
+       </widget>
+       <widget class="QWidget" name="QWidget_visor_foto" native="true">
+        <property name="geometry">
+         <rect>
+          <x>990</x>
+          <y>311</y>
+          <width>350</width>
+          <height>321</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: 2px solid #444;
 border-radius: 0px;</string>
-    </property>
-    <widget class="QLabel" name="labelVisor">
-     <property name="geometry">
-      <rect>
-       <x>5</x>
-       <y>5</y>
-       <width>340</width>
-       <height>311</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QLabel" name="labelMapaActualizado">
-    <property name="geometry">
-     <rect>
-      <x>1230</x>
-      <y>-1</y>
-      <width>131</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Mapa actualizado</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="button_generar_mapa">
-    <property name="geometry">
-     <rect>
-      <x>1060</x>
-      <y>4</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Generar Mapa</string>
-    </property>
-   </widget>
+        </property>
+        <widget class="QLabel" name="labelVisor">
+         <property name="geometry">
+          <rect>
+           <x>5</x>
+           <y>5</y>
+           <width>340</width>
+           <height>311</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QPushButton" name="button_generar_mapa">
+        <property name="geometry">
+         <rect>
+          <x>1040</x>
+          <y>-25</y>
+          <width>101</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Generar Mapa</string>
+        </property>
+       </widget>
+       <widget class="QWidget" name="QWidget_listado" native="true">
+        <property name="geometry">
+         <rect>
+          <x>990</x>
+          <y>1</y>
+          <width>351</width>
+          <height>300</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <widget class="QTableWidget" name="tableWidget">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>49</y>
+           <width>351</width>
+           <height>251</height>
+          </rect>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+         </property>
+         <attribute name="horizontalHeaderDefaultSectionSize">
+          <number>170</number>
+         </attribute>
+         <attribute name="horizontalHeaderMinimumSectionSize">
+          <number>50</number>
+         </attribute>
+         <attribute name="verticalHeaderVisible">
+          <bool>false</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string>Nombre de Archivo</string>
+          </property>
+          <property name="font">
+           <font>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+         </column>
+        </widget>
+        <widget class="QLabel" name="labelFechaListado">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>351</width>
+           <height>51</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+         </property>
+         <property name="text">
+          <string>Fecha Listado</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+        <widget class="Button_Sel" name="button_sel_multiple">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>6</y>
+           <width>31</width>
+           <height>41</height>
+          </rect>
+         </property>
+         <property name="icon">
+          <iconset>
+           <normaloff>../assets/checkbox_checked.png</normaloff>../assets/checkbox_checked.png</iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="shortcut">
+          <string>Ctrl+S</string>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QLabel" name="labelMapaActualizado">
+        <property name="geometry">
+         <rect>
+          <x>1210</x>
+          <y>-30</y>
+          <width>131</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Mapa actualizado</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="pageClasificacion">
+       <widget class="QTableWidget" name="tableClasificacion">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>50</y>
+          <width>1341</width>
+          <height>581</height>
+         </rect>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: 2px solid #444;
+border-radius: 0px;
+QTableWidget::item:hover {
+    background: #f0f0f0;
+    border-radius: 8px;
+}
+</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="labelFechaListadoClasificacion">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>1341</width>
+          <height>51</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: 2px solid #444;
+border-radius: 0px;</string>
+        </property>
+        <property name="text">
+         <string>Fecha Listado</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_miniaturas_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>2</y>
+          <width>75</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Vista en Miniaturas</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/miniaturas.png</normaloff>assets/miniaturas.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>40</width>
+          <height>40</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_lista_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>90</x>
+          <y>2</y>
+          <width>75</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Vista en Lista</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/lista.png</normaloff>assets/lista.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>40</width>
+          <height>40</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="Line" name="line">
+        <property name="geometry">
+         <rect>
+          <x>170</x>
+          <y>2</y>
+          <width>31</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
+        <property name="autoFillBackground">
+         <bool>false</bool>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border-color: rgb(0, 0, 0);</string>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
+        <property name="lineWidth">
+         <number>3</number>
+        </property>
+        <property name="midLineWidth">
+         <number>0</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_mover_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>210</x>
+          <y>2</y>
+          <width>47</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Mover</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/mover-archivo.png</normaloff>assets/mover-archivo.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_copiar_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>260</x>
+          <y>2</y>
+          <width>47</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Copiar</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/copia-de-seguridad-de-archivos.png</normaloff>assets/copia-de-seguridad-de-archivos.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_compartir_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>310</x>
+          <y>2</y>
+          <width>47</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Compartir</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/compartir.png</normaloff>assets/compartir.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_eliminar_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>360</x>
+          <y>2</y>
+          <width>47</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Eliminar</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/remover-archivo.png</normaloff>assets/remover-archivo.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="Line" name="line_2">
+        <property name="geometry">
+         <rect>
+          <x>428</x>
+          <y>2</y>
+          <width>3</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
+        <property name="lineWidth">
+         <number>3</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="button_seleccionar_todos_clasificacion">
+        <property name="geometry">
+         <rect>
+          <x>450</x>
+          <y>2</y>
+          <width>47</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="toolTip">
+         <string>Seleccionar Todos</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>assets/seleccione.png</normaloff>assets/seleccione.png</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+       </widget>
+       <widget class="Line" name="line_3">
+        <property name="geometry">
+         <rect>
+          <x>514</x>
+          <y>2</y>
+          <width>3</width>
+          <height>47</height>
+         </rect>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Plain</enum>
+        </property>
+        <property name="lineWidth">
+         <number>3</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+       <widget class="QLabel" name="labelArchivosSeleccionadosClasificacion">
+        <property name="geometry">
+         <rect>
+          <x>530</x>
+          <y>10</y>
+          <width>151</width>
+          <height>16</height>
+         </rect>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="pageVisorCompleto"/>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -210,7 +516,7 @@ border-radius: 0px;</string>
     <property name="title">
      <string>Filtro</string>
     </property>
-    <addaction name="actionA_o"/>
+    <addaction name="actionAno"/>
     <addaction name="actionMes"/>
     <addaction name="separator"/>
     <addaction name="actionLugar"/>
@@ -224,11 +530,20 @@ border-radius: 0px;</string>
     <addaction name="actionFoto"/>
     <addaction name="actionDirectorio"/>
    </widget>
+   <widget class="QMenu" name="menuVista">
+    <property name="title">
+     <string>Vista</string>
+    </property>
+    <addaction name="actionPrincipal"/>
+    <addaction name="actionClasificacion"/>
+    <addaction name="actionVisor_Completo"/>
+   </widget>
    <addaction name="menuClasificar"/>
    <addaction name="menuFiltro"/>
    <addaction name="menuMarcas"/>
+   <addaction name="menuVista"/>
   </widget>
-  <action name="actionA_o">
+  <action name="actionAno">
    <property name="text">
     <string>Año</string>
    </property>
@@ -294,6 +609,26 @@ border-radius: 0px;</string>
    </property>
   </action>
   <action name="actionConfiguracion">
+   <property name="text">
+    <string>Configuración</string>
+   </property>
+  </action>
+  <action name="actionPrincipal">
+   <property name="text">
+    <string>Principal</string>
+   </property>
+  </action>
+  <action name="actionClasificacion">
+   <property name="text">
+    <string>Clasificación</string>
+   </property>
+  </action>
+  <action name="actionVisor_Completo">
+   <property name="text">
+    <string>Visor Completo</string>
+   </property>
+  </action>
+  <action name="actionConfiguraci_n_2">
    <property name="text">
     <string>Configuración</string>
    </property>

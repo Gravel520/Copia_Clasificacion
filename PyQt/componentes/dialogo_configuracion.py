@@ -52,7 +52,7 @@ class ConfigDialog(QDialog):
         config_manager.save_config(data)
 
     def load_pantalla(self):
-        self.ui.cb_pantalla.addItems(["Estandar", "Fotos", "Gestionar"])
+        self.ui.cb_pantalla.addItems(["Principal", "Clasificación", "Visor Completo"])
 
     def get_windows_drivers(self):
         drivers = []
@@ -102,3 +102,4 @@ class ConfigDialog(QDialog):
         carpeta = self.select_directory(titulo, clave)
         if carpeta: # Solo si el usuario NO canceló
             campo.setText(carpeta)
+            

@@ -11,7 +11,7 @@ def load_config():
         "origen": settings.value("Paths/origen", "", str),
         "destino": settings.value("Paths/destino", "", str),
         "unidad": settings.value("General/unidad", "", str),
-        "pantalla": settings.value("General/pantalla", "Estandar", str),
+        "pantalla": settings.value("General/pantalla", "0", str),
         "ultimo_intervalo": settings.value("Estado/ultimo_intervalo", "0", str),
         "mapa_generado": settings.value("Estado/mapa_generado", "False", str),
         "ultima_origen": settings.value("General/ultima_origen", "", str),

@@ -5,18 +5,19 @@
 import sys, os
 import config_manager
 import vlc
+import math
 os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
 
 import mpv
 from config_manager import settings
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
-    QDialog, QWidget
+    QDialog, QWidget, QTableWidgetItem, QAbstractItemView, QCheckBox,
+    QLabel, QHBoxLayout
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QUrl
-from PyQt5.QtWidgets import QTableWidgetItem
+from PyQt5.QtCore import QUrl, QSize, Qt
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
@@ -30,6 +31,7 @@ from copia_clasificador_fotos import obtener_archivos, cargar_json_unico
 from componentes.dialogo_configuracion import ConfigDialog
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
+NUM_COLS = 7
 
 class MapaWindow(QMainWindow):
     def __init__(self):
@@ -40,6 +42,9 @@ class MapaWindow(QMainWindow):
 
         # Referenciar al VideoPlayer abierto
         self.vp = None
+
+        self.ruta_clasificacion = None
+        self.miniaturas = True
 
         # VLC Player
         self.vlc_instance = vlc.Instance()
@@ -77,6 +82,7 @@ class MapaWindow(QMainWindow):
             self.set_mapa_habilitado,
             self.contar_pendientes,
         )
+        self.bridge.enviarListaArchivos.connect(self.recibir_archivos_para_clasificacion)
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 
@@ -97,12 +103,142 @@ class MapaWindow(QMainWindow):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.view)
 
+        # Inicializar tabla de clasificación.
+        self.tableClasificacion = self.ui.tableClasificacion
+        
+        self.tableClasificacion.setIconSize(QSize(150, 150))
+        self.tableClasificacion.setShowGrid(False)
+        self.tableClasificacion.setSelectionMode(QAbstractItemView.NoSelection)
+        self.tableClasificacion.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tableClasificacion.setFocusPolicy(Qt.NoFocus)
+        self.tableClasificacion.setAlternatingRowColors(False)
+        self.tableClasificacion.verticalHeader().setVisible(False)
+        self.tableClasificacion.horizontalHeader().setVisible(False)
+        self.tableClasificacion.setStyleSheet("""
+            QTableWidget {
+                background: white;
+                border: none;
+            }
+            QTableWidget::item {
+                border: none;
+                padding: 5px;
+            }
+            QTableWidget::item:hover {
+                background: #f0f0f0;
+                border-radius: 8px;
+            }
+        """)
+
         self.contar_pendientes()
+
+        # ----------------------------------------
+        # CONECTAR WIDGET A LA VISTA CLASIFICACION
+        # ----------------------------------------       
+        self.btnMiniaturas = self.ui.button_miniaturas_clasificacion
+        self.btnLista = self.ui.button_lista_clasificacion
+
+        self.btnMoverClasificacion = self.ui.button_mover_clasificacion
+        self.btnCopiarClasificacion = self.ui.button_copiar_clasificacion
+        self.btnCompartirClasificacion = self.ui.button_compartir_clasificacion
+        self.btnBorrarClasificacion = self.ui.button_eliminar_clasificacion
+        self.btnSeleccionarClasificacion = self.ui.button_seleccionar_todos_clasificacion
+        self.labelCarpetaOrigen = self.ui.labelFechaListadoClasificacion
+        self.labelArSelClasificacion = self.ui.labelArchivosSeleccionadosClasificacion
+
+        self.tableClasificacion.setColumnCount(NUM_COLS)
+
+        for c in range(NUM_COLS):
+            self.tableClasificacion.setColumnWidth(c, 180)
+
+        # Acceder al stacked.
+        self.stacked = self.ui.stackedWidget
+        indice = int(config_manager.settings.value("General/pantalla"))
+        self.cambiar_vista(indice)
 
         self.signs_controls()
 
     def show(self):
         self.ui.show()
+
+    def cambiar_vista(self, indice):
+        if self.ruta_clasificacion == None and indice != 0: indice = 0
+
+        self.stacked.setCurrentIndex(indice)
+        config_manager.settings.setValue("General/pantalla", str(indice))
+        config_manager.settings.sync()
+        if indice == 1:
+            self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
+            self.cargar_archivos_clasificacion(self.ruta_clasificacion)
+
+    def crear_celda_galeria(self, ruta):
+        widget = QWidget()
+
+        if self.miniaturas:
+            layout = QVBoxLayout(widget)
+        else:
+            layout = QHBoxLayout(widget)
+            
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(4)
+
+        # Checkbox
+        chk = QCheckBox()
+        chk.setStyleSheet("margin-left: 5px;")
+        layout.addWidget(chk, alignment=Qt.AlignRight)
+
+        if self.miniaturas:
+            # Miniatura
+            lbl = QLabel()
+            pix = QPixmap(ruta).scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            lbl.setPixmap(pix)
+            lbl.setAlignment(Qt.AlignCenter)
+            layout.addWidget(lbl)
+
+        # Nombre
+        nombre = QLabel(os.path.basename(ruta))
+        nombre.setAlignment(Qt.AlignCenter)
+        nombre.setStyleSheet("font-size: 11px; color: #444;")
+        layout.addWidget(nombre)
+
+        return widget, chk
+    
+    def recibir_archivos_para_clasificacion(self, ruta):
+        if not ruta:
+            return
+        self.ruta_clasificacion = ruta
+    
+    def cargar_archivos_clasificacion(self, ruta):
+        self.tableClasificacion.clearContents()
+        self.tableClasificacion.setColumnCount(NUM_COLS)
+
+        fila = 0
+        col = 0
+
+        archivos = os.listdir(ruta)
+
+        filas = math.ceil(len(archivos) / NUM_COLS)
+        self.tableClasificacion.setRowCount(filas)
+
+        for archivo in archivos:
+            celda, chk = self.crear_celda_galeria(f'{ruta}\\\{archivo}')
+            self.tableClasificacion.setCellWidget(fila, col, celda)
+
+            col += 1
+            if col == NUM_COLS:
+                col = 0
+                fila += 1
+
+        valor = 120 if self.miniaturas else 50
+
+        for r in range(filas):
+            self.tableClasificacion.setRowHeight(r, valor)
+
+        for c in range(NUM_COLS):
+            self.tableClasificacion.setColumnWidth(c, 180)
+
+    def setMiniatura(self, valor):
+        self.miniaturas = valor
+        self.cargar_archivos_clasificacion(self.ruta_clasificacion)
 
     # ============================================================
     # HABILITAR APLICACIÓN
@@ -233,6 +369,14 @@ class MapaWindow(QMainWindow):
         self.vp.show()
 
     def resizeEvent(self, a0):
+        ancho = self.tableClasificacion.width()
+        col_width = 180
+        num_cols = max(1, ancho // col_width)
+
+        self.tableClasificacion.setColumnCount(num_cols)
+        for c in range(num_cols):
+            self.tableClasificacion.setColumnWidth(c, col_width)
+
         super().resizeEvent(a0)
         self.mpv_container.setGeometry(self.ui.labelVisor.rect())
 
@@ -481,6 +625,10 @@ class MapaWindow(QMainWindow):
 
         self.ui.actionSalir_3.triggered.connect(self.close)
 
+        self.ui.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
+        self.ui.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
+        self.ui.actionVisor_Completo.triggered.connect(lambda: self.cambiar_vista(2))
+
         self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 
         self.ui.button_sel_multiple.marcarTodos.connect(
@@ -493,6 +641,12 @@ class MapaWindow(QMainWindow):
                 False, self.ui.tableWidget, 0, self.ui.tableWidget.rowCount(), False
             )
         )
+
+        # ------------------------------
+        # SEÑALES DE VISTA CLASIFICACION
+        # ------------------------------
+        self.btnMiniaturas.clicked.connect(lambda: self.setMiniatura(True))
+        self.btnLista.clicked.connect(lambda: self.setMiniatura(False))
 
 
 def main():

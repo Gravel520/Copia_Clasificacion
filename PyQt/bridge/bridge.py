@@ -26,6 +26,7 @@ ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str)
     pendientes_actualizados = pyqtSignal(int)
+    enviarListaArchivos = pyqtSignal(str)
 
     def __init__(self, tableWidget, labelFechaListado, labelMapaActualizado, 
                  button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
@@ -49,6 +50,7 @@ class Bridge(QObject):
     @pyqtSlot(str)
     def recibirRuta(self, ruta):
         self.actual_ruta = ruta
+        self.enviarListaArchivos.emit(self.actual_ruta)
         self.actualizar_tabla()
 
     # ============================================================
