@@ -27,10 +27,24 @@ listado de las fotos que hay dentro.
 import folium
 import os
 import time
+import json
+import unicodedata
+from pathlib import Path
 from folium.plugins import Search
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
 from config_paths import get_ruta_mapa_html, get_ruta_principal, geocodificador, ruta_json_unico
+
+CACHE_FILE = Path("cache_geocoding.json")
+GEOCODE, REVERSE = geocodificador()
+
+def cargar_cache():
+    if CACHE_FILE.exists():
+        return json.loads(CACHE_FILE.read_text())
+    return {}
+
+def guardar_cache(cache):
+    CACHE_FILE.write_text(json.dumps(cache, indent=4))
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -45,9 +59,20 @@ def extraer_ciudad(nombre):
 
 def obtener_coordenadas(ciudad, pais):
     nombre_carpeta = f'{ciudad}, {pais}'
+    cache = cargar_cache()
+
+    # Si ya está en cache > devolver directamente
+    if nombre_carpeta in cache:
+        return cache[nombre_carpeta]
+    
+    # Si no esta > geocodificar UNA VEZ
     try:
-        location = geocodificador().geocode(nombre_carpeta, timeout=10)
+        location = GEOCODE(nombre_carpeta)
         if location:
+            coords = (location.latitude, location.longitude)
+            cache[nombre_carpeta] = coords
+            guardar_cache(cache)
+            time.sleep(1) # Evitar bloqueo
             return location.latitude, location.longitude
         
         else:
@@ -82,8 +107,8 @@ def crear_popup_html(ciudad, pais, entradas):
 
 def generar_mapa(features):
     # Inicializamos la localización inicial (Madrid, España).
-    location = geocodificador().geocode('Madrid, España', timeout=10)
-    mapa = folium.Map(location=[location.latitude, location.longitude], zoom_start=10)
+    lat, lon = obtener_coordenadas(normalizar_texto("Madrid"), normalizar_texto("España"))
+    mapa = folium.Map(location=[lat, lon], zoom_start=10)
     
     # Crear capa GeoJSON
     geojson_layer = folium.GeoJson(
@@ -250,6 +275,8 @@ def cargar_datos_desde_historial():
         ruta_directorio = os.path.join(get_ruta_principal(), directorio)
         archivos = os.listdir(ruta_directorio)
         ciudad, pais, fecha = extraer_ciudad(directorio)
+        ciudad = normalizar_texto(ciudad)
+        pais = normalizar_texto(pais)
         agrupadas[(ciudad, pais)].append((fecha, ruta_directorio, len(archivos)))
 
     features = []
@@ -283,5 +310,10 @@ def cargar_datos_desde_historial():
         f for f in features
         if "properties" in f and "nombre" in f["properties"] and "popup" in f["properties"]
     ]
+    if features:
+        generar_mapa(features)
 
-    generar_mapa(features)
+def normalizar_texto(t):
+    t = unicodedata.normalize("NFKD", t)
+    return "".join(c for c in t if not unicodedata.combining(c))
+

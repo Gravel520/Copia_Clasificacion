@@ -42,7 +42,7 @@ class ConfigDialog(QDialog):
             "origen": self.ui.txt_origen.text(),
             "destino": self.ui.txt_destino.text(),
             "unidad": self.ui.cb_unidad.currentText(),
-            "pantalla": self.ui.cb_pantalla.currentText(),
+            "pantalla": self.ui.cb_pantalla.currentIndex(),
             # Estos se mantienen sin cambios aquí.
             "ultimo_intervalo": config_manager.settings.value("Estado/ultimo_intervalo", "0"),
             "mapa_generado": config_manager.settings.value("Estado/mapa_generado", "False"),

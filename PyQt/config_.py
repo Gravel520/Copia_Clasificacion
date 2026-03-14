@@ -14,7 +14,7 @@ RUTA_MAPAS = './PyQt/mapas/'
 ruta = settings.value("Paths/destino").replace("/", "\\\\")
 RUTA_PRINCIPAL = f'{ruta}\\\\BackupFotos'
 
-GEOCODIFICADOR = Nominatim(user_agent="copilot-mapa")
+#GEOCODIFICADOR = Nominatim(user_agent="copilot-mapa")
 
 # Variables para archivo 'copia_clasificador_fotos.py'
 RUTA_MOVIL = '/sdcard/DCIM/Camera'

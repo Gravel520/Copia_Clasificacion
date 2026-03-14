@@ -7,12 +7,14 @@ from PyQt5.QtWidgets import QMessageBox
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
-from config_paths import ruta_adb, get_ruta_principal, get_ruta_temporal, ruta_movil, extensiones_validas
+from config_paths import (ruta_adb, get_ruta_principal, get_ruta_temporal, 
+                          ruta_movil, extensiones_validas, ruta_json_miniaturas,
+                          get_ruta_miniaturas, geocodificador)
 from pathlib import Path
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
-geolocalizador = Nominatim(user_agent='copia_clasificador_fotos')
+geolocalizador, reverse = geocodificador()
 
 #===============================================================#
 # UTILIDADES                                                    #
@@ -47,6 +49,14 @@ def cargar_json_unico(ruta):
 def guardar_json_unico(ruta, data):
     with open(ruta, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
+
+def cargar_json_miniaturas(ruta: Path):
+    if ruta.exists():
+        return json.loads(ruta.read_text())
+    return {"miniaturas": []}
+
+def guardar_json_miniaturas(ruta: Path, data):
+    ruta.write_text(json.dumps(data, indent=4))
 
 def comprobar_hash(hash_nuevo, lista_items):
     # Comprueba si un has ya existe en una lista.
@@ -101,7 +111,7 @@ def obtener_ubicación(gps_info):
         if gps_info['GPSLongitudeRef'] != 'E':
             lon = -lon
 
-        ubicacion = geolocalizador.reverse((lat, lon), language='es')
+        ubicacion = reverse((lat, lon), language='es')
 
         if ubicacion:
             partes = ubicacion.address.split(', ')
@@ -192,6 +202,9 @@ def clasificar_archivo(archivo, ruta_archivos, data):
     else:
         return f"❌ No existe: {archivo}"
 
+    # Función obtener el hash del archivo.
+    hash_archivo = calcular_hash_md5(ruta_local)    
+
     # Obtención de los metadatos del gps y fecha.
     if archivo.lower().endswith(extensiones_validas("imagen")): # Archivos de imagen
         gps_info, fecha = obtener_datos_exif(ruta_local)
@@ -207,8 +220,9 @@ def clasificar_archivo(archivo, ruta_archivos, data):
 
             # El string de la fecha será (año-mes)
             fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
+
         except Exception as e:
-            mensaje += f'💥 ({archivo}) No se puedo clasificar.\n'            
+            return f'💥 ({archivo}) No se puedo clasificar.\n'            
 
     # Crear carpeta destino.
     # Si NO hay ubicación, el nombre de la carpeta será, sólamente, '(Sin_GPS)'.
@@ -219,9 +233,6 @@ def clasificar_archivo(archivo, ruta_archivos, data):
 
     ruta_destino = os.path.join(get_ruta_principal(), nombre_carpeta)
     os.makedirs(ruta_destino, exist_ok=True)
-
-    # Función obtener el hash del archivo.
-    hash_archivo = calcular_hash_md5(ruta_local)
 
     # Creamos las listas separadas.
     clasificados = data["clasificados"]["items"]
@@ -242,6 +253,10 @@ def clasificar_archivo(archivo, ruta_archivos, data):
         # 3️⃣ Está en eliminados
         if not comprobar_hash(hash_archivo, eliminados):
             return f'🟥 ({archivo}) Está eliminado\n'
+
+        if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
+            # Obtenemos o creamos la miniatura del video.
+            obtener_miniaturas(ruta_origen, hash_archivo)
 
         # 4️⃣ No está en ninguna lista ➡ añadir a pendientes
         shutil.copy2(ruta_local, ruta_destino)
@@ -264,6 +279,10 @@ def clasificar_archivo(archivo, ruta_archivos, data):
 
             # Comprobar que NO está en pendientes.
             if comprobar_hash(hash_archivo, pendientes):
+                if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
+                    # Obtenemos o creamos la miniatura del video.
+                    obtener_miniaturas(ruta_origen, hash_archivo)
+
                 # Copiar archivo del directorio temporal al definitivo.
                 shutil.copy2(ruta_local, ruta_destino)
                 # Añadimos los datos al historial.
@@ -284,3 +303,62 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             return f'🟥 ({archivo}) Archivo eliminado\n'
 
     return f'🔁 ({archivo}) Archivo duplicado\n'
+
+'''
+Para extraer las miniaturas de los archivos de video, se utiliza una
+aplicación externa que hay que colocar en el ordenador. ffmpeg, se 
+descarga desde esta página "https://www.gyan.dev/ffmpeg/builds/".
+Hay que seleccionar la descarga "ffmpeg-xxxx-full_build/", extraerlo 
+en c:\ffmpeg\ y colocarlo en el PATH del ordenador.
+'''
+def obtener_miniaturas(ruta_origen, hash):
+    FFMPEG = r"C:\ffmpeg\bin\ffmpeg.exe"
+
+    try:
+        # Crear carpeta miniaturas si no existe
+        ruta_miniaturas = get_ruta_miniaturas()
+        ruta_miniaturas.mkdir(parents=True, exist_ok=True)
+
+        # Rutas de salida
+        ruta_salida = ruta_miniaturas / f"{hash}.jpg"
+        ruta_temp = ruta_miniaturas / f"{hash}_temp.jpg"
+
+        # Extraer fotograma
+        subprocess.run([
+            FFMPEG, "-y",
+            "-i", str(ruta_origen),
+            "-ss", "00:00:05",
+            "-vframes", "1",
+            str(ruta_temp)
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        marca = Path(__file__).parent / "assets" / "marca_video.png"
+
+        # Añadir marca de agua con imagen PNG
+        subprocess.run([
+            FFMPEG, "-y",
+            "-i", str(ruta_temp),
+            "-i", str(marca),
+            "-filter_complex",
+            # Escalar marca al 40% del ancho de la imagen
+            "[1:v]scale=iw*0.4:-1[wm];"
+            # Colocar marca en el centro
+            "[0:v][wm]overlay=(W-w)/2:(H-h)/2",
+            str(ruta_salida)
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Borrar temporal
+        ruta_temp.unlink(missing_ok=True)
+
+        # Registrar en JSON
+        data = cargar_json_miniaturas(ruta_json_miniaturas())
+        if hash not in data["miniaturas"]:
+            data["miniaturas"].append(hash)
+            guardar_json_miniaturas(ruta_json_miniaturas(), data)
+
+        return True
+
+    except Exception as e:
+        print(f"Error generando miniatura: {e}")
+        return False
+    

@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QCompleter)
 from PyQt5.QtCore import Qt, QTimer
 from geopy.geocoders import Nominatim
+from config_paths import geocodificador
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
 import datetime
 
@@ -84,8 +85,8 @@ class DialogoCrearCarpeta(QDialog):
             return
         
         # Validar ubicación con Nominatim
-        geolocator = Nominatim(user_agent="clasificador_fotos")
-        location = geolocator.geocode(f"{ciudad}, {pais}")
+        geolocator, reverse = geocodificador()
+        location = geolocator(f"{ciudad}, {pais}")
 
         if not location:
             QMessageBox.warning(self, "Error", "No se encontró esa ubicación.")

@@ -9,6 +9,7 @@ import math
 os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
 
 import mpv
+from pathlib import Path
 from config_manager import settings
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
@@ -23,11 +24,12 @@ from PyQt5.QtGui import QPixmap
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.video_player_vlc import VideoPlayer
-from config_paths import get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, get_ruta_principal
+from config_paths import (get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
+                          get_ruta_principal, get_ruta_miniaturas, extensiones_validas)
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from bridge.bridge import Bridge
-from copia_clasificador_fotos import obtener_archivos, cargar_json_unico
+from copia_clasificador_fotos import obtener_archivos, cargar_json_unico, calcular_hash_md5
 from componentes.dialogo_configuracion import ConfigDialog
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
@@ -72,6 +74,7 @@ class MapaWindow(QMainWindow):
         self.channel = QWebChannel()
         self.bridge = Bridge(
             self.ui.tableWidget,
+            self.ui.tableClasificacion,
             self.ui.labelFechaListado,
             self.ui.labelMapaActualizado,
             self.ui.button_generar_mapa,
@@ -186,28 +189,47 @@ class MapaWindow(QMainWindow):
         chk.setStyleSheet("margin-left: 5px;")
         layout.addWidget(chk, alignment=Qt.AlignRight)
 
+        # Detectar si es vídeo y buscar miniatura.
+        ruta_mostrar = ruta
+        archivo = ruta.split("\\")[-1]
+
+        if archivo.lower().endswith(extensiones_validas("video")):
+            hash = calcular_hash_md5(ruta)
+            ruta_thumb = self.obtener_ruta_miniatura(hash)
+
+            if ruta_thumb:
+                ruta_mostrar = str(ruta_thumb) # Usar miniatura
+            else:
+                ruta_mostrar = str(Path(__file__).parent / "assets" / "marca_video.png")
+
+        # Miniatura o imagen original.            
         if self.miniaturas:
             # Miniatura
             lbl = QLabel()
-            pix = QPixmap(ruta).scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            pix = QPixmap(ruta_mostrar).scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             lbl.setPixmap(pix)
             lbl.setAlignment(Qt.AlignCenter)
             layout.addWidget(lbl)
 
         # Nombre
-        nombre = QLabel(os.path.basename(ruta))
+        nombre = QLabel(archivo)
         nombre.setAlignment(Qt.AlignCenter)
-        nombre.setStyleSheet("font-size: 11px; color: #444;")
+        nombre.setStyleSheet("font-size: 9px; color: #444;")
         layout.addWidget(nombre)
 
         return widget, chk
+    
+    def obtener_ruta_miniatura(self, hash):
+        ruta = get_ruta_miniaturas() / f"{hash}.jpg"
+        return ruta if ruta.exists() else None
     
     def recibir_archivos_para_clasificacion(self, ruta):
         if not ruta:
             return
         self.ruta_clasificacion = ruta
-    
+
     def cargar_archivos_clasificacion(self, ruta):
+        self.chk_value = False
         self.tableClasificacion.clearContents()
         self.tableClasificacion.setColumnCount(NUM_COLS)
 
@@ -239,6 +261,19 @@ class MapaWindow(QMainWindow):
     def setMiniatura(self, valor):
         self.miniaturas = valor
         self.cargar_archivos_clasificacion(self.ruta_clasificacion)
+
+    def seleccion_multiple_clasificacion(self):
+        nueva_visibilidad = False
+        table = self.tableClasificacion
+        columna = self.tableClasificacion.columnCount()
+        num_filas = self.tableClasificacion.rowCount()
+        self.chk_value = not self.chk_value
+        state = self.chk_value
+
+        for columna in range(columna):
+            self.checked_unchecked_all_checkbox(
+                nueva_visibilidad, table, columna, num_filas, state
+            )
 
     # ============================================================
     # HABILITAR APLICACIÓN
@@ -574,7 +609,7 @@ class MapaWindow(QMainWindow):
             "origen": unidad,
             "destino": unidad,
             "unidad": unidad,
-            "pantalla": "Estandar",
+            "pantalla": "0",
             "ultimo_intervalo": "0-0",
             "mapa_generado": "True",
             "ultima_origen": unidad,
@@ -647,6 +682,7 @@ class MapaWindow(QMainWindow):
         # ------------------------------
         self.btnMiniaturas.clicked.connect(lambda: self.setMiniatura(True))
         self.btnLista.clicked.connect(lambda: self.setMiniatura(False))
+        self.btnSeleccionarClasificacion.clicked.connect(self.seleccion_multiple_clasificacion)
 
 
 def main():

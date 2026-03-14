@@ -3,8 +3,10 @@
 '''
 
 import os
+from pathlib import Path
 from config_manager import settings
 from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
 
 def get_unidad():
     return settings.value("General/unidad", "")
@@ -20,6 +22,10 @@ def get_ruta_temporal():
     unidad = get_unidad()
     return f"{unidad}FotosTemp"
 
+def get_ruta_miniaturas():
+    unidad = Path(get_unidad())
+    return unidad / "Miniaturas"
+
 def get_spinner():
     return "./PyQt/assets/spinner.gif"
 
@@ -30,7 +36,10 @@ def get_ruta_ui():
     return "./PyQt/ui_files/MainWindow.ui"
 
 def geocodificador():
-    return Nominatim(user_agent="copilot-mapa")
+    geolocator = Nominatim(user_agent="copilot-mapa")
+    geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1)
+    reverse = RateLimiter(geolocator.reverse, min_delay_seconds=1)
+    return geocode, reverse
 
 def ruta_movil():
     return '/sdcard/DCIM/Camera'
@@ -40,6 +49,9 @@ def ruta_adb():
 
 def ruta_json_unico():
     return './archivos_unificados.json'
+
+def ruta_json_miniaturas():
+    return Path('./miniaturas.json')
 
 def meses():
     return (
