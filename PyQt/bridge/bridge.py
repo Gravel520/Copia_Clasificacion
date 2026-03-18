@@ -5,23 +5,71 @@
 import os, re
 import shutil
 import config_manager
+import math
+from pathlib import Path
 from PyQt5.QtWidgets import (
-    QHBoxLayout, QWidget, QMessageBox, QFileDialog, QDialog
+    QHBoxLayout, QWidget, QMessageBox, QFileDialog, QDialog,
+    QVBoxLayout, QCheckBox, QLabel
 )
 from PyQt5.QtCore import QObject, pyqtSlot, QUrl, pyqtSignal
 from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 from componentes.controles import Button, CheckBox, SpinnerOverlay, SelectorCarpeta
-from copia_clasificador_fotos import cargar_json_unico, guardar_json_unico, actualizar_stats
+from copia_clasificador_fotos import (
+    cargar_json_unico, guardar_json_unico, actualizar_stats, calcular_hash_md5
+    )
 from mapa_generator import extraer_ciudad
-from config_paths import ruta_json_unico, meses, get_ruta_mapa_html
+from config_paths import (
+    ruta_json_unico, meses, get_ruta_mapa_html, extensiones_validas,
+    get_ruta_miniaturas
+    )
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from componentes.progreso_dialog import ProgresoClasificacion
 from componentes.custom_mensage_box import CustomMessageBox
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
+
+class WidgetGaleria(QWidget):
+    seleccionado = pyqtSignal(object, bool) # (widget, estado)
+
+    def __init__(self, ruta, hash_archivo, miniatura, ruta_thumb=None, parent=None):
+        super().__init__(parent)
+
+        self.ruta = ruta
+        self.hash = hash_archivo
+        self.miniatura = miniatura
+        self.nombre = os.path.basename(ruta)
+
+        layout = QVBoxLayout(self) if miniatura else QHBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(4)
+
+        # === Checkbox ===
+        self.chk = QCheckBox()
+        self.chk.stateChanged.connect(self._emitir_cambio)
+        layout.addWidget(self.chk, alignment=Qt.AlignRight)
+
+        # === Miniatura ===
+        if miniatura:
+            lbl_thumb = QLabel()
+            lbl_thumb.setAlignment(Qt.AlignCenter)
+            pix = QPixmap(ruta_thumb if ruta_thumb else ruta).scaled(
+                100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            lbl_thumb.setPixmap(pix)
+            lbl_thumb.setAlignment(Qt.AlignCenter)
+            layout.addWidget(lbl_thumb)
+
+        # === Nombre ===
+        lbl_nombre = QLabel(self.nombre)
+        lbl_nombre.setAlignment(Qt.AlignCenter)
+        lbl_nombre.setStyleSheet("font-size: 9px; color: #444;")
+        layout.addWidget(lbl_nombre)
+
+    def _emitir_cambio(self, state):
+        self.seleccionado.emit(self, state == Qt.Checked)
 
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str)
@@ -45,6 +93,9 @@ class Bridge(QObject):
         self.set_mapa_habilitado = set_mapa_habilitado_callback
         self.contar_pendientes = contar_pendientes
 
+        # Definir vista de la aplicación 'Principal', 'Clasificación'
+        self.vista_actual = 0
+
     # ============================================================
     # RECEPCIÓN DE RUTA DESDE JS
     # ============================================================
@@ -53,6 +104,9 @@ class Bridge(QObject):
         self.actual_ruta = ruta
         self.enviarListaArchivos.emit(self.actual_ruta)
         self.actualizar_tabla()
+
+    def set_vista(self, indice):
+        self.vista_actual = indice
 
     # ============================================================
     # TABLA
@@ -158,7 +212,7 @@ class Bridge(QObject):
         check.setLayout(layout)
         return check
 
-    def botones_accion(self, row):
+    def botones_accion(self, row, col=None):
         widget = QWidget()
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -173,10 +227,10 @@ class Bridge(QObject):
         borrar_button = Button('delete', '#f08080')
         borrar_button.setToolTip("Borrar")
 
-        copiar_button.clicked.connect(lambda _, r=row: self.copiar(r))
-        mover_button.clicked.connect(lambda _, r=row: self.mover(r))
-        compartir_button.clicked.connect(lambda _, r=row: self.compartir(r))
-        borrar_button.clicked.connect(lambda _, r=row: self.borrar(r))
+        copiar_button.clicked.connect(lambda _, r=row, c=col: self.accion("copiar", r, c))
+        mover_button.clicked.connect(lambda _, r=row, c=col: self.accion("mover", r, c))
+        compartir_button.clicked.connect(lambda _, r=row, c=col: self.accion("compartir", r, c))
+        borrar_button.clicked.connect(lambda _, r=row, c=col: self.accion("borrar", r, c))
 
         layout.addWidget(copiar_button)
         layout.addWidget(mover_button)
@@ -185,6 +239,39 @@ class Bridge(QObject):
 
         widget.setLayout(layout)
         return widget
+    
+    def accion(self, accion, row=None, col=None):
+        # Determinar tabla y selección
+        if self.vista_actual == 0 and row is not None and row >=0:
+            tabla = self.tabla
+        elif self.vista_actual == 1:
+            tabla, row, col = self.obtener_seleccion()
+        else:
+            return
+
+        if tabla is None:
+            QMessageBox.warning(None, "Sin selección", "No hay ningún archivo seleccionado.")
+            return
+        
+        # Diccionario de acciones disponibles
+        acciones = {
+            "copiar": self.copiar,
+            "mover": self.mover,
+            "compartir": self.compartir,
+            "borrar": self.borrar
+        }
+
+        # Obtener la función correspondiente
+        funcion = acciones.get(accion)
+        if funcion is None:
+            print(f"Acción desconocida: {accion}")
+            return
+        
+        # Si hay selección múltiple, ARCHIVOS_SEL ya está lleno
+        if ARCHIVOS_SEL:
+            funcion()
+        else:
+            funcion(row, col)
 
     def obtener_fecha_lugar(self, dato):
         fecha = dato.split(')')[2][1:]
@@ -193,8 +280,8 @@ class Bridge(QObject):
         mes = meses()[int(fecha[5:]) - 1]
         return mes, ano, lugar
 
-    def state_change_ckeckbox(self, row, state_int):
-        ruta_archivo, hash_archivo = self.obtener_archivo(row)
+    def state_change_ckeckbox(self, row, state_int, col=None):
+        ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
         state = Qt.CheckState(state_int)
 
         if state == Qt.Checked:
@@ -246,7 +333,7 @@ class Bridge(QObject):
     # COPIAR / MOVER / BORRAR (SIN CAMBIOS)
     # ============================================================
 
-    def copiar(self, row):
+    def copiar(self, row=None, col=None):
         # Selección de la carpeta de destino. Abre el selector de carpetas.
         # El argumento 'None' es porque no hereda de un QWidget, ya que hereda
         #   de 'Bridge'.
@@ -256,7 +343,7 @@ class Bridge(QObject):
         
         # Obtenemos la lista de los archivos o el archivo a copiar.
         if not ARCHIVOS_SEL:
-            ruta_archivo, hash_archivo = self.obtener_archivo(row)
+            ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
             ARCHIVOS_SEL[ruta_archivo] = hash_archivo
 
         # Extraemos el nombre del archivo con 'basename' para evitar
@@ -280,7 +367,7 @@ class Bridge(QObject):
         else:
             QMessageBox.information(None, "Copia completada", "Todos los archivos copiados\ncorrectamente.")
 
-    def mover(self, row):
+    def mover(self, row=None, col=None):
         carpeta_destino = ''
         dlg = SelectorCarpeta(self.actual_ruta, None)
 
@@ -297,7 +384,7 @@ class Bridge(QObject):
 
         # Obtenemos la lista de los archivos o el archivo a mover.
         if not ARCHIVOS_SEL:            
-            ruta_archivo, hash_archivo = self.obtener_archivo(row)
+            ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
             ARCHIVOS_SEL[ruta_archivo] = hash_archivo
 
         # Extraemos el nombre del archivo con 'basename' para evitar
@@ -383,6 +470,7 @@ class Bridge(QObject):
             config_manager.settings.sync()            
 
             self.actualizar_tabla()
+            self.cargar_galeria(self.actual_ruta, True)
             return
 
         # Generar el mapa
@@ -397,8 +485,13 @@ class Bridge(QObject):
         self.worker.start()
 
         self.actualizar_tabla()
+        self.cargar_galeria(self.actual_ruta, True)
 
-    def borrar(self, row):
+    def compartir(self, row=None, col=None):
+        print("Método pendiente de realización. No se puede compartir.")
+        return
+
+    def borrar(self, row=None, col=None):
         mensaje = 'Archivo(s):\n'
 
         # Cargar JSON unificado.
@@ -409,7 +502,7 @@ class Bridge(QObject):
 
         # Obtenemos la lista de los archivos o el archivo a borrar.
         if not ARCHIVOS_SEL:
-            ruta_archivo, hash_archivo = self.obtener_archivo(row)
+            ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
             ARCHIVOS_SEL[ruta_archivo] = hash_archivo
 
         # Construir mensaje de confirmación.
@@ -474,6 +567,7 @@ class Bridge(QObject):
             config_manager.settings.sync()
 
             self.actualizar_tabla()
+            self.cargar_galeria(self.actual_ruta, True)
             return
 
         # Generar el mapa
@@ -488,6 +582,19 @@ class Bridge(QObject):
         self.worker.start()
 
         self.actualizar_tabla()
+        self.cargar_galeria(self.actual_ruta, True)
+
+    def obtener_seleccion(self):
+        # == VISTA CLASIFICACIÓN (galería) ===
+        for row in range(self.tablaClasificacion.rowCount()):
+            for col in range(self.tablaClasificacion.columnCount()):
+                widget = self.tablaClasificacion.cellWidget(row, col)
+                if widget and widget.chk.isChecked():
+                    return self.tablaClasificacion, row, col
+        return None, None, None
+                
+        # 3. Nada seleccionado.
+        return None, None, None
 
     def limpiar_tabla(self, origen):
         os.rmdir(origen)
@@ -496,7 +603,7 @@ class Bridge(QObject):
         self.labelFoto.setPixmap(QPixmap())
         self.actual_ruta = None
 
-    def origen_de_seleccion(self, row):
+    def origen_de_seleccion(self, row, col=None):
         '''
         Devuelve la carpeta origen a partir de:
         - la colección global ARCHIVOS_SEL si ya tiene elementos
@@ -507,16 +614,95 @@ class Bridge(QObject):
             primer_archivo = next(iter(ARCHIVOS_SEL.keys()))
             return os.path.dirname(os.path.abspath(primer_archivo))
         else:
-            ruta_archivo, _ = self.obtener_archivo(row)
-            return os.path.dirname(os.path.abspath(ruta_archivo))        
+            ruta_archivo, _ = self.obtener_archivo(row, col)
+            return os.path.dirname(os.path.abspath(ruta_archivo))
+        
+    # ============================================================
+    # VISTA CLASIFICACIÓN
+    # ============================================================
+    def cargar_galeria(self, ruta, miniatura):
+        ARCHIVOS_SEL.clear()
+
+        archivos = os.listdir(ruta)
+        NUM_COLS = 7
+
+        self.tablaClasificacion.clearContents()
+        self.tablaClasificacion.setColumnCount(NUM_COLS)
+
+        filas = math.ceil(len(archivos) / NUM_COLS)
+        self.tablaClasificacion.setRowCount(filas)
+
+        fila = 0
+        col = 0
+
+        for archivo in archivos:
+            ruta_completa = os.path.join(ruta, archivo)
+
+            # Obtener hash
+            hash_archivo = calcular_hash_md5(ruta_completa)
+
+            # Miniatura si es video
+            ruta_thumb = None
+            if archivo.lower().endswith(extensiones_validas("video")):
+                ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
+                if ruta_thumb:
+                    ruta_thumb = str(ruta_thumb) # Usar miniatura
+                else:
+                    ruta_thumb = str("C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/marca_video.png")
+
+            widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, ruta_thumb)
+            widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+
+            self.tablaClasificacion.setCellWidget(fila, col, widget)
+
+            col += 1
+            if col == NUM_COLS:
+                col = 0
+                fila += 1
+
+        # Ajustes visuales
+        valor = 120 if miniatura else 50
+
+        for r in range(filas):
+            self.tablaClasificacion.setRowHeight(r, valor)
+
+        for c in range(NUM_COLS):
+            self.tablaClasificacion.setColumnWidth(c, 180)
+
+    def obtener_ruta_miniatura(self, hash):
+        ruta = get_ruta_miniaturas() / f"{hash}.jpg"
+        return ruta if ruta.exists() else None
+    
+    def _galeria_checkbox_cambiado(self, widget, checked):
+        if checked:
+            ARCHIVOS_SEL[widget.ruta] = widget.hash
+        else:
+            ARCHIVOS_SEL.pop(widget.ruta, None)
 
     # ============================================================
     # UTILIDADES
     # ============================================================
-    def obtener_archivo(self, row_index):
-        ruta = self.tabla.model().data(self.tabla.model().index(row_index, 2))
-        hash_val = self.tabla.model().data(self.tabla.model().index(row_index, 4))
-        return ruta, hash_val
+    def obtener_archivo(self, row_index, col=None):
+        '''
+        Devuelve (ruta, hash) tanto si la tabla es clásica como si es una
+        galeria.
+        '''
+
+        # 1. Si es tabla clásica (columnas reales)
+        if self.vista_actual == 0:
+            ruta = self.tabla.model().data(self.tabla.model().index(row_index, 2))
+            hash_val = self.tabla.model().data(self.tabla.model().index(row_index, 4))
+            return ruta, hash_val
+        
+        # 2. Si es galería (widgets en celdas)
+        if col is None:
+            raise ValueError("En modo galería debes pasar row y col")
+        
+        widget = self.tablaClasificacion.cellWidget(row_index, col)
+        if widget is None:
+            return None, None
+        
+        return widget.ruta, widget.hash
 
     def directorio_vacio(self, path):
         with os.scandir(path) as it:

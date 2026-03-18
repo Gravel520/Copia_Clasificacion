@@ -5,16 +5,13 @@
 import sys, os
 import config_manager
 import vlc
-import math
 os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
 
 import mpv
-from pathlib import Path
 from config_manager import settings
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
-    QDialog, QWidget, QTableWidgetItem, QAbstractItemView, QCheckBox,
-    QLabel, QHBoxLayout
+    QDialog, QWidget, QTableWidgetItem, QAbstractItemView
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
@@ -165,102 +162,25 @@ class MapaWindow(QMainWindow):
 
     def cambiar_vista(self, indice):
         if self.ruta_clasificacion == None and indice != 0: indice = 0
+        self.chk_value = False
 
         self.stacked.setCurrentIndex(indice)
+        self.bridge.set_vista(indice)
+        
         config_manager.settings.setValue("General/pantalla", str(indice))
         config_manager.settings.sync()
         if indice == 1:
             self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
-            self.cargar_archivos_clasificacion(self.ruta_clasificacion)
+            self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas)
 
-    def crear_celda_galeria(self, ruta):
-        widget = QWidget()
-
-        if self.miniaturas:
-            layout = QVBoxLayout(widget)
-        else:
-            layout = QHBoxLayout(widget)
-            
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(4)
-
-        # Checkbox
-        chk = QCheckBox()
-        chk.setStyleSheet("margin-left: 5px;")
-        layout.addWidget(chk, alignment=Qt.AlignRight)
-
-        # Detectar si es vídeo y buscar miniatura.
-        ruta_mostrar = ruta
-        archivo = ruta.split("\\")[-1]
-
-        if archivo.lower().endswith(extensiones_validas("video")):
-            hash = calcular_hash_md5(ruta)
-            ruta_thumb = self.obtener_ruta_miniatura(hash)
-
-            if ruta_thumb:
-                ruta_mostrar = str(ruta_thumb) # Usar miniatura
-            else:
-                ruta_mostrar = str(Path(__file__).parent / "assets" / "marca_video.png")
-
-        # Miniatura o imagen original.            
-        if self.miniaturas:
-            # Miniatura
-            lbl = QLabel()
-            pix = QPixmap(ruta_mostrar).scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            lbl.setPixmap(pix)
-            lbl.setAlignment(Qt.AlignCenter)
-            layout.addWidget(lbl)
-
-        # Nombre
-        nombre = QLabel(archivo)
-        nombre.setAlignment(Qt.AlignCenter)
-        nombre.setStyleSheet("font-size: 9px; color: #444;")
-        layout.addWidget(nombre)
-
-        return widget, chk
-    
-    def obtener_ruta_miniatura(self, hash):
-        ruta = get_ruta_miniaturas() / f"{hash}.jpg"
-        return ruta if ruta.exists() else None
-    
     def recibir_archivos_para_clasificacion(self, ruta):
         if not ruta:
             return
         self.ruta_clasificacion = ruta
 
-    def cargar_archivos_clasificacion(self, ruta):
-        self.chk_value = False
-        self.tableClasificacion.clearContents()
-        self.tableClasificacion.setColumnCount(NUM_COLS)
-
-        fila = 0
-        col = 0
-
-        archivos = os.listdir(ruta)
-
-        filas = math.ceil(len(archivos) / NUM_COLS)
-        self.tableClasificacion.setRowCount(filas)
-
-        for archivo in archivos:
-            celda, chk = self.crear_celda_galeria(f'{ruta}\\\{archivo}')
-            self.tableClasificacion.setCellWidget(fila, col, celda)
-
-            col += 1
-            if col == NUM_COLS:
-                col = 0
-                fila += 1
-
-        valor = 120 if self.miniaturas else 50
-
-        for r in range(filas):
-            self.tableClasificacion.setRowHeight(r, valor)
-
-        for c in range(NUM_COLS):
-            self.tableClasificacion.setColumnWidth(c, 180)
-
     def setMiniatura(self, valor):
         self.miniaturas = valor
-        self.cargar_archivos_clasificacion(self.ruta_clasificacion)
+        self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas)
 
     def seleccion_multiple_clasificacion(self):
         nueva_visibilidad = False
@@ -385,8 +305,16 @@ class MapaWindow(QMainWindow):
         self.mpv_player.play(ruta_archivo)
 
     def ver_video(self, row, column):
-        ruta_archivo = self.ui.tableWidget.item(row, 2).text()
-        datos = self.ui.labelFechaListado.text()
+        if self.bridge.vista_actual == 0: # Tabla Principal
+            ruta_archivo = self.ui.tableWidget.item(row, 2).text()
+            datos = self.ui.labelFechaListado.text()
+
+        elif self.bridge.vista_actual == 1: # Tabla Clasificación
+            widget = self.tableClasificacion.cellWidget(row, column)
+            if widget is None:
+                return
+            ruta_archivo = widget.ruta
+            datos = self.labelCarpetaOrigen.text()
         
         # Pausar MPV
         try:
@@ -682,6 +610,14 @@ class MapaWindow(QMainWindow):
         # ------------------------------
         self.btnMiniaturas.clicked.connect(lambda: self.setMiniatura(True))
         self.btnLista.clicked.connect(lambda: self.setMiniatura(False))
+
+        self.tableClasificacion.cellDoubleClicked.connect(self.ver_video)
+
+        self.btnCopiarClasificacion.clicked.connect(lambda: self.bridge.accion("copiar", None, None))
+        self.btnMoverClasificacion.clicked.connect(lambda: self.bridge.accion("mover", None, None))
+        self.btnBorrarClasificacion.clicked.connect(lambda: self.bridge.accion("borrar", None, None))
+        self.btnCompartirClasificacion.clicked.connect(lambda: self.bridge.accion("compartir", None, None))
+        
         self.btnSeleccionarClasificacion.clicked.connect(self.seleccion_multiple_clasificacion)
 
 
