@@ -73,6 +73,7 @@ class MapaWindow(QMainWindow):
             self.ui.tableWidget,
             self.ui.tableClasificacion,
             self.ui.labelFechaListado,
+            self.ui.labelArchivosSeleccionadosClasificacion,
             self.ui.labelMapaActualizado,
             self.ui.button_generar_mapa,
             self.ui.button_sel_multiple,
@@ -169,7 +170,14 @@ class MapaWindow(QMainWindow):
         
         config_manager.settings.setValue("General/pantalla", str(indice))
         config_manager.settings.sync()
-        if indice == 1:
+
+        if indice == 0:
+            mapa_ok = settings.value("Estado/mapa_generado") == "True"
+            self.set_mapa_habilitado(mapa_ok)
+
+        elif indice == 1:
+            self.bridge.numArcSel = 0
+            self.bridge.labelArcSelCla.setText(f'{self.bridge.numArcSel} archivo/s seleccionados.')
             self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
             self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas)
 
@@ -179,6 +187,8 @@ class MapaWindow(QMainWindow):
         self.ruta_clasificacion = ruta
 
     def setMiniatura(self, valor):
+        self.bridge.numArcSel = 0
+        self.bridge.labelArcSelCla.setText(f'{self.bridge.numArcSel} archivo/s seleccionados.')        
         self.miniaturas = valor
         self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas)
 

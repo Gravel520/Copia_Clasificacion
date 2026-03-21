@@ -24,14 +24,14 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="pagePrincipal">
        <widget class="QWidget" name="QWidget_foto" native="true">
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>1</y>
+          <y>21</y>
           <width>980</width>
           <height>631</height>
          </rect>
@@ -45,7 +45,7 @@ border-radius: 0px;</string>
         <property name="geometry">
          <rect>
           <x>990</x>
-          <y>311</y>
+          <y>331</y>
           <width>350</width>
           <height>321</height>
          </rect>
@@ -72,7 +72,7 @@ border-radius: 0px;</string>
         <property name="geometry">
          <rect>
           <x>1040</x>
-          <y>-25</y>
+          <y>-1</y>
           <width>101</width>
           <height>20</height>
          </rect>
@@ -85,7 +85,7 @@ border-radius: 0px;</string>
         <property name="geometry">
          <rect>
           <x>990</x>
-          <y>1</y>
+          <y>21</y>
           <width>351</width>
           <height>300</height>
          </rect>
@@ -182,7 +182,7 @@ border-radius: 0px;</string>
         <property name="geometry">
          <rect>
           <x>1210</x>
-          <y>-30</y>
+          <y>-10</y>
           <width>131</width>
           <height>31</height>
          </rect>
@@ -480,7 +480,7 @@ border-radius: 0px;</string>
          <rect>
           <x>530</x>
           <y>10</y>
-          <width>151</width>
+          <width>291</width>
           <height>16</height>
          </rect>
         </property>

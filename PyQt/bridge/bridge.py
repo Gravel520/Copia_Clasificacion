@@ -76,13 +76,15 @@ class Bridge(QObject):
     pendientes_actualizados = pyqtSignal(int)
     enviarListaArchivos = pyqtSignal(str)
 
-    def __init__(self, tableWidget, tableClasificacion, labelFechaListado, labelMapaActualizado, 
-                 button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
+    def __init__(self, tableWidget, tableClasificacion, labelFechaListado, labelArchivosSeleccionadosClasificacion,
+                 labelMapaActualizado, button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
                  set_mapa_habilitado_callback, contar_pendientes):
         super().__init__()
         self.tabla = tableWidget
         self.tablaClasificacion = tableClasificacion
         self.label = labelFechaListado
+        self.labelArcSelCla = labelArchivosSeleccionadosClasificacion
+        self.numArcSel = 0 # Número de Archivos Seleccionados
         self.labelStatus = labelMapaActualizado
         self.boton_generar_mapa = button_generar_mapa
         self.boton = button_sel_multiple
@@ -675,9 +677,13 @@ class Bridge(QObject):
     
     def _galeria_checkbox_cambiado(self, widget, checked):
         if checked:
+            self.numArcSel +=1            
             ARCHIVOS_SEL[widget.ruta] = widget.hash
         else:
+            self.numArcSel -=1            
             ARCHIVOS_SEL.pop(widget.ruta, None)
+
+        self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
     # ============================================================
     # UTILIDADES
