@@ -48,10 +48,13 @@ def ruta_adb():
     return 'C:\\adb\\platform-tools\\adb'
 
 def ruta_json_unico():
-    return './archivos_unificados.json'
+    return './PyQt/archivos_json/archivos_unificados.json'
 
 def ruta_json_miniaturas():
-    return Path('./miniaturas.json')
+    return Path('./PyQt/archivos_json/miniaturas.json')
+
+def ruta_cache_json_geocoding():
+    return Path("./PyQt/archivos_json/cache_geocoding.json")
 
 def meses():
     return (

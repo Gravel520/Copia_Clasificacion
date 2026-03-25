@@ -176,21 +176,23 @@ class MapaWindow(QMainWindow):
             self.set_mapa_habilitado(mapa_ok)
 
         elif indice == 1:
+            self.ui.actionDesde_Movil.setEnabled(False)
+            self.ui.actionClasificar.setEnabled(False)
             self.bridge.numArcSel = 0
             self.bridge.labelArcSelCla.setText(f'{self.bridge.numArcSel} archivo/s seleccionados.')
             self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
-            self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas)
+            self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
 
     def recibir_archivos_para_clasificacion(self, ruta):
         if not ruta:
             return
         self.ruta_clasificacion = ruta
 
-    def setMiniatura(self, valor):
+    def setMiniatura(self, valor, tamano=100):
         self.bridge.numArcSel = 0
         self.bridge.labelArcSelCla.setText(f'{self.bridge.numArcSel} archivo/s seleccionados.')        
         self.miniaturas = valor
-        self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas)
+        self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, tamano)
 
     def seleccion_multiple_clasificacion(self):
         nueva_visibilidad = False
@@ -619,7 +621,7 @@ class MapaWindow(QMainWindow):
         # SEÑALES DE VISTA CLASIFICACION
         # ------------------------------
         self.btnMiniaturas.clicked.connect(lambda: self.setMiniatura(True))
-        self.btnLista.clicked.connect(lambda: self.setMiniatura(False))
+        self.btnLista.clicked.connect(lambda: self.setMiniatura(False, 180))
 
         self.tableClasificacion.cellDoubleClicked.connect(self.ver_video)
 
@@ -629,6 +631,8 @@ class MapaWindow(QMainWindow):
         self.btnCompartirClasificacion.clicked.connect(lambda: self.bridge.accion("compartir", None, None))
         
         self.btnSeleccionarClasificacion.clicked.connect(self.seleccion_multiple_clasificacion)
+
+        self.btnMiniaturas.min_grande.connect(lambda: self.setMiniatura(True, 180))
 
 
 def main():

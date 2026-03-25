@@ -239,7 +239,7 @@ border-radius: 0px;</string>
          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
         </property>
        </widget>
-       <widget class="QPushButton" name="button_miniaturas_clasificacion">
+       <widget class="Button_Min" name="button_miniaturas_clasificacion">
         <property name="geometry">
          <rect>
           <x>10</x>
@@ -637,6 +637,11 @@ border-radius: 0px;</string>
  <customwidgets>
   <customwidget>
    <class>Button_Sel</class>
+   <extends>QPushButton</extends>
+   <header>componentes.controles</header>
+  </customwidget>
+  <customwidget>
+   <class>Button_Min</class>
    <extends>QPushButton</extends>
    <header>componentes.controles</header>
   </customwidget>

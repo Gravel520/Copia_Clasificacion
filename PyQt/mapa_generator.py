@@ -33,9 +33,12 @@ from pathlib import Path
 from folium.plugins import Search
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
-from config_paths import get_ruta_mapa_html, get_ruta_principal, geocodificador, ruta_json_unico
+from config_paths import (
+    get_ruta_mapa_html, get_ruta_principal, geocodificador, ruta_json_unico,
+    ruta_cache_json_geocoding
+    )
 
-CACHE_FILE = Path("cache_geocoding.json")
+CACHE_FILE = ruta_cache_json_geocoding()
 GEOCODE, REVERSE = geocodificador()
 
 def cargar_cache():

@@ -105,6 +105,7 @@ def obtener_ubicación(gps_info):
     try:
         lat = convertir_a_grados(gps_info['GPSLatitude'])
         lon = convertir_a_grados(gps_info['GPSLongitude'])
+        
         if gps_info['GPSLatitudeRef'] != 'N':
             lat = -lat
 

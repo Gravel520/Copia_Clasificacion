@@ -43,6 +43,13 @@ class ProgresoClasificacion(QDialog):
         if actual > 0:
             estimado_total = transcurrido / actual * self.barra.maximum()
             restante = estimado_total - transcurrido
+
+            # Convertir a horas, minutos y segundos
+            horas = int(restante // 3600)
+            minutos = int(restante % 3600 // 60)
+            segundos = int(restante % 60)
+
+            cronometro = f'{horas:02d}:{minutos:02d}:{segundos:02d}'
             self.label_tiempo.setText(
-                f"Tiempo estimado restante: {int(restante)} s"
+                f"Tiempo estimado restante: {cronometro}"
             )

@@ -63,6 +63,28 @@ class Button_Sel(QPushButton):
         else:
             super().mousePressEvent(e)
 
+class Button_Min(QPushButton):
+    min_grande = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.RightButton:
+            menu = QMenu(self)
+
+            # Crear acciones con iconos
+            grande = QAction(QIcon(f'{assets}grande.png'), "Vista grande")
+
+            menu.addAction(grande)
+
+            action = menu.exec_(e.globalPos())
+            if action == grande:
+                self.min_grande.emit()
+
+        else:
+            super().mousePressEvent(e)
+    
 class CheckBox(QCheckBox):
     def __init__(self):
         super().__init__()

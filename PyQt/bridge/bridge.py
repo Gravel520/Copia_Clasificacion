@@ -34,7 +34,7 @@ ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 class WidgetGaleria(QWidget):
     seleccionado = pyqtSignal(object, bool) # (widget, estado)
 
-    def __init__(self, ruta, hash_archivo, miniatura, ruta_thumb=None, parent=None):
+    def __init__(self, ruta, hash_archivo, miniatura, tamano, ruta_thumb=None, parent=None):
         super().__init__(parent)
 
         self.ruta = ruta
@@ -56,7 +56,7 @@ class WidgetGaleria(QWidget):
             lbl_thumb = QLabel()
             lbl_thumb.setAlignment(Qt.AlignCenter)
             pix = QPixmap(ruta_thumb if ruta_thumb else ruta).scaled(
-                100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                tamano, tamano, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
             lbl_thumb.setPixmap(pix)
             lbl_thumb.setAlignment(Qt.AlignCenter)
@@ -106,6 +106,7 @@ class Bridge(QObject):
         self.actual_ruta = ruta
         self.enviarListaArchivos.emit(self.actual_ruta)
         self.actualizar_tabla()
+        self.cargar_galeria(self.actual_ruta, True)
 
     def set_vista(self, indice):
         self.vista_actual = indice
@@ -622,54 +623,58 @@ class Bridge(QObject):
     # ============================================================
     # VISTA CLASIFICACIÓN
     # ============================================================
-    def cargar_galeria(self, ruta, miniatura):
-        ARCHIVOS_SEL.clear()
+    def cargar_galeria(self, ruta, miniatura, tamano=100):
+        try:
+            ARCHIVOS_SEL.clear()
 
-        archivos = os.listdir(ruta)
-        NUM_COLS = 7
+            archivos = os.listdir(ruta)
+            NUM_COLS = 7 if tamano == 180 else 13
 
-        self.tablaClasificacion.clearContents()
-        self.tablaClasificacion.setColumnCount(NUM_COLS)
+            self.tablaClasificacion.clearContents()
+            self.tablaClasificacion.setColumnCount(NUM_COLS)
 
-        filas = math.ceil(len(archivos) / NUM_COLS)
-        self.tablaClasificacion.setRowCount(filas)
+            filas = math.ceil(len(archivos) / NUM_COLS)
+            self.tablaClasificacion.setRowCount(filas)
 
-        fila = 0
-        col = 0
+            fila = 0
+            col = 0
 
-        for archivo in archivos:
-            ruta_completa = os.path.join(ruta, archivo)
+            for archivo in archivos:
+                ruta_completa = os.path.join(ruta, archivo)
 
-            # Obtener hash
-            hash_archivo = calcular_hash_md5(ruta_completa)
+                # Obtener hash
+                hash_archivo = calcular_hash_md5(ruta_completa)
 
-            # Miniatura si es video
-            ruta_thumb = None
-            if archivo.lower().endswith(extensiones_validas("video")):
-                ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
-                if ruta_thumb:
-                    ruta_thumb = str(ruta_thumb) # Usar miniatura
-                else:
-                    ruta_thumb = str("C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/marca_video.png")
+                # Miniatura si es video
+                ruta_thumb = None
+                if archivo.lower().endswith(extensiones_validas("video")):
+                    ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
+                    if ruta_thumb:
+                        ruta_thumb = str(ruta_thumb) # Usar miniatura
+                    else:
+                        ruta_thumb = str("C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/marca_video.png")
 
-            widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, ruta_thumb)
-            widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+                widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
+                widget.seleccionado.connect(self._galeria_checkbox_cambiado)
 
-            self.tablaClasificacion.setCellWidget(fila, col, widget)
+                self.tablaClasificacion.setCellWidget(fila, col, widget)
 
-            col += 1
-            if col == NUM_COLS:
-                col = 0
-                fila += 1
+                col += 1
+                if col == NUM_COLS:
+                    col = 0
+                    fila += 1
 
-        # Ajustes visuales
-        valor = 120 if miniatura else 50
+            # Ajustes visuales
+            valor = tamano if miniatura else 50
 
-        for r in range(filas):
-            self.tablaClasificacion.setRowHeight(r, valor)
+            for r in range(filas):
+                self.tablaClasificacion.setRowHeight(r, valor)
 
-        for c in range(NUM_COLS):
-            self.tablaClasificacion.setColumnWidth(c, 180)
+            for c in range(NUM_COLS):
+                self.tablaClasificacion.setColumnWidth(c, tamano)
+
+        except Exception as e:
+            pass
 
     def obtener_ruta_miniatura(self, hash):
         ruta = get_ruta_miniaturas() / f"{hash}.jpg"
