@@ -11,7 +11,7 @@ import os
 from PyQt5.QtWidgets import (QWidget, QPushButton, QCheckBox, QMenu,
                              QAction, QDialog, QVBoxLayout, QHBoxLayout, 
                              QTextEdit, QLabel, QApplication, QListWidget)
-from PyQt5.QtGui import QIcon, QCursor, QMovie
+from PyQt5.QtGui import QIcon, QCursor, QMovie, QColor
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtCore import Qt, QRect
 from config_paths import get_ruta_principal, get_spinner
@@ -278,3 +278,35 @@ class SelectorCarpeta(QDialog):
         if items:
             self.list.setCurrentItem(items[0])
             
+class HeaderWidget(QWidget):
+    toggled = pyqtSignal(str, bool) # Fecha y estado
+
+    def __init__(self, fecha):
+        super().__init__()
+        self.fecha = fecha
+
+        self.checkbox = QCheckBox()
+        self.label = QLabel(fecha)
+
+        layout = QHBoxLayout()
+        layout.addWidget(self.checkbox)
+        layout.addWidget(self.label)
+        layout.setContentsMargins(8, 2, 8, 2)
+        layout.setStretch(0, 0) # El check ocupa su tamaño mínimo
+        layout.setStretch(1, 1) # La etiqueta ocupa el resto del tamaño
+        self.setLayout(layout)
+
+        # Color de fondo visible
+        self.setStyleSheet("HeaderWidget { background-color: #D0E4FF; }"
+                           "QLabel { background-color: #D0E4FF; }"
+                           "QCheckBox { background-color: #D0E4FF; }")
+        '''
+        self.setAutoFillBackground(True)
+        pal = self.palette()
+        pal.setColor(self.backgroundRole(), QColor("#D0E4FF"))
+        self.setPalette(pal)
+        '''
+        self.checkbox.toggled.connect(self._emitir)
+
+    def _emitir(self, estado):
+        self.toggled.emit(self.fecha, estado)

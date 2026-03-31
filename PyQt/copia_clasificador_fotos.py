@@ -3,14 +3,17 @@ import os # Gestiona rutas y archivos.
 import shutil # Copia y elimina archivos.
 import hashlib # Calcula hashes MD5 para detectar duplicados o eliminados.
 import json # Carga y guarda datos en formato JSON.
-from PyQt5.QtWidgets import QMessageBox
+import unicodedata
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
-from geopy.geocoders import Nominatim # Convierte coordenadas GPS en nombres de lugares.
+from geopy.distance import geodesic # Calcula la distancia.
 from config_paths import (ruta_adb, get_ruta_principal, get_ruta_temporal, 
                           ruta_movil, extensiones_validas, ruta_json_miniaturas,
                           get_ruta_miniaturas, geocodificador)
 from pathlib import Path
+from utils.utils_cache import (
+    cargar_cache, guardar_cache, normalizar_texto
+)
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
@@ -105,23 +108,43 @@ def obtener_ubicación(gps_info):
     try:
         lat = convertir_a_grados(gps_info['GPSLatitude'])
         lon = convertir_a_grados(gps_info['GPSLongitude'])
-        
+
         if gps_info['GPSLatitudeRef'] != 'N':
             lat = -lat
 
         if gps_info['GPSLongitudeRef'] != 'E':
             lon = -lon
 
-        ubicacion = reverse((lat, lon), language='es')
+        # Reverse geocoding
+        ubicacion = reverse((lat, lon), language='es', exactly_one=True)
+        if not ubicacion:
+            return "Sin_GPS"
 
-        if ubicacion:
-            partes = ubicacion.address.split(', ')
-            ciudad = f'({partes[-4]})' # El nombre de la ciudad tendrá el será (ciudad)
-            pais = f'({partes[-1]})' # El nombre del país será (pais)
-            return f'{ciudad}{pais}', lat, lon
+        datos = ubicacion.raw.get("address", {})
+        ciudad = datos.get("city") or datos.get("town") or datos.get("village")
+        pais = datos.get("country_code", "").upper()
+
+        # Validación: si el pais no es ES, FR o PT > comprobar
+        paises_validos = ["ES", "FR", "PT"]
+
+        if pais not in paises_validos:
+            # Intentamos encontrar la ciudad en los países válidos
+            for p in paises_validos:
+                consulta = f"{ciudad}, {p}"
+                posible = geolocalizador.geocode(consulta, language="es")
+
+                if posible:
+                    dist = geodesic((lat, lon), (posible.latitude, posible.longitude)).km
+                    if dist < 100: # Distancia razonable
+                        return f'({ciudad}({p}))', lat, lon
+            # Si ninguna coincide > GPS incorrecto
+            return "Sin_GPS"
         
-    except:
-        pass
+        # Si el país es válido, devolvemos directamente
+        return f'({normalizar_texto(ciudad)})({normalizar_texto(datos.get("country"))})', lat, lon
+        
+    except Exception as e:
+        print("Error GPS: ", e)
 
     return 'Sin_GPS'
 
@@ -211,8 +234,28 @@ def clasificar_archivo(archivo, ruta_archivos, data):
         gps_info, fecha = obtener_datos_exif(ruta_local)
         ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
+        # Actualizar cache geocoding.
+        if ubicacion != '(Sin_GPS)':
+            clave_norm = normalizar_texto(ubicacion)
+            cache_geocoding = cargar_cache()
+
+            # Solo guardar si no existe
+            if clave_norm not in cache_geocoding:
+                cache_geocoding[clave_norm] = [float(lat), float(lon)]
+                guardar_cache(cache_geocoding)
+
         # El string de la fecha será (año-mes)
         fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
+
+        if not fecha: # Para agrupar por fecha del archivo
+            timestamp = os.path.getmtime(ruta_origen)
+            fecha_completa = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+            hora = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
+        else:
+            # String de la fecha, hora y timestamp para clasificación por lotes
+            fecha_completa = fecha.strftime('%Y-%m-%d') if fecha else '0000-00-00'
+            hora = fecha.strftime('%H:%M:%S') if fecha else '00:00:00'
+            timestamp = int(fecha.timestamp()) if fecha else 0
 
     else: # Archivos de video
         try:
@@ -267,6 +310,9 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             'ruta': os.path.join(ruta_destino, archivo),
             'ubicacion': '(Sin_GPS)',
             'fecha': fecha_str, # Grabamos la fecha para usarlo como ToolTip.
+            'fecha_completa': fecha_completa, # YYYY-MM-DD
+            'hora': hora, # HH:MM:SS
+            'timestamp': timestamp,
             'latitud': 0,
             'longitud': 0
         })
@@ -363,3 +409,6 @@ def obtener_miniaturas(ruta_origen, hash):
         print(f"Error generando miniatura: {e}")
         return False
     
+def normalizar_texto(t):
+    t = unicodedata.normalize("NFKD", t)
+    return "".join(c for c in t if not unicodedata.combining(c))

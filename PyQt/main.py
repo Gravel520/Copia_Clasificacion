@@ -4,6 +4,7 @@
 
 import sys, os
 import config_manager
+os.environ['VLC_VERBOSE'] = '-1'
 import vlc
 os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
 

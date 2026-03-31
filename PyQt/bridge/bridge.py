@@ -13,9 +13,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QObject, pyqtSlot, QUrl, pyqtSignal
 from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QColor
 from PyQt5.QtCore import Qt
-from componentes.controles import Button, CheckBox, SpinnerOverlay, SelectorCarpeta
+from componentes.controles import (
+    Button, CheckBox, SpinnerOverlay, SelectorCarpeta, HeaderWidget
+    )
 from copia_clasificador_fotos import (
     cargar_json_unico, guardar_json_unico, actualizar_stats, calcular_hash_md5
     )
@@ -71,6 +73,16 @@ class WidgetGaleria(QWidget):
     def _emitir_cambio(self, state):
         self.seleccionado.emit(self, state == Qt.Checked)
 
+    def setSeleccionado(self, estado):
+        self.chk.setChecked(estado)
+
+    def isSeleccionado(self):
+        return self.chk.isChecked()
+
+    @property
+    def filepath(self):
+        return getattr(self, "ruta", None)
+        
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str)
     pendientes_actualizados = pyqtSignal(int)
@@ -247,8 +259,9 @@ class Bridge(QObject):
         # Determinar tabla y selección
         if self.vista_actual == 0 and row is not None and row >=0:
             tabla = self.tabla
+            selecciones = [] # En vista lista usas row/col directo
         elif self.vista_actual == 1:
-            tabla, row, col = self.obtener_seleccion()
+            tabla, selecciones = self.obtener_seleccion()
         else:
             return
 
@@ -273,8 +286,22 @@ class Bridge(QObject):
         # Si hay selección múltiple, ARCHIVOS_SEL ya está lleno
         if ARCHIVOS_SEL:
             funcion()
-        else:
-            funcion(row, col)
+            return
+        
+        # Si no hay selección global, usar las selecciones encontradas
+        if selecciones:
+            # Rellenar ARCHIVOS_SEL con las ruta encontradas
+            for _, _, filepath in selecciones:
+                if filepath:
+                    # Calcular hash si lo necesitas
+                    hash_archivo = calcular_hash_md5(filepath)
+                    ARCHIVOS_SEL[filepath] = hash_archivo
+
+            funcion()
+            return
+        
+        # Si no hay selección en galeria, usar row/col (vista lista)
+        funcion(row, col)
 
     def obtener_fecha_lugar(self, dato):
         fecha = dato.split(')')[2][1:]
@@ -588,16 +615,49 @@ class Bridge(QObject):
         self.cargar_galeria(self.actual_ruta, True)
 
     def obtener_seleccion(self):
+        tabla = self.tablaClasificacion
+        seleccion = [] # Lista de tuplas (row, col, filepath)
+
         # == VISTA CLASIFICACIÓN (galería) ===
-        for row in range(self.tablaClasificacion.rowCount()):
-            for col in range(self.tablaClasificacion.columnCount()):
-                widget = self.tablaClasificacion.cellWidget(row, col)
-                if widget and widget.chk.isChecked():
-                    return self.tablaClasificacion, row, col
-        return None, None, None
-                
-        # 3. Nada seleccionado.
-        return None, None, None
+        for row in range(tabla.rowCount()):
+            # Si la fila es header, saltarla
+            item0 = tabla.item(row, 0)
+            if item0 and item0.data(Qt.UserRole) == "header":
+                continue
+
+            for col in range(tabla.columnCount()):
+                widget = tabla.cellWidget(row, col)
+                if not widget:
+                    continue
+
+                # Comprobaciones seguras para distintos nombres de checkbox
+                checked = False
+                # 1 método expuesto por WidgetGaleria
+                if hasattr(widget, "isSeleccionado") and callable(widget.isSeleccionado):
+                    try:
+                        checked = widget.isSeleccionado()
+                    except Exception:
+                        checked = False
+                # 2 método público setSeleccionado / atributo checkbox
+                elif hasattr(widget, "chk") and hasattr(widget.chk, "isChecked"):
+                    checked = widget.chk.isChecked()
+                elif hasattr(widget, "checkbox") and hasattr(widget.checkbox, "isChecked"):
+                    checked = widget.checkbox.isChecked()
+                # 3 si el widget tiene setSeleccionado, quizá también tenga atributo interno
+                elif hasattr(widget, "isChecked") and callable(widget.isChecked):
+                    try:
+                        checked = widget.isChecked()
+                    except Exception:
+                        checked = False
+
+                if checked:
+                    filepath = getattr(widget, "ruta", None) or getattr(widget, "filepath", None)
+                    seleccion.append((row, col, filepath))
+
+        # Devolver la tabla y la lista de selecciones (vacía si no hay)
+        if seleccion:
+            return tabla, seleccion
+        return None, []
 
     def limpiar_tabla(self, origen):
         os.rmdir(origen)
@@ -630,51 +690,154 @@ class Bridge(QObject):
             archivos = os.listdir(ruta)
             NUM_COLS = 7 if tamano == 180 else 13
 
-            self.tablaClasificacion.clearContents()
-            self.tablaClasificacion.setColumnCount(NUM_COLS)
-
-            filas = math.ceil(len(archivos) / NUM_COLS)
-            self.tablaClasificacion.setRowCount(filas)
-
-            fila = 0
-            col = 0
+            # 1️⃣ Agrupar archivos por fecha completa
+            from collections import defaultdict
+            grupos = defaultdict(list)
 
             for archivo in archivos:
                 ruta_completa = os.path.join(ruta, archivo)
 
-                # Obtener hash
-                hash_archivo = calcular_hash_md5(ruta_completa)
+                # Obtener fecha completa para agrupar
+                fecha_completa = self.obtener_fecha_json(ruta_completa, self.data)
+                grupos[fecha_completa].append(ruta_completa)
 
-                # Miniatura si es video
-                ruta_thumb = None
-                if archivo.lower().endswith(extensiones_validas("video")):
-                    ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
-                    if ruta_thumb:
-                        ruta_thumb = str(ruta_thumb) # Usar miniatura
-                    else:
-                        ruta_thumb = str("C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/marca_video.png")
+            # Ordenar por fecha
+            grupos = dict(sorted(grupos.items()))
 
-                widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
-                widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+            # 2️⃣ Preparar la tabla
+            self.tablaClasificacion.clearContents()
+            self.tablaClasificacion.setColumnCount(NUM_COLS)
 
-                self.tablaClasificacion.setCellWidget(fila, col, widget)
+            # Mapa fecha > fila del header (para búsqueda rápida)
+            self._fila_por_fecha = {}
 
-                col += 1
-                if col == NUM_COLS:
-                    col = 0
-                    fila += 1
+            fila_actual = 0
+
+            # 3️⃣ Dibujar encabezados + miniaturas
+            for fecha, lista_archivos in grupos.items():
+
+                # ---- Encabezado de fecha ----
+                self.tablaClasificacion.insertRow(fila_actual)
+
+                # Widget con checkbox + fecha
+                header_widget = HeaderWidget(fecha)
+                header_widget.toggled.connect(self._seleccionar_grupo)
+
+                # Expandir encabezado a todas las columnas
+                self.tablaClasificacion.setCellWidget(fila_actual, 0, header_widget)
+                self.tablaClasificacion.setSpan(fila_actual, 0, 1, NUM_COLS)
+
+                # Marcar TODA la fila como header
+                for col in range(NUM_COLS):
+                    item_header = QTableWidgetItem()                
+                    item_header.setData(Qt.UserRole, "header") # Para saber que fila es encabezado
+                    # Evitar selección de la fila header
+                    item_header.setFlags(Qt.ItemIsEnabled)
+                    self.tablaClasificacion.setItem(fila_actual, col, item_header)
+
+                # Guardar fila del header
+                self._fila_por_fecha[fecha] = fila_actual
+
+                fila_actual += 1
+                col = 0
+
+                # ---- Miniaturas del día ----
+                for archivo in lista_archivos:
+                    ruta_completa = os.path.join(ruta, archivo)
+
+                    # Obtener hash
+                    hash_archivo = calcular_hash_md5(ruta_completa)
+
+                    # Miniatura si es video
+                    ruta_thumb = None
+                    if archivo.lower().endswith(extensiones_validas("video")):
+                        ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
+                        # Usar miniatura
+                        ruta_thumb = str(ruta_thumb) if ruta_thumb else str("C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/marca_video.png")
+
+                    # Crear Widget
+                    widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
+                    #widget.filepath = ruta_completa
+                    widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+
+                    # Insertar celda
+                    if col == 0:
+                        self.tablaClasificacion.insertRow(fila_actual)
+
+                    self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
+
+                    col += 1
+                    if col == NUM_COLS:
+                        col = 0
+                        fila_actual += 1
+                
+                # Si la última fila no estaba completa, pasar a la siguiente
+                if col != 0:
+                    fila_actual += 1
 
             # Ajustes visuales
             valor = tamano if miniatura else 50
 
-            for r in range(filas):
-                self.tablaClasificacion.setRowHeight(r, valor)
+            for r in range(self.tablaClasificacion.rowCount()):
+                item = self.tablaClasificacion.item(r, 0)
+                if item and item.data(Qt.UserRole) == "header":
+                    self.tablaClasificacion.setRowHeight(r, 28)
+                else:
+                    self.tablaClasificacion.setRowHeight(r, valor)
 
             for c in range(NUM_COLS):
                 self.tablaClasificacion.setColumnWidth(c, tamano)
 
         except Exception as e:
-            pass
+            print(f'Error al cargar galeria: {e}')
+
+    def _seleccionar_grupo(self, fecha, estado):
+        tabla = self.tablaClasificacion
+
+        # Buscar fila del header por mapa
+        fila = self._fila_por_fecha.get(fecha)
+        if fila is None:
+            return
+        
+        # Recorrer filas hasta el siguiente header
+        r = fila + 1
+        row_count = tabla.rowCount()
+        while r < row_count:
+            item = tabla.item(r, 0)
+            if item and item.data(Qt.UserRole) == "header":
+                break
+
+            for c in range(tabla.columnCount()):
+                widget = tabla.cellWidget(r, c)
+                if not widget:
+                    continue
+
+                # Intentar varios métodos para marcar la miniatura
+                try:
+                    # Bloquear señales para evitar recursión
+                    widget.blockSignals(True)
+                    if hasattr(widget, "setSeleccionado"):
+                        widget.setSeleccionado(estado)
+                    elif hasattr(widget, "checkbox"):
+                        widget.checkbox.setChecked(estado)
+                    elif hasattr(widget, "setChecked"):
+                        widget.setchecked(estado)
+                    else:
+                        pass
+                    self.numArcSel += 1 if estado else -1
+                    self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
+
+                finally:
+                    widget.blockSignals(False)
+
+            r += 1
+
+    def obtener_fecha_json(self, ruta_archivo, data):
+        hash_archivo = calcular_hash_md5(ruta_archivo)
+
+        for item in data["pendientes"]["items"]:
+            if item["hash"] == hash_archivo:
+                return item.get("fecha_completa", "0000-00-00")
 
     def obtener_ruta_miniatura(self, hash):
         ruta = get_ruta_miniaturas() / f"{hash}.jpg"

@@ -27,27 +27,14 @@ listado de las fotos que hay dentro.
 import folium
 import os
 import time
-import json
-import unicodedata
-from pathlib import Path
-from folium.plugins import Search
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
 from config_paths import (
-    get_ruta_mapa_html, get_ruta_principal, geocodificador, ruta_json_unico,
-    ruta_cache_json_geocoding
+    get_ruta_mapa_html, get_ruta_principal, ruta_json_unico
     )
-
-CACHE_FILE = ruta_cache_json_geocoding()
-GEOCODE, REVERSE = geocodificador()
-
-def cargar_cache():
-    if CACHE_FILE.exists():
-        return json.loads(CACHE_FILE.read_text())
-    return {}
-
-def guardar_cache(cache):
-    CACHE_FILE.write_text(json.dumps(cache, indent=4))
+from utils.utils_cache import (
+    cargar_cache, normalizar_texto
+)
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -61,30 +48,18 @@ def extraer_ciudad(nombre):
     return ciudad, pais, fecha
 
 def obtener_coordenadas(ciudad, pais):
-    nombre_carpeta = f'{ciudad}, {pais}'
+    nombre = f"({ciudad})({pais})"
     cache = cargar_cache()
 
-    # Si ya está en cache > devolver directamente
-    if nombre_carpeta in cache:
-        return cache[nombre_carpeta]
+    # 1. Si está en cache > usarlo SIEMPRE
+    if nombre in cache:
+        lat, lon = cache[nombre]
+        return lat, lon
     
-    # Si no esta > geocodificar UNA VEZ
-    try:
-        location = GEOCODE(nombre_carpeta)
-        if location:
-            coords = (location.latitude, location.longitude)
-            cache[nombre_carpeta] = coords
-            guardar_cache(cache)
-            time.sleep(1) # Evitar bloqueo
-            return location.latitude, location.longitude
-        
-        else:
-            print(f'No se encontró ubicación para: {nombre_carpeta}')
-            return None
-        
-    except Exception as e:
-        print(f'Error geolocalizando {nombre_carpeta}: {e}')
-        return None
+    # 2. Si no esta > no inventamos nada
+    print(f"[WARN] No hay coordenadas en cache para: {nombre}")
+    return None
+
 '''
 Cuando se reneriza en el navegador, las doblas barras invertidas (\\) se
 interpretan como una sola (\), y luego en el navegador escapa esa barra
@@ -111,7 +86,10 @@ def crear_popup_html(ciudad, pais, entradas):
 def generar_mapa(features):
     # Inicializamos la localización inicial (Madrid, España).
     lat, lon = obtener_coordenadas(normalizar_texto("Madrid"), normalizar_texto("España"))
-    mapa = folium.Map(location=[lat, lon], zoom_start=10)
+    mapa = folium.Map(
+        location=[lat, lon],
+        zoom_start=10
+        )
     
     # Crear capa GeoJSON
     geojson_layer = folium.GeoJson(
@@ -315,8 +293,3 @@ def cargar_datos_desde_historial():
     ]
     if features:
         generar_mapa(features)
-
-def normalizar_texto(t):
-    t = unicodedata.normalize("NFKD", t)
-    return "".join(c for c in t if not unicodedata.combining(c))
-

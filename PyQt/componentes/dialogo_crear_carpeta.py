@@ -9,6 +9,9 @@ from PyQt5.QtCore import Qt, QTimer
 from geopy.geocoders import Nominatim
 from config_paths import geocodificador
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
+from utils.utils_cache import (
+    cargar_cache, guardar_cache, normalizar_texto
+)
 import datetime
 
 class DialogoCrearCarpeta(QDialog):
@@ -76,26 +79,39 @@ class DialogoCrearCarpeta(QDialog):
         self.input_ciudad.setCompleter(completer_ciudades)
 
     def _validar(self):
-        ciudad = self.input_ciudad.text().strip()
-        pais = self.input_pais.text().strip()
+        ciudad = normalizar_texto(self.input_ciudad.text().strip())
+        pais = normalizar_texto(self.input_pais.text().strip())
         fecha = self.input_fecha.text().strip()
+        nombre = f"({ciudad})({pais})"
 
         if not ciudad or not pais or not fecha:
             QMessageBox.warning(self, "Error", "Todos los campos son obligatorios.")
             return
         
-        # Validar ubicación con Nominatim
-        geolocator, reverse = geocodificador()
-        location = geolocator(f"{ciudad}, {pais}")
+        cache = cargar_cache()
+        if nombre not in cache: # Si no está en cache usamos el geolocalizador.
+            # Validar ubicación con Nominatim
+            geolocator, reverse = geocodificador()
+            location = geolocator(
+                ciudad,
+                country_codes="es, fr, pt",
+                language="es"
+            )
 
-        if not location:
-            QMessageBox.warning(self, "Error", "No se encontró esa ubicación.")
-            return
+            if not location:
+                QMessageBox.warning(self, "Error", "No se encontró esa ubicación.")
+                return
 
-        # Normalizar nombre de ciudad y pais con Nominatim
-        address = location.address.split(', ')
-        ciudad = address[-3]
-        pais = address[-1]
+            # Normalizar nombre de ciudad y pais con Nominatim
+            address = location.address.split(', ')
+            ciudad = normalizar_texto(address[0])
+            pais = normalizar_texto(address[-1])
+            lat = location.latitude
+            lon = location.longitude
+
+            # Guardamos el nuevo registro en el cache de geocoding
+            cache[nombre] = [lat, lon]
+            guardar_cache(cache)
         
         # Validar fecha.
         try:
