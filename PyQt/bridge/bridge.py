@@ -686,6 +686,8 @@ class Bridge(QObject):
     def cargar_galeria(self, ruta, miniatura, tamano=100):
         try:
             ARCHIVOS_SEL.clear()
+            self.numArcSel = self.contar_seleccionados()
+            self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
             archivos = os.listdir(ruta)
             NUM_COLS = 7 if tamano == 180 else 13
@@ -719,30 +721,37 @@ class Bridge(QObject):
                 # ---- Encabezado de fecha ----
                 self.tablaClasificacion.insertRow(fila_actual)
 
-                # Widget con checkbox + fecha
-                header_widget = HeaderWidget(fecha)
-                header_widget.toggled.connect(self._seleccionar_grupo)
+                # Si la ruta contiene 'Sin_GPS' -> dibujar encabezado
+                if 'Sin_GPS' in ruta:
 
-                # Expandir encabezado a todas las columnas
-                self.tablaClasificacion.setCellWidget(fila_actual, 0, header_widget)
-                self.tablaClasificacion.setSpan(fila_actual, 0, 1, NUM_COLS)
+                    # Widget con checkbox + fecha
+                    header_widget = HeaderWidget(fecha)
+                    header_widget.toggled.connect(self._seleccionar_grupo)
 
-                # Marcar TODA la fila como header
-                for col in range(NUM_COLS):
-                    item_header = QTableWidgetItem()                
-                    item_header.setData(Qt.UserRole, "header") # Para saber que fila es encabezado
-                    # Evitar selección de la fila header
-                    item_header.setFlags(Qt.ItemIsEnabled)
-                    self.tablaClasificacion.setItem(fila_actual, col, item_header)
+                    # Expandir encabezado a todas las columnas
+                    self.tablaClasificacion.setCellWidget(fila_actual, 0, header_widget)
+                    self.tablaClasificacion.setSpan(fila_actual, 0, 1, NUM_COLS)
 
-                # Guardar fila del header
-                self._fila_por_fecha[fecha] = fila_actual
+                    # Marcar TODA la fila como header
+                    for col in range(NUM_COLS):
+                        item_header = QTableWidgetItem()                
+                        item_header.setData(Qt.UserRole, "header") # Para saber que fila es encabezado
+                        # Evitar selección de la fila header
+                        item_header.setFlags(Qt.ItemIsEnabled)
+                        self.tablaClasificacion.setItem(fila_actual, col, item_header)
 
-                fila_actual += 1
+                    # Guardar fila del header
+                    self._fila_por_fecha[fecha] = fila_actual
+
+                    fila_actual += 1 # Avenzar después del encabezado
                 col = 0
 
                 # ---- Miniaturas del día ----
                 for archivo in lista_archivos:
+
+                    if col == 0:
+                        self.tablaClasificacion.insertRow(fila_actual)
+
                     ruta_completa = os.path.join(ruta, archivo)
 
                     # Obtener hash
@@ -759,10 +768,6 @@ class Bridge(QObject):
                     widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
                     #widget.filepath = ruta_completa
                     widget.seleccionado.connect(self._galeria_checkbox_cambiado)
-
-                    # Insertar celda
-                    if col == 0:
-                        self.tablaClasificacion.insertRow(fila_actual)
 
                     self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
 
@@ -824,7 +829,7 @@ class Bridge(QObject):
                         widget.setchecked(estado)
                     else:
                         pass
-                    self.numArcSel += 1 if estado else -1
+                    self.numArcSel = self.contar_seleccionados()
                     self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
                 finally:
@@ -844,14 +849,36 @@ class Bridge(QObject):
         return ruta if ruta.exists() else None
     
     def _galeria_checkbox_cambiado(self, widget, checked):
+        self.numArcSel = self.contar_seleccionados()
         if checked:
-            self.numArcSel +=1            
             ARCHIVOS_SEL[widget.ruta] = widget.hash
         else:
-            self.numArcSel -=1            
             ARCHIVOS_SEL.pop(widget.ruta, None)
 
         self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
+
+    def contar_seleccionados(self):
+        tabla = self.tablaClasificacion
+        total = 0
+
+        for r in range(tabla.rowCount()):
+            # Saltar filas de encabezado
+            item = tabla.item(r, 0)
+            if item and item.data(Qt.UserRole) == "header":
+                continue
+
+            for c in range(tabla.columnCount()):
+                widget = tabla.cellWidget(r, c)
+
+                # Solo contar widgets reales
+                if not widget:
+                    continue
+
+                # Solo contar si tiene checkbox
+                if hasattr(widget, "chk") and widget.chk.isChecked():
+                    total += 1
+
+        return total
 
     # ============================================================
     # UTILIDADES

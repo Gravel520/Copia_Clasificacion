@@ -79,36 +79,38 @@ class DialogoCrearCarpeta(QDialog):
         self.input_ciudad.setCompleter(completer_ciudades)
 
     def _validar(self):
+        # Obtenemos y normalizamos los datos.
         ciudad = normalizar_texto(self.input_ciudad.text().strip())
         pais = normalizar_texto(self.input_pais.text().strip())
         fecha = self.input_fecha.text().strip()
-        nombre = f"({ciudad})({pais})"
 
         if not ciudad or not pais or not fecha:
             QMessageBox.warning(self, "Error", "Todos los campos son obligatorios.")
             return
         
-        cache = cargar_cache()
-        if nombre not in cache: # Si no está en cache usamos el geolocalizador.
-            # Validar ubicación con Nominatim
-            geolocator, reverse = geocodificador()
-            location = geolocator(
-                ciudad,
-                country_codes="es, fr, pt",
-                language="es"
-            )
+        cache = cargar_cache()        
+        # Validar ubicación con Nominatim
+        geolocator, reverse = geocodificador()
+        location = geolocator(
+            ciudad,
+            country_codes="es, fr, pt",
+            language="es"
+        )
 
-            if not location:
-                QMessageBox.warning(self, "Error", "No se encontró esa ubicación.")
-                return
+        if not location:
+            QMessageBox.warning(self, "Error", "No se encontró esa ubicación.")
+            return
 
-            # Normalizar nombre de ciudad y pais con Nominatim
-            address = location.address.split(', ')
-            ciudad = normalizar_texto(address[0])
-            pais = normalizar_texto(address[-1])
+        # Normalizar nombre de ciudad y pais con Nominatim
+        address = location.address.split(', ')
+        ciudad_norm = normalizar_texto(address[0])
+        pais_norm = normalizar_texto(address[-1])
+
+        nombre = f"({ciudad_norm})({pais_norm})"
+
+        if nombre not in cache:
             lat = location.latitude
             lon = location.longitude
-
             # Guardamos el nuevo registro en el cache de geocoding
             cache[nombre] = [lat, lon]
             guardar_cache(cache)
@@ -121,5 +123,5 @@ class DialogoCrearCarpeta(QDialog):
             return
         
         # Todo OK ➡ devolver datos
-        self.resultado = (ciudad, pais, fecha)
+        self.resultado = (ciudad_norm, pais_norm, fecha)
         self.accept()

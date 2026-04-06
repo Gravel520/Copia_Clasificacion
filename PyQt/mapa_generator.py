@@ -27,6 +27,7 @@ listado de las fotos que hay dentro.
 import folium
 import os
 import time
+import datetime
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
 from config_paths import (
@@ -46,6 +47,31 @@ def extraer_ciudad(nombre):
     pais = partes[1][1:].strip()
     fecha = partes[2][1:].strip()
     return ciudad, pais, fecha
+
+def parse_fecha_key(fecha):
+    '''
+    Intenta convertir 'fecha' en datetime para ordenar cronológicamente.
+    Soporta formatos comunes: 'YYYY-MM', 'YYYY-M', 'YYYY-MM-DD', 'YYYY'.
+    Si no puede parsear, devuelve la cadena tal cual (orden lexicográfico)
+    '''
+    formatos = ['%Y-%m', '%Y-%m-%d', '%Y-%m-%d', '%Y-%m', '%Y']
+    # Normalizar guiones y ceros (por ejemplo '2021-7' -> '2021-07' si es posible)
+    f = fecha.strip()
+    # Intentos con formatos comunes
+    for fmt in formatos:
+        try:
+            return datetime.datetime.strftime(f, fmt)
+        except Exception:
+            # Intentar rellenar mes con cero si vivne 'YYYY-M'
+            parts = f.split('-')
+            if len(parts) == 2 and len(parts[1]) == 1:
+                try:
+                    return datetime.datetime.strftime(f.replace('-', '-0', 1), '%Y-%m')
+                except Exception:
+                    pass
+            continue
+    # Fallback: devolver la cadena para orden lexicográfica
+    return f
 
 def obtener_coordenadas(ciudad, pais):
     nombre = f"({ciudad})({pais})"
@@ -77,8 +103,19 @@ def crear_popup_html(ciudad, pais, entradas):
         #   ruta del directorio se interprete correctamente.
         ruta = ruta.replace('\\', '\\\\')
         html += f"""
-        <b>{ciudad}, {pais} - {fecha} ({num} archivos)</b><br>
-        <button onclick="enviarRuta('{ruta}')">Ver archivos</button><br><br>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+            <span><b>{ciudad}, {pais} - {fecha} ({num} archivos)</b></span>
+            <button onclick="enviarRuta('{ruta}')" 
+                    style="border:none; background:none; cursor:pointer; padding:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="black" d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 
+                    12c-2.761 0-5-2.239-5-5s2.239-5 
+                    5-5 5 2.239 5 5-2.239 5-5 5zm0-8c-1.654 
+                    0-3 1.346-3 3s1.346 3 3 3 
+                    3-1.346 3-3-1.346-3-3-3z"/>
+                </svg>
+            </button>
+        </div>
         """
     html += "</div>"
     return html    
@@ -267,14 +304,23 @@ def cargar_datos_desde_historial():
             continue
 
         lat, lon = coordenadas
-        html = crear_popup_html(ciudad, pais, entradas)
+
+        # Ordenar las entradas por fecha cronológica usando parse_fecha_key
+        try:
+            entradas_ordenadas = sorted(entradas, key=lambda e: parse_fecha_key(e[0]))
+        except Exception:
+            entradas_ordenadas = entradas # Fallback si alto falla
+
+        # Crear el HTML del popup con las entradas ordenadas
+        html = crear_popup_html(ciudad, pais, entradas_ordenadas)
         feature = {
             "type": "Feature",
             "properties": {
                 "nombre": f"{ciudad} {pais}",
                 "ciudad": ciudad,
                 "pais": pais,
-                "fecha": ", ".join([e[0] for e in entradas]),
+                # Usar las fechas en el mismo orden que en el popup.
+                "fecha": ", ".join([e[0] for e in entradas_ordenadas]),
                 "popup": html
             },
             "geometry": {

@@ -23,7 +23,8 @@ from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.video_player_vlc import VideoPlayer
 from config_paths import (get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
-                          get_ruta_principal, get_ruta_miniaturas, extensiones_validas)
+                          get_ruta_principal, get_ruta_miniaturas, extensiones_validas,
+                          get_ruta_logo)
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from bridge.bridge import Bridge
@@ -66,7 +67,13 @@ class MapaWindow(QMainWindow):
 
         # Visor web
         self.view = QWebEngineView()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
+        # Mostramos el mapa o el logo.
+        ruta_mapa = get_ruta_mapa_html()
+        ruta_logo = get_ruta_logo()
+
+        mostrar = ruta_mapa if os.path.exists(ruta_mapa) else ruta_logo
+
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(mostrar)))
 
         # Canal web
         self.channel = QWebChannel()
@@ -179,8 +186,6 @@ class MapaWindow(QMainWindow):
         elif indice == 1:
             self.ui.actionDesde_Movil.setEnabled(False)
             self.ui.actionClasificar.setEnabled(False)
-            self.bridge.numArcSel = 0
-            self.bridge.labelArcSelCla.setText(f'{self.bridge.numArcSel} archivo/s seleccionados.')
             self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
             self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
 
@@ -190,8 +195,6 @@ class MapaWindow(QMainWindow):
         self.ruta_clasificacion = ruta
 
     def setMiniatura(self, valor, tamano=100):
-        self.bridge.numArcSel = 0
-        self.bridge.labelArcSelCla.setText(f'{self.bridge.numArcSel} archivo/s seleccionados.')        
         self.miniaturas = valor
         self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, tamano)
 

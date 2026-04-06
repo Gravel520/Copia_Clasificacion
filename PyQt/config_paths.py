@@ -32,6 +32,9 @@ def get_spinner():
 def get_ruta_mapa_html():
     return "./PyQt/mapas/mapa_fotos.html"
 
+def get_ruta_logo():
+    return "./PyQt/assets/Logo.png"
+
 def get_ruta_ui():
     return "./PyQt/ui_files/MainWindow.ui"
 
