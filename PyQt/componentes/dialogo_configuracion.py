@@ -2,17 +2,28 @@
 
 '''
 
-from PyQt5.QtWidgets import QDialog, QFileDialog
+from PyQt5.QtWidgets import (
+    QDialog, QFileDialog, QMessageBox, QDialogButtonBox
+    )
 from ui_files.configurationWindow import DialogConfiguration
+from utils.utils_correo import validar
 import config_manager
 import string
 import ctypes
+import re
+
+regex = r"^(?!.*\.\.)(?!.*\.$)[a-zA-Z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
 
 class ConfigDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.ui = DialogConfiguration()
         self.ui.setupUi(self)
+
+        # Desconectar el cierre automático
+        btn_ok = self.ui.btn_ok_cancel.button(QDialogButtonBox.Ok)
+        btn_ok.clicked.disconnect()
+        btn_ok.clicked.connect(self.on_accept)
 
         self.load_pantalla()
 
@@ -21,7 +32,6 @@ class ConfigDialog(QDialog):
         self.ui.cb_unidad.addItems(self.get_windows_drivers())
 
         self.conectar_botones()
-        self.ui.btn_ok_cancel.accepted.connect(self.save_values)        
 
     def load_values(self):
         cfg = config_manager.load_config()
@@ -37,7 +47,10 @@ class ConfigDialog(QDialog):
 
         self.ui.cb_pantalla.setCurrentText(cfg["pantalla"])
 
-    def save_values(self):
+        self.ui.txt_correo.setText(cfg["correo"])
+        self.ui.txt_password.setText(cfg["password"])
+
+    def save_values(self):       
         data = {
             "origen": self.ui.txt_origen.text(),
             "destino": self.ui.txt_destino.text(),
@@ -47,7 +60,9 @@ class ConfigDialog(QDialog):
             "ultimo_intervalo": config_manager.settings.value("Estado/ultimo_intervalo", "0"),
             "mapa_generado": config_manager.settings.value("Estado/mapa_generado", "False"),
             "ultima_origen": self.ui.txt_origen.text(),
-            "ultima_destino": self.ui.txt_destino.text(),            
+            "ultima_destino": self.ui.txt_destino.text(),
+            "correo": self.ui.txt_correo.text(),
+            "password": self.ui.txt_password.text(),
         }
         config_manager.save_config(data)
 
@@ -102,4 +117,14 @@ class ConfigDialog(QDialog):
         carpeta = self.select_directory(titulo, clave)
         if carpeta: # Solo si el usuario NO canceló
             campo.setText(carpeta)
-            
+
+    def on_accept(self):
+        if validar(self.ui.txt_correo):
+            self.ui.txt_correo.setStyleSheet("")
+
+            self.save_values()
+            self.accept()
+
+        else:
+            self.ui.txt_correo.setStyleSheet("border: 2px solid red;")
+            self.ui.txt_correo.setFocus()

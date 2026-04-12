@@ -15,7 +15,9 @@ def load_config():
         "ultimo_intervalo": settings.value("Estado/ultimo_intervalo", "0", str),
         "mapa_generado": settings.value("Estado/mapa_generado", "False", str),
         "ultima_origen": settings.value("General/ultima_origen", "", str),
-        "ultima_destino": settings.value("General/ultima_destino", "", str)
+        "ultima_destino": settings.value("General/ultima_destino", "", str),
+        "correo": settings.value("Compartir/correo", "", str),
+        "password": settings.value("Compartir/password", "", str)
     }
 
 def save_config(data: dict):
@@ -27,5 +29,7 @@ def save_config(data: dict):
     settings.setValue("Estado/mapa_generado", data["mapa_generado"])
     settings.setValue("General/ultima_origen", data["ultima_origen"])
     settings.setValue("General/ultima_destino", data["ultima_destino"])
+    settings.setValue("Compartir/correo", data["correo"])
+    settings.setValue("Compartir/password", data["password"])
     settings.sync()
     

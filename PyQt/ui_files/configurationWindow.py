@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'configurationWindow.ui'
+## Form generated from reading UI file 'configurationwindow.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.7.2
 ##
@@ -23,10 +23,10 @@ class DialogConfiguration(object):
     def setupUi(self, DialogConfiguration):
         if not DialogConfiguration.objectName():
             DialogConfiguration.setObjectName(u"DialogConfiguration")
-        DialogConfiguration.resize(400, 318)
+        DialogConfiguration.resize(400, 399)
         self.btn_ok_cancel = QDialogButtonBox(DialogConfiguration)
         self.btn_ok_cancel.setObjectName(u"btn_ok_cancel")
-        self.btn_ok_cancel.setGeometry(QRect(210, 274, 171, 32))
+        self.btn_ok_cancel.setGeometry(QRect(210, 360, 171, 32))
         self.btn_ok_cancel.setOrientation(Qt.Horizontal)
         self.btn_ok_cancel.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
         self.gb_origen = QGroupBox(DialogConfiguration)
@@ -71,6 +71,22 @@ class DialogConfiguration(object):
         self.cb_pantalla = QComboBox(self.gb_pantalla)
         self.cb_pantalla.setObjectName(u"cb_pantalla")
         self.cb_pantalla.setGeometry(QRect(20, 30, 141, 22))
+        self.gb_compartir = QGroupBox(DialogConfiguration)
+        self.gb_compartir.setObjectName(u"gb_compartir")
+        self.gb_compartir.setGeometry(QRect(20, 270, 361, 80))
+        self.txt_correo = QLineEdit(self.gb_compartir)
+        self.txt_correo.setObjectName(u"txt_correo")
+        self.txt_correo.setGeometry(QRect(109, 8, 240, 23))
+        self.label_6 = QLabel(self.gb_compartir)
+        self.label_6.setObjectName(u"label_6")
+        self.label_6.setGeometry(QRect(10, 10, 101, 16))
+        self.label_7 = QLabel(self.gb_compartir)
+        self.label_7.setObjectName(u"label_7")
+        self.label_7.setGeometry(QRect(11, 42, 91, 16))
+        self.txt_password = QLineEdit(self.gb_compartir)
+        self.txt_password.setObjectName(u"txt_password")
+        self.txt_password.setGeometry(QRect(110, 40, 240, 23))
+        self.txt_password.setEchoMode(QLineEdit.Password)
 
         self.retranslateUi(DialogConfiguration)
         self.btn_ok_cancel.accepted.connect(DialogConfiguration.accept)
@@ -87,5 +103,10 @@ class DialogConfiguration(object):
         self.btn_examinar_destino.setText(QCoreApplication.translate("DialogConfiguration", u"Examinar", None))
         self.label_4.setText(QCoreApplication.translate("DialogConfiguration", u"Unidad Temporal:", None))
         self.label_5.setText(QCoreApplication.translate("DialogConfiguration", u"Tipo de Pantalla:", None))
+        self.gb_compartir.setTitle("")
+        self.txt_correo.setText("")
+        self.label_6.setText(QCoreApplication.translate("DialogConfiguration", u"Correo Electronico:", None))
+        self.label_7.setText(QCoreApplication.translate("DialogConfiguration", u"Password:", None))
+        self.txt_password.setText("")
     # retranslateUi
 

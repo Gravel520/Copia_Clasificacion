@@ -123,7 +123,7 @@ class VentanaPrincipal(QWidget):
         if not self.archivos:
             return
         
-        url = Compartidor.compartir_varios_archivos(self.archivos, minutos=3)
+        url, handle = Compartidor.compartir_varios_archivos(self.archivos, minutos=3)
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Compartir archivos")
@@ -137,6 +137,16 @@ class VentanaPrincipal(QWidget):
         layout.addWidget(lbl)
         layout.addWidget(qr)
 
+        # Guardar handle en el diálogo para poder apagar si el usuario cierra antes del timer.
+        dlg.server_handle = handle
+
+        def on_close():
+            try:
+                dlg.server_handle.shutdown()
+            except Exception:
+                pass
+
+        dlg.finished.connect(lambda _: on_close())
         dlg.exec_()
 
 if __name__ == "__main__":

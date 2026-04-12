@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from componentes.range_slider import QRangeSlider
+from config_manager import settings
 
 class DialogoSeleccionCantidad(QDialog):
     def __init__(self, total_archivos, parent =None):
@@ -68,6 +69,12 @@ class DialogoSeleccionCantidad(QDialog):
         else:
             # Activar slider
             self.slider.setEnabled(True)
+            # Obtenemos el intervalo del config y actualizamos el slider.
+            intervalo = settings.value("Estado/ultimo_intervalo").split("-")
+            inicio =int(intervalo[0])
+            fin = int(intervalo[-1])
+            self.slider.setValues(inicio, fin)
+            self.actualizar_intervalo(inicio, fin)
 
     def actualizar_intervalo(self, inicio, fin):
         self.label_intervalo.setText(f"Intervalo: {inicio} - {fin}          Cantidad: {int(fin - inicio)}")

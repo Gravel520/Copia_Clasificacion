@@ -30,6 +30,8 @@ from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from componentes.progreso_dialog import ProgresoClasificacion
 from componentes.custom_mensage_box import CustomMessageBox
+from compartir.main import VentanaPrincipal as VentanaCompartir
+
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 
@@ -518,8 +520,12 @@ class Bridge(QObject):
         self.cargar_galeria(self.actual_ruta, True)
 
     def compartir(self, row=None, col=None):
-        print("Método pendiente de realización. No se puede compartir.")
-        return
+        if not ARCHIVOS_SEL:
+            ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
+            ARCHIVOS_SEL[ruta_archivo] = hash_archivo
+
+        self.dlg_compartir = VentanaCompartir(ARCHIVOS_SEL.keys())
+        self.dlg_compartir.exec_()
 
     def borrar(self, row=None, col=None):
         mensaje = 'Archivo(s):\n'
