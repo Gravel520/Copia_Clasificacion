@@ -48,6 +48,11 @@ class DialogoCrearCarpeta(QDialog):
         self.input_fecha.setPlaceholderText("2024-07")
         layout.addWidget(self.input_fecha)
 
+        # Botón "Elegir en mapa"
+        btn_mapa = QPushButton("Elegir ubicación en mapa")
+        btn_mapa.clicked.connect(self._abrir_mapa)
+        layout.addWidget(btn_mapa)
+
         # Botones.
         botones = QHBoxLayout()
         btn_ok = QPushButton("Crear")
@@ -77,6 +82,25 @@ class DialogoCrearCarpeta(QDialog):
         completer_ciudades.setCaseSensitivity(Qt.CaseInsensitive)
 
         self.input_ciudad.setCompleter(completer_ciudades)
+
+    def _abrir_mapa(self):
+        from dialogo_mapa import DialogoMapa
+
+        dlg = DialogoMapa()
+        if dlg.exec_() == QDialog.Accepted:            
+            lat, lon = dlg.lat, dlg.lon
+
+            # Reverse geocoding
+            geolocator, reverse = geocodificador()
+            location = reverse((lat, lon), language="es")
+
+            if location:
+                address = location.raw.get("address", {})
+                ciudad = normalizar_texto(address.get("city") or address.get("town") or address.get("village", ""))
+                pais = normalizar_texto(address.get("country", ""))
+
+                self.input_ciudad.setText(ciudad)
+                self.input_pais.setText(pais)
 
     def _validar(self):
         # Obtenemos y normalizamos los datos.
