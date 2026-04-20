@@ -30,6 +30,7 @@ from worker.copia_worker import CopiaWorker
 from bridge.bridge import Bridge
 from copia_clasificador_fotos import obtener_archivos, cargar_json_unico, calcular_hash_md5
 from componentes.dialogo_configuracion import ConfigDialog
+from pagina_estadistica.pagina_estadistica import PaginaEstadisticas
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 NUM_COLS = 7
@@ -161,6 +162,11 @@ class MapaWindow(QMainWindow):
 
         # Acceder al stacked.
         self.stacked = self.ui.stackedWidget
+        self.pagina_estadistica = PaginaEstadisticas()
+        layout = QVBoxLayout(self.ui.pageEstadistica)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.pagina_estadistica)
+
         indice = int(config_manager.settings.value("General/pantalla"))
         self.cambiar_vista(indice)
 
@@ -170,7 +176,7 @@ class MapaWindow(QMainWindow):
         self.ui.show()
 
     def cambiar_vista(self, indice):
-        if self.ruta_clasificacion == None and indice != 0: indice = 0
+        if self.ruta_clasificacion == None and indice == 1: indice = 0
         self.chk_value = False
 
         self.stacked.setCurrentIndex(indice)
@@ -188,6 +194,10 @@ class MapaWindow(QMainWindow):
             self.ui.actionClasificar.setEnabled(False)
             self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
             self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
+
+        elif indice == 2:
+            self.ui.actionDesde_Movil.setEnabled(False)
+            self.ui.actionClasificar.setEnabled(False)
 
     def recibir_archivos_para_clasificacion(self, ruta):
         if not ruta:
@@ -606,7 +616,7 @@ class MapaWindow(QMainWindow):
 
         self.ui.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
         self.ui.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
-        self.ui.actionVisor_Completo.triggered.connect(lambda: self.cambiar_vista(2))
+        self.ui.actionEstadistica.triggered.connect(lambda: self.cambiar_vista(2))
 
         self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 

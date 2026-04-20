@@ -26,6 +26,7 @@ from config_paths import (
     ruta_json_unico, meses, get_ruta_mapa_html, extensiones_validas,
     get_ruta_miniaturas
     )
+from utils.utils_cache import cargar_cache
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from componentes.progreso_dialog import ProgresoClasificacion
@@ -451,8 +452,16 @@ class Bridge(QObject):
                 resultado = ''.join(parentesis)
                 ciudad, pais, fecha = extraer_ciudad(resultado)
 
-                entrada["ubicacion"] = f"({ciudad})({pais})"
+                ubicacion = f"({ciudad})({pais})"
+                entrada["ubicacion"] = ubicacion
                 entrada["fecha"] = f"({fecha})"
+
+                # Extraer coordenadas desde cache.
+                cache_geocoding = cargar_cache()
+                clave_norm = ubicacion
+                if clave_norm in cache_geocoding:
+                    entrada["latitud"] = cache_geocoding[clave_norm][0]
+                    entrada["longitud"] = cache_geocoding[clave_norm][1]
                 
                 # --- LOGICA DE CLASIFICACIÓN AUTOMÁTICA ---
                 if ciudad == 'Sin_GPS':
