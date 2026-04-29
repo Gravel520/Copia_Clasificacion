@@ -20,7 +20,7 @@ class CopiaWorker(QThread):
     progreso = pyqtSignal(int)      # Archivos procesados
     total = pyqtSignal(int)         # Total de archivos
 
-    def __init__(self, carpeta_origen, modo, inicio, fin):
+    def __init__(self, carpeta_origen, modo="todos", inicio=0, fin=0):
         super().__init__()
         self.carpeta_origen = carpeta_origen
         self.modo = modo

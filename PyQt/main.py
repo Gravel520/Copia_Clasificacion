@@ -18,13 +18,17 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QUrl, QSize, Qt
 from PyQt5 import uic
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QTransform
+from PIL import Image
+from io import BytesIO
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.video_player_vlc import VideoPlayer
-from config_paths import (get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
-                          get_ruta_principal, get_ruta_miniaturas, extensiones_validas,
-                          get_ruta_logo)
+from config_paths import (
+    get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
+    get_ruta_principal, get_ruta_miniaturas, extensiones_validas,
+    get_ruta_logo, ruta_movil
+    )
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from bridge.bridge import Bridge
@@ -311,7 +315,22 @@ class MapaWindow(QMainWindow):
 
         self.mpv_container.hide()
 
+        img = Image.open(ruta_archivo)
+        exif = img.getexif()
+
+        orientacion = exif.get(274, 1)
+
         pixmap = QPixmap(ruta_archivo)
+        transform = QTransform()
+        if orientacion == 3:
+            transform.rotate(180)
+        elif orientacion == 6:
+            transform.rotate(90)
+        elif orientacion == 8:
+            transform.rotate(270)
+
+        pixmap = pixmap.transformed(transform)
+        
         if not pixmap.isNull():
             self.ui.labelVisor.setPixmap(pixmap)
             self.ui.labelVisor.setScaledContents(True)
@@ -408,16 +427,35 @@ class MapaWindow(QMainWindow):
                             checkbox.setChecked(state)
 
     # ============================================================
-    # COPIA DESDE PC O MÓVIL
+    # COPIA DESDE MÓVIL
     # ============================================================
-    def select_directory(self):
-        carpeta_origen = QFileDialog.getExistingDirectory(self, "Seleccionar directorio de origen")
-        if not carpeta_origen:
-            return
-        self.iniciar_copia(carpeta_origen)
-
     def select_movil(self):
-        self.iniciar_copia(None)
+        carpeta = ruta_movil()
+        archivos = obtener_archivos()
+
+        total = len(archivos)
+        
+        if total == 0:
+            QMessageBox.warning(self, "Sin archivos", "No se encontraron archivos para clasificar.")
+            return
+
+        # 2️⃣ Mostrar diálogo de selección
+        dlg = DialogoSeleccionCantidad(total, self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        
+        seleccion = dlg.obtener_resultado()
+
+        # 3️⃣ Pasar parámetros al Bridge
+        self.bridge.iniciar_clasificacion(
+            carpeta,
+            seleccion["modo"],
+            seleccion["inicio"],
+            seleccion["fin"]
+            )
+        
+        config_manager.settings.setValue("Estado/ultimo_intervalo", f"{seleccion['inicio']}-{seleccion['fin']}")
+        config_manager.settings.sync()
 
     def iniciar_copia(self, carpeta_origen=None):
         self.spinner = SpinnerOverlay(self, "Clasificando archivos...")
@@ -568,6 +606,8 @@ class MapaWindow(QMainWindow):
             "mapa_generado": "True",
             "ultima_origen": unidad,
             "ultima_destino": unidad,
+            "correo": "",
+            "password": "",
         }
 
         config_manager.save_config(data)

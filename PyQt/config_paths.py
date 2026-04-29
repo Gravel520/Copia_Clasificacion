@@ -48,10 +48,10 @@ def geocodificador():
     return geocode, reverse
 
 def ruta_movil():
-    return '/sdcard/DCIM/Camera'
+    return None
 
 def ruta_adb():
-    return 'C:\\adb\\platform-tools\\adb'
+    return 'C:\\adb\\platform-tools\\adb.exe'
 
 def ruta_json_unico():
     return './PyQt/archivos_json/archivos_unificados.json'

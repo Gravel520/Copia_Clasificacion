@@ -67,7 +67,7 @@ class ConfigDialog(QDialog):
         config_manager.save_config(data)
 
     def load_pantalla(self):
-        self.ui.cb_pantalla.addItems(["Principal", "Clasificación", "Visor Completo"])
+        self.ui.cb_pantalla.addItems(["Principal", "Clasificación", "Estadística"])
 
     def get_windows_drivers(self):
         drivers = []

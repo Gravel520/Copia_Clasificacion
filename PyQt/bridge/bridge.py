@@ -13,8 +13,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QObject, pyqtSlot, QUrl, pyqtSignal
 from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
-from PyQt5.QtGui import QPixmap, QColor
+from PyQt5.QtGui import QPixmap, QColor, QTransform
 from PyQt5.QtCore import Qt
+from PIL import Image
 from componentes.controles import (
     Button, CheckBox, SpinnerOverlay, SelectorCarpeta, HeaderWidget
     )
@@ -60,11 +61,26 @@ class WidgetGaleria(QWidget):
         if miniatura:
             lbl_thumb = QLabel()
             lbl_thumb.setAlignment(Qt.AlignCenter)
+
+            img = Image.open(ruta_thumb if ruta_thumb else ruta)
+            exif = img.getexif()
+            orientacion = exif.get(274, 1)
+
             pix = QPixmap(ruta_thumb if ruta_thumb else ruta).scaled(
                 tamano, tamano, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
+            transform = QTransform()
+            if orientacion == 3:
+                transform.rotate(180)
+            elif orientacion == 6:
+                transform.rotate(90)
+            elif orientacion == 8:
+                transform.rotate(270)
+            pix = pix.transformed(transform)
+            
             lbl_thumb.setPixmap(pix)
             lbl_thumb.setAlignment(Qt.AlignCenter)
+
             layout.addWidget(lbl_thumb)
 
         # === Nombre ===

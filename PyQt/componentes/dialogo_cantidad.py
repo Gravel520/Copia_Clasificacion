@@ -73,6 +73,14 @@ class DialogoSeleccionCantidad(QDialog):
             intervalo = settings.value("Estado/ultimo_intervalo").split("-")
             inicio =int(intervalo[0])
             fin = int(intervalo[-1])
+
+            # Si el total de archivos es inferior al fín del intervalo,
+            #   ejemplo 'total_archivos = 785' - 'inicio = 540' - 'fin = 850',
+            #   se pondrá el intervalo completo.
+            if self.total < fin or fin == 0:
+                inicio = 0
+                fin = self.total
+                
             self.slider.setValues(inicio, fin)
             self.actualizar_intervalo(inicio, fin)
 

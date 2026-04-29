@@ -123,7 +123,7 @@ class VentanaPrincipal(QWidget):
         if not self.archivos:
             return
         
-        url, handle = Compartidor.compartir_varios_archivos(self.archivos, minutos=3)
+        url, handle = Compartidor.compartir_varios_archivos(self.archivos, minutos=10)
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Compartir archivos")

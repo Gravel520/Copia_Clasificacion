@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTime, QTimer, QSize
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform
+from PIL import Image
 from config_paths import extensiones_validas
 
 assets = 'PyQt/assets/'
@@ -180,7 +181,21 @@ class VideoPlayer(QWidget):
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
 
+        img = Image.open(archivo)
+        exif = img.getexif()
+        orientacion = exif.get(274, 1)
+
         pix = QPixmap(archivo)
+        transform = QTransform()
+        if orientacion == 3:
+            transform.rotate(180)
+        elif orientacion == 6:
+            transform.rotate(90)
+        elif orientacion == 8:
+            transform.rotate(270)
+
+        pix = pix.transformed(transform)
+        
         self.pixmap_actual = pix # Guardamos el pixmap original
 
         # Mostramos en pantalla.

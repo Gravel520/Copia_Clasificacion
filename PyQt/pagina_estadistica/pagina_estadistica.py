@@ -152,30 +152,33 @@ class PaginaEstadisticas(QWidget):
     # DATOS DEL PANEL GENERALES.
     # ---------------------------------------------------------
     def _llenar_panel_generales(self, panel):
-        ruta_base = get_ruta_principal()
-        carpetas = [d for d in os.listdir(ruta_base) if os.path.isdir(os.path.join(ruta_base, d))]
+        try:
+            ruta_base = get_ruta_principal()
+            carpetas = [d for d in os.listdir(ruta_base) if os.path.isdir(os.path.join(ruta_base, d))]
 
-        total_fotos = 0
-        total_videos = 0
-        total_tamano = 0
+            total_fotos = 0
+            total_videos = 0
+            total_tamano = 0
 
-        for carpeta in carpetas:
-            ruta = os.path.join(ruta_base, carpeta)
-            for archivo in os.listdir(ruta):
-                ruta_arch = os.path.join(ruta, archivo)
-                if archivo.lower().endswith(extensiones_validas("imagen")):
-                    total_fotos += 1
-                elif archivo.lower().endswith(extensiones_validas("video")):
-                    total_videos += 1
+            for carpeta in carpetas:
+                ruta = os.path.join(ruta_base, carpeta)
+                for archivo in os.listdir(ruta):
+                    ruta_arch = os.path.join(ruta, archivo)
+                    if archivo.lower().endswith(extensiones_validas("imagen")):
+                        total_fotos += 1
+                    elif archivo.lower().endswith(extensiones_validas("video")):
+                        total_videos += 1
 
-                if os.path.isfile(ruta_arch):
-                    total_tamano += os.path.getsize(ruta_arch)
+                    if os.path.isfile(ruta_arch):
+                        total_tamano += os.path.getsize(ruta_arch)
 
-        # Mostrar datos
-        panel.layout().addWidget(QLabel(f"      Total fotos: {total_fotos}"))
-        panel.layout().addWidget(QLabel(f"      Total vídeos: {total_videos}"))
-        panel.layout().addWidget(QLabel(f"      Tamaño total: {total_tamano/1024/1024:.2f} MB"))
-        panel.layout().addWidget(QLabel(f"      Carpetas: {len(carpetas)}"))
+            # Mostrar datos
+            panel.layout().addWidget(QLabel(f"      Total fotos: {total_fotos}"))
+            panel.layout().addWidget(QLabel(f"      Total vídeos: {total_videos}"))
+            panel.layout().addWidget(QLabel(f"      Tamaño total: {total_tamano/1024/1024:.2f} MB"))
+            panel.layout().addWidget(QLabel(f"      Carpetas: {len(carpetas)}"))
+        except:
+            pass
 
     def _obtener_html_grafica(self):
         datos = self.fotos_por_anio()
@@ -270,41 +273,44 @@ class PaginaEstadisticas(QWidget):
             """
     
     def _llenar_panel_exif(self, panel):
-        ruta_base = get_ruta_principal()
+        try:
+            ruta_base = get_ruta_principal()
 
-        camaras = {}
-        isos = {}
-        focales = {}
+            camaras = {}
+            isos = {}
+            focales = {}
 
-        for carpeta in os.listdir(ruta_base):
-            ruta = os.path.join(ruta_base, carpeta)
-            for archivo in os.listdir(ruta):
-                if archivo.lower().endswith(extensiones_validas("imagen")):
-                    ruta_arch = os.path.join(ruta, archivo)
-                    try:
-                        img = Image.open(ruta_arch)
-                        exif = img._getexif()
-                        if not exif:
-                            continue
+            for carpeta in os.listdir(ruta_base):
+                ruta = os.path.join(ruta_base, carpeta)
+                for archivo in os.listdir(ruta):
+                    if archivo.lower().endswith(extensiones_validas("imagen")):
+                        ruta_arch = os.path.join(ruta, archivo)
+                        try:
+                            img = Image.open(ruta_arch)
+                            exif = img._getexif()
+                            if not exif:
+                                continue
 
-                        datos = {TAGS.get(k): v for k, v in exif.items() if k in TAGS}
+                            datos = {TAGS.get(k): v for k, v in exif.items() if k in TAGS}
 
-                        cam = datos.get("Model")
-                        iso = datos.get("ISOSpeedRatings")
-                        focal = datos.get("FocalLength")
+                            cam = datos.get("Model")
+                            iso = datos.get("ISOSpeedRatings")
+                            focal = datos.get("FocalLength")
 
-                        if cam:
-                            camaras[cam] = camaras.get(cam, 0) + 1
-                        if iso:
-                            isos[iso] = isos.get(iso, 0) + 1
-                        if focal:
-                            focales[focal] = focales.get(focal, 0) + 1
+                            if cam:
+                                camaras[cam] = camaras.get(cam, 0) + 1
+                            if iso:
+                                isos[iso] = isos.get(iso, 0) + 1
+                            if focal:
+                                focales[focal] = focales.get(focal, 0) + 1
 
-                    except:
-                        pass
-        panel.layout().addWidget(QLabel(f"      Cámara más usada: {max(camaras, key=camaras.get)}"))
-        panel.layout().addWidget(QLabel(f"      ISO más frecuente: {max(isos, key=isos.get)}"))
-        panel.layout().addWidget(QLabel(f"      Focal más usada: {max(focales, key=focales.get)}"))
+                        except:
+                            pass
+            panel.layout().addWidget(QLabel(f"      Cámara más usada: {max(camaras, key=camaras.get)}"))
+            panel.layout().addWidget(QLabel(f"      ISO más frecuente: {max(isos, key=isos.get)}"))
+            panel.layout().addWidget(QLabel(f"      Focal más usada: {max(focales, key=focales.get)}"))
+        except:
+            pass
 
     def _llenar_panel_clasificacion(self, panel):
         data = cargar_json_unico(ruta_json_unico())        

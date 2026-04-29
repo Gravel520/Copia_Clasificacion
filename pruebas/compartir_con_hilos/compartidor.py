@@ -14,6 +14,7 @@ import qrcode
 import time
 import io
 import webbrowser
+import shutil
 from PIL import Image
 from email.message import EmailMessage
 from io import BytesIO
@@ -211,21 +212,23 @@ class MultiFileHandler(http.server.SimpleHTTPRequestHandler):
                 for archivo in self.archivos:
                     nombre = os.path.basename(archivo)
                     zipf.write(archivo, arcname=nombre)
-            
-            buffer.seek(0)
+
+            datos_zip = buffer.getvalue()
 
             self.send_response(200)
             self.send_header("Content-Type", "application/zip")
             self.send_header("Content-Disposition", "attachment; filename=archivos.zip")
+            self.send_header("Content-Length", str(len(datos_zip)))             
             self.end_headers()
-            self.wfile.write(buffer.getvalue())
+            self.wfile.write(datos_zip)
             return
 
         # ---------------------------
         # MINIATURAS /thumb/<archivo>
         # ---------------------------
         if self.path.startswith("/thumb/"):
-            nombre = self.path.replace("/thumb/", "")
+            import urllib.parse
+            nombre = urllib.parse.unquote(self.path.replace("/thumb/", ""))
             for archivo in self.archivos:
                 if os.path.basename(archivo) == nombre:
                     try:
@@ -285,6 +288,7 @@ class MultiFileHandler(http.server.SimpleHTTPRequestHandler):
                 nombre = os.path.basename(archivo)
                 mime, _ = mimetypes.guess_type(nombre)
                 es_imagen = mime and mime.startswith("image/")
+                es_video = mime and mime.startswith("video/")
 
                 html += '<div class="col-6 col-md-4 col-lg-3">'
                 html += '<div class="card h-100 p-2">'
@@ -293,6 +297,10 @@ class MultiFileHandler(http.server.SimpleHTTPRequestHandler):
                     html += f'<a href="/file/{nombre}">'
                     html += f'<img src="/thumb/{nombre}" class="thumb" alt="{nombre}">'
                     html += '</a>'
+                elif es_video:
+                    html += f'<video class="thumb" controls preload="metadata">'
+                    html += f'<source src="/file/{nombre}" type="{mime}">'
+                    html += '</video>'
                 else:
                     html += '<div class="thumb d-flex align-items-center justify-content-center">'
                     html += '<span class="text-muted">Archivo</span>'
@@ -316,16 +324,25 @@ class MultiFileHandler(http.server.SimpleHTTPRequestHandler):
         # ---------------------------
         # DESCARGA DEL ARCHIVO
         # ---------------------------
-        if self.path.startswith("/file/"):
-            nombre = self.path.replace("/file/", "")
+        if self.path.startswith("/file/"):            
+            import urllib.parse
+            nombre = urllib.parse.unquote(self.path.replace("/file/", ""))
+
             for archivo in self.archivos:
                 if os.path.basename(archivo) == nombre:
-                    self.send_response(200)
+                    tamano = os.path.getsize(archivo)
                     mime, _ = mimetypes.guess_type(nombre)
+
+                    self.send_response(200)                    
                     self.send_header("Content-type", mime or "application/octet-stream")
+                    self.send_header("Content-Length", str(tamano)) 
+
+                    self.send_header("Content-Disposition", f'attachment; filename="{nombre}"')
+                    self.send_header("Accept-Ranges", "bytes") 
+
                     self.end_headers()
                     with open(archivo, "rb") as f:
-                        self.wfile.write(f.read())
+                        shutil.copyfileobj(f, self.wfile)
                     return
             self.send_error(404, "Archivo no encontrado")
             return

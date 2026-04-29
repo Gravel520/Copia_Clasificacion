@@ -14,6 +14,9 @@ from pathlib import Path
 from utils.utils_cache import (
     cargar_cache, guardar_cache, normalizar_texto
 )
+from utils.utils_mtp import (
+    buscar_movil, listar_archivos_mtp, copiar_archivo_mtp
+)
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
 #   GPS en nombres de lugares.
@@ -172,14 +175,6 @@ def calcular_hash_md5(ruta_archivo):
     except:
         return None
 
-# Ejecuta 'adb devices' y verifica si hay algún dispositivo conectado.
-def hay_dispositivo_adb():
-    dispositivos = subprocess.run([ruta_adb(), 'devices'], capture_output=True, text=True)
-    lineas = dispositivos.stdout.strip().split('\n')
-    # Ignora la cabecera y busca líneas con 'device' al final.
-    dispositivos = [l for l in lineas[1:] if l.strip().endswith('device')]
-    return len(dispositivos) > 0
-
 def actualizar_stats(data):
     data["stats"]["total_clasificados"] = len(data["clasificados"]["items"])
     data["stats"]["total_pendientes"] = len(data["pendientes"]["items"])
@@ -199,32 +194,32 @@ def obtener_archivos(ruta_pc=None):
     if ruta_pc:
         if os.path.exists(ruta_pc):
             return os.listdir(ruta_pc)
-        return []
-
-    if hay_dispositivo_adb():
-        resultado = subprocess.run(
-            [ruta_adb(), 'shell', f'ls {ruta_movil()}'],
-            capture_output=True, text=True)
-        return resultado.stdout.strip().split('\n')
-
-    # No hay ningún movil conectado al ordenador.
-    return []
+    else:
+        return listar_archivos_mtp()
 
 #===============================================================#
 # CLASIFICAR UN SOLO ARCHIVOS                                   #
 #===============================================================#
 
 def clasificar_archivo(archivo, ruta_archivos, data):
-    mensaje = ""
-
     ruta_local = os.path.join(get_ruta_temporal(), archivo)
     ruta_origen = f'{ruta_archivos}/{archivo}'
+    temp_movil = f"/sdcard/Download/{archivo}"
 
-    # Copiar o descargar
-    if os.path.exists(ruta_origen):
-        shutil.copy2(ruta_origen, ruta_local)
-    else:
-        return f"❌ No existe: {archivo}"
+    try:
+        # Copiar desde movil
+        if buscar_movil():
+            copiar_archivo_mtp(archivo, get_ruta_temporal())
+
+        else:
+            # Copiar desde pc.
+            if os.path.exists(ruta_origen):
+                shutil.copy2(ruta_origen, ruta_local)
+            else:
+                return f"❌ Error al copiar desde PC: {archivo}\n"
+            
+    except Exception as e:
+        return f"☠ Error inesperado al copiar archivo: {str(e)}"
 
     # Función obtener el hash del archivo.
     hash_archivo = calcular_hash_md5(ruta_local)    
@@ -247,23 +242,19 @@ def clasificar_archivo(archivo, ruta_archivos, data):
         # El string de la fecha será (año-mes)
         fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
 
-        if not fecha: # Para agrupar por fecha del archivo
-            timestamp = os.path.getmtime(ruta_origen)
-            fecha_completa = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
-            hora = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
-        else:
-            # String de la fecha, hora y timestamp para clasificación por lotes
-            fecha_completa = fecha.strftime('%Y-%m-%d') if fecha else '0000-00-00'
-            hora = fecha.strftime('%H:%M:%S') if fecha else '00:00:00'
-            timestamp = int(fecha.timestamp()) if fecha else 0
+        # Para agrupar por fecha del archivo
+        fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_origen, fecha)
 
     else: # Archivos de video
         try:
-            fecha = obtener_fecha_video(ruta_origen)
+            fecha = obtener_fecha_video(ruta_local)
             ubicacion, lat, lon = '(Sin_GPS)', 0, 0
 
             # El string de la fecha será (año-mes)
             fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
+
+            # Para agrupar por fecha del archivo
+            fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_local, fecha)
 
         except Exception as e:
             return f'💥 ({archivo}) No se puedo clasificar.\n'            
@@ -300,7 +291,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
 
         if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
             # Obtenemos o creamos la miniatura del video.
-            obtener_miniaturas(ruta_origen, hash_archivo)
+            obtener_miniaturas(ruta_local, hash_archivo)
 
         # 4️⃣ No está en ninguna lista ➡ añadir a pendientes
         shutil.copy2(ruta_local, ruta_destino)
@@ -328,7 +319,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             if comprobar_hash(hash_archivo, pendientes):
                 if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
                     # Obtenemos o creamos la miniatura del video.
-                    obtener_miniaturas(ruta_origen, hash_archivo)
+                    obtener_miniaturas(ruta_local, hash_archivo)
 
                 # Copiar archivo del directorio temporal al definitivo.
                 shutil.copy2(ruta_local, ruta_destino)
@@ -350,6 +341,19 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             return f'🟥 ({archivo}) Archivo eliminado\n'
 
     return f'🔁 ({archivo}) Archivo duplicado\n'
+
+def agrupar_fecha_archivo(ruta_origen, fecha):    
+    if not fecha: # Para agrupar por fecha del archivo
+        timestamp = os.path.getmtime(ruta_origen)
+        fecha_completa = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+        hora = datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
+    else:
+        # String de la fecha, hora y timestamp para clasificación por lotes
+        fecha_completa = fecha.strftime('%Y-%m-%d') if fecha else '0000-00-00'
+        hora = fecha.strftime('%H:%M:%S') if fecha else '00:00:00'
+        timestamp = int(fecha.timestamp()) if fecha else 0
+
+    return fecha_completa, timestamp, hora
 
 '''
 Para extraer las miniaturas de los archivos de video, se utiliza una
@@ -376,6 +380,7 @@ def obtener_miniaturas(ruta_origen, hash):
             "-i", str(ruta_origen),
             "-ss", "00:00:05",
             "-vframes", "1",
+            "-vf", "vf=format=yuv420p",
             str(ruta_temp)
         ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 

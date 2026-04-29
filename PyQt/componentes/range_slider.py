@@ -68,11 +68,31 @@ class QRangeSlider(QWidget):
         start_x = 10 + (self._start - self._min) / (self._max - self._min) * (self.width() - 20)
         end_x = 10 + (self._end - self._min) / (self._max - self._min) * (self.width() - 20)
 
-        if abs(x - start_x) < 10:
+        # 1. Detectar si pulsamos cerca de los handles (prioridad)
+        if abs(x - start_x) < 15:
             self._moving = "start"
-        elif abs(x - end_x) < 10:
+        elif abs(x - end_x) < 15:
             self._moving = "end"
 
+        # 2. Si pulsamos en la línea (fuera de los handles), movemos el más cercano.
+        else:
+            # Convertimos la posición X del clic a un valor del rango
+            ratio = (x - 10) / (self.width() - 20)
+            clicked_value = self._min + ratio * (self._max - self._min)
+            clicked_value = max(self._min, min(self._max, int(clicked_value)))
+
+            # Determinamos cuál de ls dos está más cerca del clic
+            if abs(clicked_value - self._start) < abs(clicked_value - self._end):
+                self._start = clicked_value
+                self._moving = "start"
+            else:
+                self._end = clicked_value
+                self._moving = "end"
+
+            # Actualizamos y emitimos el cambio de inmediato
+            self.valueChanged.emit(self._start, self._end)
+            self.update()
+            
     def mouseMoveEvent(self, event):
         if not self._moving:
             return
