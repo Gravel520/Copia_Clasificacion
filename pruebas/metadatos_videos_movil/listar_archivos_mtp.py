@@ -1,8 +1,16 @@
 '''
-
+Script en Python.
+Para poder obtener el nombre completo necesario para la copia del mismo
+    en el disco duro, utilizamos el parámetro 'GetDetailsOf', que nos muestra
+    el nombre en crudo, incluyendo la extensión. Con esta extensión podremos 
+    comprobar si se trata de una imagen o de un video.
 '''
+import os
 import win32com.client
 from copia_mtp import copiar_archivo_mtp
+#from metadatos_video_mtp import obtener_gps_video
+
+ruta = "C:\\FotosTemp"
 
 def listar_archivos_mtp():
     shell = win32com.client.Dispatch("Shell.Application")
@@ -27,10 +35,14 @@ def listar_archivos_mtp():
         
         # 3. Obtener todos los elementos y extraer sus nombre
         archivos = []
-        for item in camera.GetFolder.Items():
+        # Guardamos la referencia al objeto folder
+        folder_obj = camera.GetFolder
+        for item in folder_obj.Items():
             # Filtramos para no incluir subcarpetas, solo archivos
             if not item.IsFolder:
-                archivos.append(item.Name)
+                # Obtenemos el nombre completo, incluida la extensión.
+                nombre_completo = folder_obj.GetDetailsOf(item, 0)
+                archivos.append(nombre_completo)
 
         return archivos
     
@@ -41,5 +53,8 @@ def listar_archivos_mtp():
 # Uso
 lista_fotos = listar_archivos_mtp()
 print(f"Se han encontrado {len(lista_fotos)} archivos.")
-for archivo in lista_fotos[:5]:
-    copiar_archivo_mtp(archivo, "C:\\FotosTemp")
+archivo = "VID_20250512_101613.mp4"
+if archivo in lista_fotos:
+    print(copiar_archivo_mtp(archivo, "C:\\FotosTemp"))
+    #print(obtener_gps_video(os.path.join(f"{ruta}/{archivo}")))
+    print("*" * 30)

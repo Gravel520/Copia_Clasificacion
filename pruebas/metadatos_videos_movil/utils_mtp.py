@@ -1,13 +1,52 @@
+'''
+
+'''
+
 import win32com.client
 import os
 import time
 
-def copiar_archivo_mtp(nombre_archivo, carpeta_destino_pc):
+def buscar_movil():
     shell = win32com.client.Dispatch("Shell.Application")
     este_equipo = shell.NameSpace(17)
-    
-    # 1. Buscamos el móvil (Usamos la variable 'movil')
+
+    # 1. Buscar el móvil
     movil = next((i for i in este_equipo.Items() if "Galaxy A56 5G" in i.Name), None)
+    return movil, shell
+
+def listar_archivos_mtp():
+    movil, shell = buscar_movil()
+
+    if not movil:
+        print("No se encontro ningún Movil.")
+        return []
+    
+    try:
+        # 2. Navegar hasta la carpeta Camera
+        storage = movil.GetFolder.ParseName("Almacenamiento interno")
+        if not storage: storage = movil.GetFolder.ParseName("Internal storage")
+
+        dcim = storage.GetFolder.ParseName("DCIM")
+        camera = dcim.GetFolder.ParseName("Camera")
+
+        if not camera:
+            return []
+        
+        # 3. Obtener todos los elementos y extraer sus nombre
+        archivos = []
+        for item in camera.GetFolder.Items():
+            # Filtramos para no incluir subcarpetas, solo archivos
+            if not item.IsFolder:
+                archivos.append(item.Name)
+
+        return archivos
+    
+    except Exception as e:
+        print(f"Error al listar: {e}")
+        return []
+
+def copiar_archivo_mtp(nombre_archivo, carpeta_destino_pc):
+    movil, shell = buscar_movil()
 
     if not movil:
         return "❌ No se encontró el Galaxy A56 5G en 'Este equipo'"
@@ -51,6 +90,3 @@ def copiar_archivo_mtp(nombre_archivo, carpeta_destino_pc):
             
     except Exception as e:
         return f"☠ Error navegando en MTP: {str(e)}"
-
-# Uso:
-print(copiar_archivo_mtp("20260118_154354.mp4", "C:\\FotosTemp"))
