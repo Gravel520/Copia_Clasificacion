@@ -14,8 +14,10 @@ from pathlib import Path
 from utils.utils_cache import (
     cargar_cache, guardar_cache, normalizar_texto
 )
-from utils.utils_mtp import (
-    buscar_movil, listar_archivos_mtp, copiar_archivo_mtp
+from utils.utils_exif import (
+    buscar_movil, listar_archivos_mtp, copiar_archivo_mtp,
+    obtener_metadatos_reales, copia_binaria_fuerza,
+    obtener_archivos_movil, comprobar_movil_conectado
 )
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
@@ -28,6 +30,11 @@ geolocalizador, reverse = geocodificador()
 
 # Convierte coordenadas GPS en formato º, m y s, a grados decimales.
 def convertir_a_grados(valor):
+    # Si el valor ya es un número (int o float), son grados decimales
+    if isinstance(valor, (int, float)):
+        return valor
+    
+    # Si es una secuencia (tupla o lista), asume formato (d, m, s)
     d, m, s = valor
     return d + m / 60 + s / 3600
 
@@ -98,7 +105,7 @@ def obtener_datos_exif(imagen_path):
                 }
 
                 # Si todos los valores son None > no hay GPS real
-                if all(v is None for v in gps_info.values()):
+                if any(v is None for v in gps_info.values()):
                     gps_info = {}
 
         return gps_info, fecha
@@ -151,19 +158,6 @@ def obtener_ubicación(gps_info):
 
     return 'Sin_GPS'
 
-# Usamos 'adb' para ejecutar 'stat' y obtener la fecha de creación del video.
-def obtener_fecha_video(ruta_archivo):
-    try:
-        resultado = subprocess.run(
-            [ruta_adb(), 'shell', f'stat -c %y "{ruta_archivo}"'],
-            capture_output=True, text=True
-        )
-        fecha_raw = resultado.stdout.strip()
-        fecha_obj = datetime.strptime(fecha_raw[:10], '%Y-%m-%d')
-        return fecha_obj
-    except:
-        return None
-    
 # Comprobar archivos duplicados a través de su hash.
 def calcular_hash_md5(ruta_archivo):
     try:
@@ -195,7 +189,7 @@ def obtener_archivos(ruta_pc=None):
         if os.path.exists(ruta_pc):
             return os.listdir(ruta_pc)
     else:
-        return listar_archivos_mtp()
+        return obtener_archivos_movil()
 
 #===============================================================#
 # CLASIFICAR UN SOLO ARCHIVOS                                   #
@@ -204,12 +198,11 @@ def obtener_archivos(ruta_pc=None):
 def clasificar_archivo(archivo, ruta_archivos, data):
     ruta_local = os.path.join(get_ruta_temporal(), archivo)
     ruta_origen = f'{ruta_archivos}/{archivo}'
-    temp_movil = f"/sdcard/Download/{archivo}"
 
     try:
         # Copiar desde movil
-        if buscar_movil():
-            copiar_archivo_mtp(archivo, get_ruta_temporal())
+        if comprobar_movil_conectado():
+            copia_binaria_fuerza(archivo, get_ruta_temporal())
 
         else:
             # Copiar desde pc.
@@ -230,14 +223,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
         ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
         # Actualizar cache geocoding.
-        if ubicacion != '(Sin_GPS)':
-            clave_norm = normalizar_texto(ubicacion)
-            cache_geocoding = cargar_cache()
-
-            # Solo guardar si no existe
-            if clave_norm not in cache_geocoding:
-                cache_geocoding[clave_norm] = [float(lat), float(lon)]
-                guardar_cache(cache_geocoding)
+        actualizar_cache_geocoding(ubicacion, lat, lon)
 
         # El string de la fecha será (año-mes)
         fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
@@ -247,9 +233,12 @@ def clasificar_archivo(archivo, ruta_archivos, data):
 
     else: # Archivos de video
         try:
-            fecha = obtener_fecha_video(ruta_local)
-            ubicacion, lat, lon = '(Sin_GPS)', 0, 0
+            gps_info, fecha = obtener_metadatos_reales(ruta_local)
+            ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
+            # Actualizar cache geocoding.
+            actualizar_cache_geocoding(ubicacion, lat, lon)
+            
             # El string de la fecha será (año-mes)
             fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
 
@@ -363,7 +352,8 @@ Hay que seleccionar la descarga "ffmpeg-xxxx-full_build/", extraerlo
 en c:\ffmpeg\ y colocarlo en el PATH del ordenador.
 '''
 def obtener_miniaturas(ruta_origen, hash):
-    FFMPEG = r"C:\ffmpeg\bin\ffmpeg.exe"
+    FFMPEG = r"C:\ffmpeg\bin\ffmpeg.exe" # Extraer fotograma
+    FFPROBE = r"C:\ffmpeg\bin\ffprobe.exe" # Obtener duración del video
 
     try:
         # Crear carpeta miniaturas si no existe
@@ -374,15 +364,31 @@ def obtener_miniaturas(ruta_origen, hash):
         ruta_salida = ruta_miniaturas / f"{hash}.jpg"
         ruta_temp = ruta_miniaturas / f"{hash}_temp.jpg"
 
+        # Obtener duración del video con ffprobe
+        resultado = subprocess.run([
+            FFPROBE, "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(ruta_origen)
+        ], capture_output=True, text=True, check=True)
+
+        duracion = float(resultado.stdout.strip())
+
+        # Decidir el segundo
+        tiempo_miniatura = "00:00:05" if duracion >= 5 else "00:00:01"
+
         # Extraer fotograma
         subprocess.run([
             FFMPEG, "-y",
+            "-ss", tiempo_miniatura,
             "-i", str(ruta_origen),
-            "-ss", "00:00:05",
             "-vframes", "1",
-            "-vf", "vf=format=yuv420p",
+            "-vf", "format=yuv420p",
             str(ruta_temp)
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ], check=True)
 
         marca = Path(__file__).parent / "assets" / "marca_video.png"
 
@@ -417,3 +423,13 @@ def obtener_miniaturas(ruta_origen, hash):
 def normalizar_texto(t):
     t = unicodedata.normalize("NFKD", t)
     return "".join(c for c in t if not unicodedata.combining(c))
+
+def actualizar_cache_geocoding(ubicacion, lat, lon):
+    if ubicacion != '(Sin_GPS)':
+        clave_norm = normalizar_texto(ubicacion)
+        cache_geocoding = cargar_cache()
+
+        # Solo guardar si no existe
+        if clave_norm not in cache_geocoding:
+            cache_geocoding[clave_norm] = [float(lat), float(lon)]
+            guardar_cache(cache_geocoding)

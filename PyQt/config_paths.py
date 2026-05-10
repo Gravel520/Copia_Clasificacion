@@ -48,7 +48,7 @@ def geocodificador():
     return geocode, reverse
 
 def ruta_movil():
-    return None
+    return '/sdcard/DCIM/Camera'
 
 def ruta_adb():
     return 'C:\\adb\\platform-tools\\adb.exe'
@@ -61,6 +61,9 @@ def ruta_json_miniaturas():
 
 def ruta_cache_json_geocoding():
     return Path("./PyQt/archivos_json/cache_geocoding.json")
+
+def ruta_exiftools():
+    return 'C:\exiftool\exiftool.exe'
 
 def meses():
     return (

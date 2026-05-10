@@ -8,7 +8,7 @@ from collections import defaultdict
 from PIL import Image
 from PIL.ExifTags import TAGS
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFrame, QHBoxLayout,
+    QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout,
     QSizePolicy, QGroupBox
 )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -19,6 +19,7 @@ from config_paths import (
     get_ruta_principal, extensiones_validas, ruta_json_unico
     )
 from copia_clasificador_fotos import cargar_json_unico
+from .ventana_carpetas import VentanaCarpetas, VentanaCarpetasVideo
 
 class PaginaEstadisticas(QWidget):
     def __init__(self, parent = None):
@@ -172,11 +173,31 @@ class PaginaEstadisticas(QWidget):
                     if os.path.isfile(ruta_arch):
                         total_tamano += os.path.getsize(ruta_arch)
 
+            total_carpetas = len(carpetas)-1 if "(Sin_GPS)(Sin_GPS)(0000-00)" in carpetas else len(carpetas)
+
             # Mostrar datos
+            # 1. Mostrar total del número de fotos.
             panel.layout().addWidget(QLabel(f"      Total fotos: {total_fotos}"))
-            panel.layout().addWidget(QLabel(f"      Total vídeos: {total_videos}"))
+
+            # 2. Mostrar total vídeos con botón.
+            label_videos = QLabel(f"      Total vídeos: {total_videos}")
+            label_videos.setCursor(Qt.CursorShape.PointingHandCursor)
+            label_videos.setStyleSheet("QLabel:hover {color: blue; text-decoration: underline;}")
+            # Le asignamos la función al hacer clic (usando un evento mousePress)
+            label_videos.mousePressEvent = lambda event: self._mostrar_tabla_info("videos")
+            panel.layout().addWidget(label_videos)
+
+            # 3. Mostrar tamaño total de los archivos.
             panel.layout().addWidget(QLabel(f"      Tamaño total: {total_tamano/1024/1024:.2f} MB"))
-            panel.layout().addWidget(QLabel(f"      Carpetas: {len(carpetas)}"))
+
+            # 4. Mostrar cantidad de carpetas con botón.            
+            label_carpetas = QLabel(f"      Carpetas: {total_carpetas}")
+            label_carpetas.setCursor(Qt.CursorShape.PointingHandCursor)
+            label_carpetas.setStyleSheet("QLabel:hover {color: blue; text-decoration: underline;}")
+            # Le asignamos la función al hacer click (usando un evento mousePress)
+            label_carpetas.mousePressEvent = lambda event: self._mostrar_tabla_info("clasificados")
+            panel.layout().addWidget(label_carpetas)
+
         except:
             pass
 
@@ -317,10 +338,16 @@ class PaginaEstadisticas(QWidget):
         total_clasificados = data["stats"]["total_clasificados"]
         total_pendientes = data["stats"]["total_pendientes"]
         total_eliminados = data["stats"]["total_eliminados"]
-        
-        panel.layout().addWidget(QLabel(f"      Clasificados: {total_clasificados}"))
-        panel.layout().addWidget(QLabel(f"      Pendientes: {total_pendientes}"))
-        panel.layout().addWidget(QLabel(f"      Eliminados: {total_eliminados}"))
+
+        self.agregar_label_con_fondo(f"      Clasificados: {total_clasificados}", "green", panel)
+        self.agregar_label_con_fondo(f"      Pendientes: {total_pendientes}", "orange", panel)
+        self.agregar_label_con_fondo(f"      Eliminados: {total_eliminados}", "red", panel)
+
+    def agregar_label_con_fondo(self, texto, color, panel):
+        label = QLabel(texto)
+        label.setStyleSheet(f"""background-color: {color};
+                            padding: 5px;""")
+        panel.layout().addWidget(label)
 
     def generar_coords_mapa_calor_desde_json(self):
         data = cargar_json_unico(ruta_json_unico())
@@ -357,4 +384,8 @@ class PaginaEstadisticas(QWidget):
         # Devolvemos los datos ordenados por el año, de menor a mayor
         return dict(sorted(conteo.items(), key=lambda x: int(x[0])))
     
+    def _mostrar_tabla_info(self, opcion):
+        data = cargar_json_unico(ruta_json_unico())
 
+        ventana = VentanaCarpetas(data) if opcion == "clasificados" else VentanaCarpetasVideo(data)
+        ventana.exec()

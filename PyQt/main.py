@@ -430,7 +430,7 @@ class MapaWindow(QMainWindow):
     # COPIA DESDE MÓVIL
     # ============================================================
     def select_movil(self):
-        carpeta = ruta_movil()
+        #carpeta = ruta_movil()
         archivos = obtener_archivos()
 
         total = len(archivos)
@@ -448,7 +448,7 @@ class MapaWindow(QMainWindow):
 
         # 3️⃣ Pasar parámetros al Bridge
         self.bridge.iniciar_clasificacion(
-            carpeta,
+            None,
             seleccion["modo"],
             seleccion["inicio"],
             seleccion["fin"]

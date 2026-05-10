@@ -58,7 +58,8 @@ def contar_extensiones(archivos):
 # Llamamos a la función que ejecuta el subproceso para obtener los archivos
 #   de la ubicación definida del movil.
 try:
-    archivos = obtener_archivos('C:\\adb\\platform-tools\\adb', ruta_movil)
+    archivos = obtener_archivos('C:\\adb\\platform-tools\\adb.exe', ruta_movil)
+    print(archivos[:20])
 except SubprocessError as e:
     print(f'Error al ejecutar ADB: {e}')
     archivos = []

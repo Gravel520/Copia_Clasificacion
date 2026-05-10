@@ -121,11 +121,23 @@ def crear_popup_html(ciudad, pais, entradas):
     return html    
 
 def generar_mapa(features):
-    # Inicializamos la localización inicial (Madrid, España).
-    lat, lon = obtener_coordenadas(normalizar_texto("Madrid"), normalizar_texto("España"))
+    cache_json_geocoding = cargar_cache()
+    coords = list(cache_json_geocoding.values())
+
+    if coords:
+        # Calculamos el promedio de latitud y longitud
+        lat_centro = sum(p[0] for p in coords) / len(coords)
+        lon_centro = sum(p[1] for p in coords) / len(coords)
+    else: # Fallback a Madrid si el json está vacío
+        lat_centro = 40.4167
+        lon_centro = -3.7033
+
+    # Inicializamos la localización en el centro de la localización
+    #   del archivo .json
+    lat, lon = lat_centro, lon_centro
     mapa = folium.Map(
         location=[lat, lon],
-        zoom_start=10
+        zoom_start=6
         )
     
     # Crear capa GeoJSON

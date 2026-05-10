@@ -31,12 +31,16 @@ La extracción:
 '''
 
 import subprocess
+from datetime import datetime
 ruta_adb = 'C:\\adb\\platform-tools\\adb.exe'
 ruta_movil = '/sdcard/DCIM/Camera'
 
 def copia_binaria_fuerza(archivo, ruta_local):
     ruta_origen = f"{ruta_movil}/{archivo}"
     print(ruta_origen)
+
+    if not os.path.exists(ruta_local):
+        os.makedirs(ruta_local)    
 
     comando = f'{ruta_adb} pull -a "{ruta_origen}" "{ruta_local}"'
 
@@ -55,7 +59,7 @@ RUTA_EXIFTOOL = r'C:\exiftool\exiftool.exe'
 def obtener_metadatos_reales(ruta_archivo):
     # Verificamos si el archivo de video existe antes de llamar a exiftool
     if not os.path.exists(ruta_archivo):
-        return f"Error: El archivo no existe en {ruta_archivo}"
+        return {}, None
 
     comando = [
         RUTA_EXIFTOOL, 
@@ -64,49 +68,53 @@ def obtener_metadatos_reales(ruta_archivo):
         '-ee',           # Extraer metadatos embebidos (GPS en videos)
         '-GPSLatitude', 
         '-GPSLongitude', 
-        '-CreateDate', 
+        '-CreateDate',
         ruta_archivo
     ]
 
     try:
         proceso = subprocess.Popen(comando, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         salida, _ = proceso.communicate()
-        
-        # --- DIAGNÓSTICO ---
-        # Si la salida está vacía o no empieza por '[', no es un JSON válido
-        texto_salida = salida.decode('utf-8', errors='ignore').strip()
-        
-        if not texto_salida:
-            return "❌ ExifTool no devolvió nada. ¿La ruta del video es correcta?"
-        
-        if not texto_salida.startswith('['):
-            return f"❌ ExifTool devolvió un error: {texto_salida}"
-        # -------------------
-
+ 
         # ExifTool devuelve una lista de diccionarios
         datos = json.loads(salida)
-        
-        if datos:
-            return datos[0] # Retornamos el primer (y único) elemento
-        return {}
+        print(datos)
+        gps_info = datos[0]
+
+        # Lógica para obtener las referencias.
+        lat = gps_info.get('GPSLatitude')
+        lon = gps_info.get('GPSLongitude')
+        lat_ref = 'N' if float(lat) >= 0 else 'S'
+        lon_ref = 'E' if float(lon) >=0 else 'W'
+
+        fecha_str = gps_info.get('CreateDate')
+        fecha = datetime.strptime(fecha_str, '%Y:%m:%d %H:%M:%S')
+
+        gps_info = {
+            'GPSLatitudeRef': lat_ref,
+            'GPSLatitude': abs(float(lat)),
+            'GPSLongitudeRef': lon_ref,
+            'GPSLongitude': abs(float(lon)),
+            'GPSDateStamp': fecha_str
+        }        
+
+        if any(v is None for v in gps_info.values()):
+            gps_info = {}
+
+        return gps_info, fecha
 
     except Exception as e:
-        return f"Error al ejecutar ExifTool: {e}"
+        return {}, None
 
 
 print(copia_binaria_fuerza("VID_20251024_205424.mp4", "C:\\FotosTemp"))
 
 # Prueba con la ruta corregida
+meta = {}
 video_local = r"C:\FotosTemp\VID_20251024_205424.mp4"
-meta = obtener_metadatos_reales(video_local)
+meta, fecha = obtener_metadatos_reales(video_local)
 
 print("*" * 30)
-try:
-    print(f"Latitud: {meta['GPSLatitude']}")
-    print(f"Longitud: {meta['GPSLongitude']}")
-    print(f"Fecha: {meta['CreateDate']}")
-except:
-    print(meta)
+print(meta)
+print(f'Fecha: {fecha}')
 print("*" * 30)
-
-    
