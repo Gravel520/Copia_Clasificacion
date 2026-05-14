@@ -137,7 +137,8 @@ class Bridge(QObject):
         self.actual_ruta = ruta
         self.enviarListaArchivos.emit(self.actual_ruta)
         self.actualizar_tabla()
-        self.cargar_galeria(self.actual_ruta, True)
+        # Cargamos la galería de clasificación si esta en esa vista.
+        if self.vista_actual == 1: self.cargar_galeria(self.actual_ruta, True)
 
     def set_vista(self, indice):
         self.vista_actual = indice
@@ -717,7 +718,7 @@ class Bridge(QObject):
     def cargar_galeria(self, ruta, miniatura, tamano=100):
         try:
             ARCHIVOS_SEL.clear()
-            self.numArcSel = self.contar_seleccionados()
+            self.numArcSel = 0
             self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
             archivos = os.listdir(ruta)
@@ -825,6 +826,7 @@ class Bridge(QObject):
                 self.tablaClasificacion.setColumnWidth(c, tamano)
 
         except Exception as e:
+            self.tablaClasificacion.clear()
             print(f'Error al cargar galeria: {e}')
 
     def _seleccionar_grupo(self, fecha, estado):

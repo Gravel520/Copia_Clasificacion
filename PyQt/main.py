@@ -373,7 +373,7 @@ class MapaWindow(QMainWindow):
             self.vp = None
 
         # Creamos uno nuevo.
-        self.vp = VideoPlayer(ruta_archivo, datos)
+        self.vp = VideoPlayer(self.ruta_clasificacion, ruta_archivo, datos)
         self.vp.show()
 
     def resizeEvent(self, a0):

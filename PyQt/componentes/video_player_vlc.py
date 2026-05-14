@@ -4,22 +4,38 @@
 
 import sys
 import vlc
+import os
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
-    QSlider, QLabel, QFrame
+    QSlider, QLabel, QFrame, QGraphicsView, QGraphicsScene,
+    QGraphicsPixmapItem
 )
 from PyQt5.QtCore import Qt, QTime, QTimer, QSize
-from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform, QPainter
 from PIL import Image
-from config_paths import extensiones_validas
+from config_paths import extensiones_validas, get_assets
 
-assets = 'PyQt/assets/'
 
 class VideoPlayer(QWidget):
-    def __init__(self, archivo, datos):
+    def __init__(self, ruta_visualizado, archivo, datos):
         super().__init__()
-        nombre_archivo = archivo.split("\\")[-1]
-        self.setWindowTitle(nombre_archivo)
+        self.ruta_carpeta = ruta_visualizado
+
+        # Lista de archivos válidos
+        self.lista_archivos = [
+            f for f in os.listdir(self.ruta_carpeta)
+            if f.lower().endswith(extensiones_validas("imagen"))
+            or f.lower().endswith(extensiones_validas("video"))
+        ]
+
+        # ïndice del archivo actual
+        self.indice = self.lista_archivos.index(os.path.basename(archivo))
+
+        # Archivo actual
+        self.archivo_actual = os.path.join(self.ruta_carpeta, self.lista_archivos[self.indice])
+
+        # Título de la ventana
+        self.setWindowTitle(os.path.basename(archivo))
         self.resize(1000, 650)
 
         # Añadimos atributos para rotar la imagen.
@@ -38,7 +54,7 @@ class VideoPlayer(QWidget):
                 font-size: 14px;
             }
             QPushButton {
-                background-color: #333;
+                background-color: #666;
                 border: 1px solid #555;
                 padding: 10px;
                 border-radius: 6px;
@@ -65,19 +81,21 @@ class VideoPlayer(QWidget):
         # Widget central donde se mostrará el video
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: black;")
+        self.video_layout = QVBoxLayout(self.video_frame)
+        self.video_layout.setContentsMargins(0, 0, 0, 0)
 
         # --------------------------
         # BOTONES GRANDES CON ICONOS
         # --------------------------
         # Botones del video.
         self.play_btn = QPushButton()
-        self.play_btn.setIcon(QIcon(f'{assets}play.png'))
+        self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
         self.play_btn.setToolTip("Reproducir / Pausa")
         self.play_btn.setIconSize(QSize(32, 32))
         self.play_btn.setFixedSize(50, 50)
 
         self.stop_btn = QPushButton()
-        self.stop_btn.setIcon(QIcon(f'{assets}detener.png'))
+        self.stop_btn.setIcon(QIcon(f'{get_assets()}detener.png'))
         self.stop_btn.setToolTip("Detener")
         self.stop_btn.setIconSize(QSize(32, 32))
         self.stop_btn.setFixedSize(50, 50)
@@ -87,23 +105,43 @@ class VideoPlayer(QWidget):
 
         # Botones de la imagen.
         self.rotar_izq_btn = QPushButton()
-        self.rotar_izq_btn.setIcon(QIcon(f'{assets}girar_izquierda.png'))
+        self.rotar_izq_btn.setIcon(QIcon(f'{get_assets()}girar_izquierda.png'))
         self.rotar_izq_btn.setToolTip("Girar Izquierda")
         self.rotar_izq_btn.setIconSize(QSize(32, 32))
         self.rotar_izq_btn.setFixedSize(50, 50)
 
         self.rotar_der_btn = QPushButton()
-        self.rotar_der_btn.setIcon(QIcon(f'{assets}girar_derecha.png'))
+        self.rotar_der_btn.setIcon(QIcon(f'{get_assets()}girar_derecha.png'))
         self.rotar_der_btn.setToolTip("Girar Derecha")
         self.rotar_der_btn.setIconSize(QSize(32, 32))
         self.rotar_der_btn.setFixedSize(50, 50)
 
+        self.btn_prev = QPushButton()
+        self.btn_prev.setIcon(QIcon(f'{get_assets()}anterior.png'))
+        self.btn_prev.setToolTip("Imagen Anterior")
+        self.btn_prev.setIconSize(QSize(32, 32))
+        self.btn_prev.setFixedSize(32, 32)
+
+        self.btn_next = QPushButton()
+        self.btn_next.setIcon(QIcon(f'{get_assets()}siguiente.png'))
+        self.btn_next.setToolTip("Imagen Siguiente")
+        self.btn_next.setIconSize(QSize(32, 32))
+        self.btn_next.setFixedSize(32, 32)
+
         self.rotar_izq_btn.clicked.connect(lambda: self.rotar_imagen(-90))
         self.rotar_der_btn.clicked.connect(lambda: self.rotar_imagen(90))
+        self.btn_prev.clicked.connect(self.archivo_anterior)
+        self.btn_next.clicked.connect(self.archivo_siguiente)
 
         # Datos del archivo.
         self.datos_lb = QLabel(datos)
         self.datos_lb.setStyleSheet("color: #bbb; font-size: 18px;")
+
+        # Si solo hay un archivo, deshabilitamos los botones de
+        #   avance y retroceso de archivo.
+        habilitar = True if len(self.lista_archivos) > 1 else False
+        self.btn_next.setEnabled(habilitar)
+        self.btn_prev.setEnabled(habilitar)        
 
         # ------------------
         # SLIDER DE PROGRESO
@@ -148,6 +186,12 @@ class VideoPlayer(QWidget):
         control_layout.addWidget(self.rotar_izq_btn)
         control_layout.addWidget(self.rotar_der_btn)
 
+        # Layout superior. Posterior y anterior
+        movie_layout = QHBoxLayout()
+        movie_layout.addStretch()
+        movie_layout.addWidget(self.btn_prev)
+        movie_layout.addWidget(self.btn_next)
+
         # Layout inferior
         bottom_layout = QVBoxLayout()
         bottom_layout.addWidget(self.position_slider)
@@ -155,6 +199,7 @@ class VideoPlayer(QWidget):
 
         # Layout principal
         main_layout = QVBoxLayout()
+        main_layout.addLayout(movie_layout)
         main_layout.addWidget(self.video_frame)
         main_layout.addLayout(bottom_layout)
         self.setLayout(main_layout)
@@ -178,8 +223,7 @@ class VideoPlayer(QWidget):
     # MOSTRAR LA IMAGEN EN EL REPRODUCTOR
     # -----------------------------------
     def mostrar_imagen(self, archivo):
-        self.image_label = QLabel()
-        self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_viewer = ImageViewer()
 
         img = Image.open(archivo)
         exif = img.getexif()
@@ -187,6 +231,7 @@ class VideoPlayer(QWidget):
 
         pix = QPixmap(archivo)
         transform = QTransform()
+
         if orientacion == 3:
             transform.rotate(180)
         elif orientacion == 6:
@@ -195,21 +240,27 @@ class VideoPlayer(QWidget):
             transform.rotate(270)
 
         pix = pix.transformed(transform)
-        
         self.pixmap_actual = pix # Guardamos el pixmap original
 
-        # Mostramos en pantalla.
-        self.mostrar_imagen_pantalla(pix)
+        # Limpiar contenido anterior
+        for i in reversed(range(self.video_layout.count())):
+            widget = self.video_layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
 
-        layout = QVBoxLayout(self.video_frame)
-        layout.addWidget(self.image_label)
+        self.video_layout.addWidget(self.image_viewer)
+
+        self.image_viewer.set_image(pix)
 
     def mostrar_imagen_pantalla(self, pix):
-            self.image_label.setPixmap(pix.scaled(
-            self.video_frame.size(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation
-        ))
+            self.image_label.setPixmap(
+                pix.scaled(
+                    self.video_frame.size(), 
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                    )
+            )
+            
     # ---------------------------------
     # FUNCIONES DEL VISUALIZADOR IMAGEN
     # ---------------------------------
@@ -221,10 +272,44 @@ class VideoPlayer(QWidget):
         self.pixmap_actual = self.pixmap_actual.transformed(transform, Qt.SmoothTransformation)
 
         # Mostrar en pantalla
-        self.mostrar_imagen_pantalla(self.pixmap_actual)
+        self.image_viewer.set_image(self.pixmap_actual)
 
         # Guardar en el archivo original
         self.pixmap_actual.save(self.archivo_original)
+
+    def archivo_anterior(self):
+        self.indice = (self.indice - 1) % len(self.lista_archivos)
+        self.cargar_archivo_actual()
+
+    def archivo_siguiente(self):
+        self.indice = (self.indice + 1) % len(self.lista_archivos)
+        self.cargar_archivo_actual()
+
+    def cargar_archivo_actual(self):
+        self.archivo_actual = os.path.join(self.ruta_carpeta, self.lista_archivos[self.indice])
+
+        # Actualizar título
+        self.setWindowTitle(self.lista_archivos[self.indice])
+
+        # Limpiar frame
+        for i in reversed(range(self.video_layout.count())):
+            widget = self.video_layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+
+        # Detectar tipo
+        self.es_imagen = self.archivo_actual.lower().endswith(extensiones_validas("imagen"))
+        self.es_video = self.archivo_actual.lower().endswith(extensiones_validas("video"))
+
+        if self.es_imagen:
+            self.mediaplayer.stop()
+            self.update_controls(True)
+            self.mostrar_imagen(self.archivo_actual)
+
+        else:
+            self.mediaplayer.play()
+            self.update_controls(False)
+            self.open_file(self.archivo_actual)
 
     # -----------------------------
     # FUNCIONES DEL REPRODUCTOR VLC
@@ -234,7 +319,7 @@ class VideoPlayer(QWidget):
         self.mediaplayer.set_media(media)
         self._set_video_widget()
         self.mediaplayer.play()
-        self.play_btn.setIcon(QIcon(f'{assets}pausa.png'))
+        self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
 
     def _set_video_widget(self):
         # Asignar el handle de la ventana según plataforma
@@ -249,14 +334,14 @@ class VideoPlayer(QWidget):
     def play_pause(self):
         if self.mediaplayer.is_playing():
             self.mediaplayer.pause()
-            self.play_btn.setIcon(QIcon(f'{assets}play.png'))
+            self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
         else:
             self.mediaplayer.play()
-            self.play_btn.setIcon(QIcon(f'{assets}pausa.png'))
+            self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
 
     def stop(self):
         self.mediaplayer.stop()
-        self.play_btn.setIcon(QIcon(f'{assets}play.png'))
+        self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
 
     def set_volume(self, value):
         self.mediaplayer.audio_set_volume(value)
@@ -309,6 +394,34 @@ class VideoPlayer(QWidget):
             pass
         
         a0.accept()
+
+class ImageViewer(QGraphicsView):
+    def __init__(self):
+        super().__init__()
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+
+        self.scene = QGraphicsScene(self)
+        self.setScene(self.scene)
+
+        self.pixmap_item = None
+
+    def set_image(self, pixmap):
+        self.scene.clear()
+        self.pixmap_item = self.scene.addPixmap(pixmap)
+        self.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+
+    def wheelEvent(self, event):
+        zoom_in_factor = 1.25
+        zoom_out_factor = 0.8
+
+        if event.angleDelta().y() > 0:
+            zoom_factor = zoom_in_factor
+        else:
+            zoom_factor = zoom_out_factor
+
+        self.scale(zoom_factor, zoom_factor)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

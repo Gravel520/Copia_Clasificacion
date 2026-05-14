@@ -29,6 +29,9 @@ def get_ruta_miniaturas():
 def get_spinner():
     return "./PyQt/assets/spinner.gif"
 
+def get_assets():
+    return "./PyQt/assets/"
+
 def get_ruta_mapa_html():
     return "./PyQt/mapas/mapa_fotos.html"
 
