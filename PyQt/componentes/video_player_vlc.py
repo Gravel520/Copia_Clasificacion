@@ -1,4 +1,9 @@
 '''
+Script en Python.
+El parámetro 'solo_video', lo utilizamos para elegir los archivos que vamos
+    a visualizar, todos o solo los videos. El parámetro viene desde la clase
+    'VentanaCarpetasVideo' donde se cuentas los archivos de video que hay en
+    cada carpeta y se pueden visualizar.
 
 '''
 
@@ -8,7 +13,6 @@ import os
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
     QSlider, QLabel, QFrame, QGraphicsView, QGraphicsScene,
-    QGraphicsPixmapItem
 )
 from PyQt5.QtCore import Qt, QTime, QTimer, QSize
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform, QPainter
@@ -17,15 +21,18 @@ from config_paths import extensiones_validas, get_assets
 
 
 class VideoPlayer(QWidget):
-    def __init__(self, ruta_visualizado, archivo, datos):
+    def __init__(self, ruta_visualizado, archivo, datos, solo_videos=None):
         super().__init__()
         self.ruta_carpeta = ruta_visualizado
 
-        # Lista de archivos válidos
+        # Lista de archivos válidos, si son solo videos o tambien imágenes.
+        ext = extensiones_validas("video") if solo_videos else (
+            extensiones_validas("video") + extensiones_validas("imagen")
+        )
+
         self.lista_archivos = [
             f for f in os.listdir(self.ruta_carpeta)
-            if f.lower().endswith(extensiones_validas("imagen"))
-            or f.lower().endswith(extensiones_validas("video"))
+            if f.lower().endswith(ext)
         ]
 
         # ïndice del archivo actual
@@ -45,6 +52,7 @@ class VideoPlayer(QWidget):
         # Comprobamos si es imagen o video.
         self.es_imagen = archivo.lower().endswith(extensiones_validas("imagen"))
         self.es_video = archivo.lower().endswith(extensiones_validas("video"))
+        if solo_videos: self.es_imagen = False
 
         # Estilo general oscuro
         self.setStyleSheet("""
@@ -77,6 +85,13 @@ class VideoPlayer(QWidget):
         # Instancia VLC
         self.instance = vlc.Instance()
         self.mediaplayer = self.instance.media_player_new()
+
+        self.event_manager = self.mediaplayer.event_manager()
+        self.event_manager.event_attach(
+            vlc.EventType.MediaPlayerStopped,
+            self._on_vlc_stopped
+        )
+        self.archivo_pendiente = None
 
         # Widget central donde se mostrará el video
         self.video_frame = QFrame()
@@ -305,11 +320,12 @@ class VideoPlayer(QWidget):
             self.mediaplayer.stop()
             self.update_controls(True)
             self.mostrar_imagen(self.archivo_actual)
+            return
 
-        else:
-            self.mediaplayer.play()
-            self.update_controls(False)
-            self.open_file(self.archivo_actual)
+        # Si es video esperar a que VLC pare
+        self.update_controls(False)
+        self.archivo_pendiente = self.archivo_actual
+        self.mediaplayer.stop()
 
     # -----------------------------
     # FUNCIONES DEL REPRODUCTOR VLC
@@ -348,6 +364,14 @@ class VideoPlayer(QWidget):
 
     def set_position(self, pos):
         self.mediaplayer.set_position(pos / 1000.0)
+
+    def _on_vlc_stopped(self, event):
+        if self.archivo_pendiente:
+            archivo = self.archivo_pendiente
+            self.archivo_pendiente = None
+
+            # Cargar el nuevo vídeo
+            QTimer.singleShot(50, lambda: self.open_file(archivo))
 
     # ----------------------
     # ACTUALIZACION DE LA UI

@@ -388,4 +388,4 @@ class PaginaEstadisticas(QWidget):
         data = cargar_json_unico(ruta_json_unico())
 
         ventana = VentanaCarpetas(data) if opcion == "clasificados" else VentanaCarpetasVideo(data)
-        ventana.exec()
+        ventana.show()
