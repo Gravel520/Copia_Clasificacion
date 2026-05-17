@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt, QTime, QTimer, QSize
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform, QPainter
 from PIL import Image
 from config_paths import extensiones_validas, get_assets
+from worker.vlc_worker import VLCWorker
 
 
 class VideoPlayer(QWidget):
@@ -35,13 +36,9 @@ class VideoPlayer(QWidget):
             if f.lower().endswith(ext)
         ]
 
-        # ïndice del archivo actual
         self.indice = self.lista_archivos.index(os.path.basename(archivo))
-
-        # Archivo actual
         self.archivo_actual = os.path.join(self.ruta_carpeta, self.lista_archivos[self.indice])
 
-        # Título de la ventana
         self.setWindowTitle(os.path.basename(archivo))
         self.resize(1000, 650)
 
@@ -85,12 +82,6 @@ class VideoPlayer(QWidget):
         # Instancia VLC
         self.instance = vlc.Instance()
         self.mediaplayer = self.instance.media_player_new()
-
-        self.event_manager = self.mediaplayer.event_manager()
-        self.event_manager.event_attach(
-            vlc.EventType.MediaPlayerStopped,
-            self._on_vlc_stopped
-        )
         self.archivo_pendiente = None
 
         # Widget central donde se mostrará el video
@@ -98,6 +89,15 @@ class VideoPlayer(QWidget):
         self.video_frame.setStyleSheet("background-color: black;")
         self.video_layout = QVBoxLayout(self.video_frame)
         self.video_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Asignar el handle ANTES de usar el hilo
+        self._set_video_widget()
+
+        # Instanciar hilo de VLC
+        self.vlc_thread = VLCWorker(self.instance, self.mediaplayer, parent=self)
+        self.vlc_thread.video_loaded.connect(self._on_video_loaded)
+        self.vlc_thread.stopped.connect(self._on_vlc_stopped)
+        self.vlc_thread.start()
 
         # --------------------------
         # BOTONES GRANDES CON ICONOS
@@ -154,7 +154,7 @@ class VideoPlayer(QWidget):
 
         # Si solo hay un archivo, deshabilitamos los botones de
         #   avance y retroceso de archivo.
-        habilitar = True if len(self.lista_archivos) > 1 else False
+        habilitar = len(self.lista_archivos) > 1
         self.btn_next.setEnabled(habilitar)
         self.btn_prev.setEnabled(habilitar)        
 
@@ -264,7 +264,6 @@ class VideoPlayer(QWidget):
                 widget.deleteLater()
 
         self.video_layout.addWidget(self.image_viewer)
-
         self.image_viewer.set_image(pix)
 
     def mostrar_imagen_pantalla(self, pix):
@@ -325,17 +324,14 @@ class VideoPlayer(QWidget):
         # Si es video esperar a que VLC pare
         self.update_controls(False)
         self.archivo_pendiente = self.archivo_actual
-        self.mediaplayer.stop()
+        self.vlc_thread.command = "stop"
 
     # -----------------------------
     # FUNCIONES DEL REPRODUCTOR VLC
     # -----------------------------
     def open_file(self, file_name):
-        media = self.instance.media_new(file_name)
-        self.mediaplayer.set_media(media)
-        self._set_video_widget()
-        self.mediaplayer.play()
-        self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
+        self.vlc_thread.file_to_load = file_name
+        self.vlc_thread.command = "load"
 
     def _set_video_widget(self):
         # Asignar el handle de la ventana según plataforma
@@ -356,8 +352,7 @@ class VideoPlayer(QWidget):
             self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
 
     def stop(self):
-        self.mediaplayer.stop()
-        self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
+        self.vlc_thread.command = "stop"
 
     def set_volume(self, value):
         self.mediaplayer.audio_set_volume(value)
@@ -365,13 +360,14 @@ class VideoPlayer(QWidget):
     def set_position(self, pos):
         self.mediaplayer.set_position(pos / 1000.0)
 
-    def _on_vlc_stopped(self, event):
+    def _on_video_loaded(self):
+        self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
+
+    def _on_vlc_stopped(self):
         if self.archivo_pendiente:
             archivo = self.archivo_pendiente
             self.archivo_pendiente = None
-
-            # Cargar el nuevo vídeo
-            QTimer.singleShot(50, lambda: self.open_file(archivo))
+            self.open_file(archivo)
 
     # ----------------------
     # ACTUALIZACION DE LA UI
