@@ -248,51 +248,89 @@ class PaginaEstadisticas(QWidget):
         </html>
         """
     
+
     def _obtener_html_mapa(self):
         coords = self.generar_coords_mapa_calor_desde_json()
+        coords_js = json.dumps(coords)  # lista Python → array JS
 
         return f"""
-            <html>
-            <head>
-                <meta charset="utf-8" />
-                <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-                <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-                <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-                <style>
-                    html, body, #map {{ height: 100%; margin: 0; padding: 0; }}
-                </style>
-            </head>
-            <body>
-                <div id="map"></div>
-                <script>
-                    var map = L.map('map').setView([40.4168, -3.7038], 5);
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+            <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+            <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+            <style>
+                html, body, #map {{ height: 100%; margin: 0; padding: 0; }}
+            </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <div id="contadorFotos" 
+                style="
+                    position:absolute;
+                    bottom:20px;
+                    left:20px;
+                    background:white;
+                    color:black;
+                    padding:8px 12px;
+                    border-radius:6px;
+                    font-size:14px;
+                    font-weight: bold;
+                    font-family: 'Segoe UI', Arial;
+                    z-index:9999;
+                ">
+                Fotos visibles: 0
+            </div>
+            <script>
+                var map = L.map('map').setView([40.4168, -3.7038], 5);
 
-                    L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-                        maxZoom: 18
-                    }}).addTo(map);
+                L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                    maxZoom: 18
+                }}).addTo(map);
 
-                    var heat = L.heatLayer({coords}, {{
-                                radius: 15,
-                                blur: 10,
-                                maxZoom: 17,
-                                minOpacity: 0.4,
-                                gradient: {{
-                                    0.1: 'blue',
-                                    0.4: 'lime',
-                                    0.7: 'orange',
-                                    1.0: 'red'
-                                }}
-                            }}).addTo(map);
+                // 🔹 aquí definimos coords en JS
+                var coords = {coords_js};
 
-                            if ({coords}.length > 0) {{
-                                var bounds = new L.LatLngBounds({coords});
-                                map.fitBounds(bounds);
-                            }}
-                </script>
-            </body>
-            </html>
-            """
-    
+                var heat = L.heatLayer(coords, {{
+                    radius: 15,
+                    blur: 10,
+                    maxZoom: 17,
+                    minOpacity: 0.4,
+                    gradient: {{
+                        0.1: 'blue',
+                        0.4: 'lime',
+                        0.7: 'orange',
+                        1.0: 'red'
+                    }}
+                }}).addTo(map);
+
+                if (coords.length > 0) {{
+                    var bounds = new L.LatLngBounds(coords);
+                    map.fitBounds(bounds);
+                }}
+
+                map.on("moveend", contarFotosEnPantalla);
+                map.on("zoomend", contarFotosEnPantalla);
+
+                function contarFotosEnPantalla() {{
+                    var bounds = map.getBounds();
+                    var contador = 0;
+
+                    coords.forEach(function(p) {{
+                        if (bounds.contains(p)) {{
+                            contador++;
+                        }}
+                    }});
+
+                    document.getElementById("contadorFotos").innerText =
+                        "Archivos visibles: " + contador;
+                }}
+            </script>
+        </body>
+        </html>
+        """
+
     def _llenar_panel_exif(self, panel):
         try:
             ruta_base = get_ruta_principal()
