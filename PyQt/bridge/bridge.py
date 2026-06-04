@@ -134,7 +134,8 @@ class Bridge(QObject):
     # ============================================================
     @pyqtSlot(str)
     def recibirRuta(self, ruta):
-        self.actual_ruta = ruta
+        # Normalizar ruta para las barras invertidas (\\)
+        self.actual_ruta = os.path.normpath(ruta)
         self.enviarListaArchivos.emit(self.actual_ruta)
         self.actualizar_tabla()
         # Cargamos la galería de clasificación si esta en esa vista.

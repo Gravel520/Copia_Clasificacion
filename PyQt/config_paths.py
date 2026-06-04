@@ -35,6 +35,12 @@ def get_assets():
 def get_ruta_mapa_html():
     return "./PyQt/mapas/mapa_fotos.html"
 
+def get_ruta_mapa_grupos_html():
+    return "./PyQt/mapas/mapa_grupos.html"
+
+def get_ruta_mapa_grupos_html():
+    return "./PyQt/mapas/mapa_grupos.html"
+
 def get_enviando():
     return "./PyQt/compartir/assets/enviar.gif"
 
@@ -64,6 +70,9 @@ def ruta_json_miniaturas():
 
 def ruta_cache_json_geocoding():
     return Path("./PyQt/archivos_json/cache_geocoding.json")
+
+def ruta_json_grupos():
+    return Path("./PyQt/archivos_json/grupos.json")
 
 def ruta_exiftools():
     return 'C:\exiftool\exiftool.exe'

@@ -2,7 +2,7 @@
 
 '''
 
-import sys, os
+import sys, os, json
 import config_manager
 os.environ['VLC_VERBOSE'] = '-1'
 import vlc
@@ -26,8 +26,8 @@ from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.video_player_vlc import VideoPlayer
 from config_paths import (
     get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
-    get_ruta_principal, get_ruta_miniaturas, extensiones_validas,
-    get_ruta_logo, ruta_movil
+    get_ruta_principal, get_ruta_mapa_grupos_html,
+    get_ruta_logo
     )
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
@@ -35,6 +35,8 @@ from bridge.bridge import Bridge
 from copia_clasificador_fotos import obtener_archivos, cargar_json_unico, calcular_hash_md5
 from componentes.dialogo_configuracion import ConfigDialog
 from pagina_estadistica.pagina_estadistica import PaginaEstadisticas
+from gestor_grupos.gestor_grupos import GestorGrupos
+from gestor_grupos.dialogo_gestion_grupos import DialogoGestionGrupos
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 NUM_COLS = 7
@@ -171,9 +173,13 @@ class MapaWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.pagina_estadistica)
 
+        # Inicializar el gestor de grupos.
+        self.gestor = GestorGrupos()
+
         indice = int(config_manager.settings.value("General/pantalla"))
         self.cambiar_vista(indice)
 
+        self.contar_pendientes()
         self.signs_controls()
 
     def show(self):
@@ -239,8 +245,7 @@ class MapaWindow(QMainWindow):
         self.bridge.cargar_pendientes()
         self.ui.actionPendientes.setEnabled(habilitado)
 
-        self.ui.menuFiltro.setEnabled(habilitado)
-        self.ui.menuMarcas.setEnabled(habilitado)
+        self.ui.menuMapa.setEnabled(habilitado)
 
         if habilitado:
             self.ui.labelMapaActualizado.setText("Mapa actualizado")
@@ -506,6 +511,25 @@ class MapaWindow(QMainWindow):
 
         self.contar_pendientes()
 
+    def mostrar_mapa_grupo(self):
+        self.limpiar_datos()
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_grupos_html()}")))
+
+    def mostrar_mapa_normal(self):
+        self.limpiar_datos()
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
+
+    def limpiar_datos(self):
+        # Limpiamos los datos de la etiqueta de de los datos del listado,
+        #   la tabla, y el archivo que se ve en el visor de archivos, antes
+        #   de cambiar de mapa.
+        self.ui.labelFechaListado.setText("")
+        self.ui.tableWidget.setRowCount(0)
+        # Limpiar imagen previa.
+        self.ui.labelVisor.clear()
+        self.mpv_container.show()
+
+
     # ============================================================
     # CLASIFICAR ARCHIVOS
     # ============================================================
@@ -567,6 +591,24 @@ class MapaWindow(QMainWindow):
     def contar_clasificados(self):
         data = cargar_json_unico(ruta_json_unico())
         return data["stats"]["total_clasificados"]
+    
+    def gestor_de_grupos(self):
+        carpetas_pc = self.gestor.obtener_carpetas()
+
+        if not carpetas_pc:
+            print("No se detectaron carpetas para mostrar en el grupo.")
+            return
+        
+        ventana = DialogoGestionGrupos(self.gestor, carpetas_pc)
+
+        if ventana.exec_() == QDialog.Accepted:
+            self.generar_mapa_grupos()
+
+    def generar_mapa_grupos(self):
+        with open(ruta_json_unico(), "r", encoding="utf-8") as f:
+                fotos = json.load(f)
+
+        self.gestor.generar_mapa_todos_los_grupos(fotos)
 
     # ============================================================
     # MENÚ PENDIENTES
@@ -651,6 +693,11 @@ class MapaWindow(QMainWindow):
         self.ui.actionPendientes.triggered.connect(self.clasificar_pendientes)
 
         self.ui.actionConfiguracion.triggered.connect(self.settings_form)
+
+        self.ui.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
+        self.ui.actionGenerar_Mapa.triggered.connect(self.generar_mapa_grupos)
+        self.ui.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
+        self.ui.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
 
         self.ui.actionSalir_3.triggered.connect(self.close)
 

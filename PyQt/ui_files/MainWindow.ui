@@ -24,7 +24,7 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="pagePrincipal">
        <widget class="QWidget" name="QWidget_foto" native="true">
@@ -512,23 +512,12 @@ border-radius: 0px;</string>
     <addaction name="separator"/>
     <addaction name="actionSalir_3"/>
    </widget>
-   <widget class="QMenu" name="menuFiltro">
+   <widget class="QMenu" name="menuMapa">
     <property name="title">
-     <string>Filtro</string>
+     <string>Mapa</string>
     </property>
-    <addaction name="actionAno"/>
-    <addaction name="actionMes"/>
-    <addaction name="separator"/>
-    <addaction name="actionLugar"/>
-    <addaction name="separator"/>
-    <addaction name="actionPersona"/>
-   </widget>
-   <widget class="QMenu" name="menuMarcas">
-    <property name="title">
-     <string>Marcas</string>
-    </property>
-    <addaction name="actionFoto"/>
-    <addaction name="actionDirectorio"/>
+    <addaction name="actionMapa_Fotos"/>
+    <addaction name="actionMapa_Grupo"/>
    </widget>
    <widget class="QMenu" name="menuVista">
     <property name="title">
@@ -538,19 +527,33 @@ border-radius: 0px;</string>
     <addaction name="actionClasificacion"/>
     <addaction name="actionEstadistica"/>
    </widget>
+   <widget class="QMenu" name="menuAgrupar">
+    <property name="title">
+     <string>Agrupar</string>
+    </property>
+    <addaction name="actionGestion_Grupo"/>
+    <addaction name="separator"/>
+    <addaction name="actionGenerar_Mapa"/>
+   </widget>
    <addaction name="menuClasificar"/>
-   <addaction name="menuFiltro"/>
-   <addaction name="menuMarcas"/>
+   <addaction name="menuMapa"/>
+   <addaction name="menuAgrupar"/>
    <addaction name="menuVista"/>
   </widget>
-  <action name="actionAno">
+  <action name="actionMapa_Fotos">
    <property name="text">
-    <string>Año</string>
+    <string>Fotos</string>
+   </property>
+   <property name="toolTip">
+    <string>Mostramos el mapa normal</string>
    </property>
   </action>
-  <action name="actionMes">
+  <action name="actionMapa_Grupo">
    <property name="text">
-    <string>Mes</string>
+    <string>Grupo</string>
+   </property>
+   <property name="toolTip">
+    <string>Mostramos el mapa con los grupos creados</string>
    </property>
   </action>
   <action name="actionLugar">
@@ -577,10 +580,16 @@ border-radius: 0px;</string>
    <property name="text">
     <string>Desde Movil</string>
    </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Clasificar desde el movil.&lt;/p&gt;&lt;p&gt;Debe de haber un movil conectado por USB&lt;/p&gt;&lt;p&gt;al PC&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
   </action>
   <action name="actionClasificar">
    <property name="text">
     <string>Clasificar</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Clasificar desde una carpeta del PC&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
   <action name="actionSalir">
@@ -597,10 +606,16 @@ border-radius: 0px;</string>
    <property name="text">
     <string>Salir</string>
    </property>
+   <property name="toolTip">
+    <string>Salimos de la aplicación</string>
+   </property>
   </action>
   <action name="actionPendientes">
    <property name="text">
     <string>Pendientes</string>
+   </property>
+   <property name="toolTip">
+    <string>Archivos pendiente de clasificar</string>
    </property>
   </action>
   <action name="actionConfiguraci_n">
@@ -612,25 +627,66 @@ border-radius: 0px;</string>
    <property name="text">
     <string>Configuración</string>
    </property>
+   <property name="toolTip">
+    <string>Mostrar la configuración de la aplicación</string>
+   </property>
   </action>
   <action name="actionPrincipal">
    <property name="text">
     <string>Principal</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Vista principal:&lt;/p&gt;&lt;p&gt; - Mapa&lt;/p&gt;&lt;p&gt; - Tabla de archivos&lt;/p&gt;&lt;p&gt; - Previsualización de archivos&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
   <action name="actionClasificacion">
    <property name="text">
     <string>Clasificación</string>
    </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Vista clasificación:&lt;/p&gt;&lt;p&gt; - Vistas en miniatura&lt;/p&gt;&lt;p&gt; - Vista en listas&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
   </action>
   <action name="actionEstadistica">
    <property name="text">
     <string>Estadística</string>
    </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Vista estadística:&lt;/p&gt;&lt;p&gt; - Gráfico de fotos por año.&lt;/p&gt;&lt;p&gt; - Mapa de calor&lt;/p&gt;&lt;p&gt; - Datos principales.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
   </action>
   <action name="actionConfiguraci_n_2">
    <property name="text">
     <string>Configuración</string>
+   </property>
+  </action>
+  <action name="actionGestion_Grupo">
+   <property name="text">
+    <string>Gestor de Grupos</string>
+   </property>
+   <property name="toolTip">
+    <string>Creamos un grupo nuevo</string>
+   </property>
+  </action>
+  <action name="actionModificar_Grupo">
+   <property name="text">
+    <string>Modificar Grupo</string>
+   </property>
+   <property name="toolTip">
+    <string>Modificamos un grupo existente</string>
+   </property>
+  </action>
+  <action name="actionGenerar_Mapa">
+   <property name="text">
+    <string>Generar Mapa</string>
+   </property>
+   <property name="toolTip">
+    <string>Generamos el mapa del grupo</string>
+   </property>
+  </action>
+  <action name="actionCrear_Grupo">
+   <property name="text">
+    <string>Crear Grupo</string>
    </property>
   </action>
  </widget>

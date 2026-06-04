@@ -128,6 +128,7 @@ def generar_mapa(features):
         # Calculamos el promedio de latitud y longitud
         lat_centro = sum(p[0] for p in coords) / len(coords)
         lon_centro = sum(p[1] for p in coords) / len(coords)
+        coordenadas = [lat_centro, lon_centro]
     else: # Fallback a Madrid si el json está vacío
         lat_centro = 40.4167
         lon_centro = -3.7033
@@ -137,7 +138,7 @@ def generar_mapa(features):
     lat, lon = lat_centro, lon_centro
     mapa = folium.Map(
         location=[lat, lon],
-        zoom_start=6
+        zoom_start=5
         )
     
     # Crear capa GeoJSON
@@ -170,7 +171,7 @@ def generar_mapa(features):
         #panelFiltros {{
             position: fixed;
             top: 8px;
-            left: 8px;
+            left: 48px;
             z-index: 9999;
             background: rgba(255, 255, 255, 0.85);
             padding: 6px 8px;
@@ -281,6 +282,41 @@ def generar_mapa(features):
             No hay coincidencias
         </div>
     """))
+
+        # Definimos el título flotante y centrado para el mapa
+    # Si estás en el otro mapa, solo cambia "MAPA DE GRUPOS" por "MAPA NORMAL"
+    texto_titulo = "MAPA DE FOTOS" 
+
+    mapa.get_root().html.add_child(folium.Element(f"""
+        <style>
+        #tituloMapa {{
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%); /* Centrado horizontal perfecto */
+            z-index: 9999;
+            background: rgba(255, 255, 255, 0.9); /* Fondo blanco semitransparente */
+            color: #2c3e50; /* Color de texto elegante */
+            padding: 8px 20px;
+            border: 2px solid #2A81CB; /* Borde naranja a juego con tus marcadores */
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            pointer-events: none; /* Permite hacer clic a través del título si hay algo detrás */
+        }}
+        </style>
+
+        <div id="tituloMapa">
+            {texto_titulo}
+        </div>
+    """))
+
+
+    if coordenadas:
+        mapa.fit_bounds(coordenadas)
 
     mapa.save(f'{get_ruta_mapa_html()}')
 
