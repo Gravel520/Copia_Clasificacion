@@ -754,7 +754,7 @@ class MapaWindow(QMainWindow):
         self.ui.actionConfiguracion.triggered.connect(self.settings_form)
 
         self.ui.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
-        self.ui.actionGenerar_Mapa.triggered.connect(self.iniciar_generacion_mapa_grupos)
+        self.ui.actionGenerar_Mapa_2.triggered.connect(self.iniciar_generacion_mapa_grupos)
         self.ui.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
         self.ui.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
 

@@ -502,7 +502,7 @@ border-radius: 0px;</string>
    </property>
    <widget class="QMenu" name="menuClasificar">
     <property name="title">
-     <string>Clasificar</string>
+     <string>Archivo</string>
     </property>
     <addaction name="actionDesde_Movil"/>
     <addaction name="actionClasificar"/>
@@ -518,6 +518,8 @@ border-radius: 0px;</string>
     </property>
     <addaction name="actionMapa_Fotos"/>
     <addaction name="actionMapa_Grupo"/>
+    <addaction name="separator"/>
+    <addaction name="actionGenerar_Mapa_2"/>
    </widget>
    <widget class="QMenu" name="menuVista">
     <property name="title">
@@ -529,11 +531,9 @@ border-radius: 0px;</string>
    </widget>
    <widget class="QMenu" name="menuAgrupar">
     <property name="title">
-     <string>Agrupar</string>
+     <string>Grupos</string>
     </property>
     <addaction name="actionGestion_Grupo"/>
-    <addaction name="separator"/>
-    <addaction name="actionGenerar_Mapa"/>
    </widget>
    <widget class="QMenu" name="menuUbicaci_n">
     <property name="title">
@@ -545,12 +545,12 @@ border-radius: 0px;</string>
    <addaction name="menuClasificar"/>
    <addaction name="menuMapa"/>
    <addaction name="menuAgrupar"/>
-   <addaction name="menuVista"/>
    <addaction name="menuUbicaci_n"/>
+   <addaction name="menuVista"/>
   </widget>
   <action name="actionMapa_Fotos">
    <property name="text">
-    <string>Fotos</string>
+    <string>Mapa de Fotos</string>
    </property>
    <property name="toolTip">
     <string>Mostramos el mapa normal</string>
@@ -558,7 +558,7 @@ border-radius: 0px;</string>
   </action>
   <action name="actionMapa_Grupo">
    <property name="text">
-    <string>Grupo</string>
+    <string>Mapa de grupos</string>
    </property>
    <property name="toolTip">
     <string>Mostramos el mapa con los grupos creados</string>
@@ -586,7 +586,7 @@ border-radius: 0px;</string>
   </action>
   <action name="actionDesde_Movil">
    <property name="text">
-    <string>Desde Movil</string>
+    <string>Importar desde móvil</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Clasificar desde el movil.&lt;/p&gt;&lt;p&gt;Debe de haber un movil conectado por USB&lt;/p&gt;&lt;p&gt;al PC&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -594,7 +594,7 @@ border-radius: 0px;</string>
   </action>
   <action name="actionClasificar">
    <property name="text">
-    <string>Clasificar</string>
+    <string>Importar desde PC</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Clasificar desde una carpeta del PC&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -620,7 +620,7 @@ border-radius: 0px;</string>
   </action>
   <action name="actionPendientes">
    <property name="text">
-    <string>Pendientes</string>
+    <string>Pendientes de clasificar</string>
    </property>
    <property name="toolTip">
     <string>Archivos pendiente de clasificar</string>
@@ -705,6 +705,11 @@ border-radius: 0px;</string>
   <action name="actionModificar_Ubicacion">
    <property name="text">
     <string>Modificar Ubicación</string>
+   </property>
+  </action>
+  <action name="actionGenerar_Mapa_2">
+   <property name="text">
+    <string>Generar mapa de grupos</string>
    </property>
   </action>
  </widget>
