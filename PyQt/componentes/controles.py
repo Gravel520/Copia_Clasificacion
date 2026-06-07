@@ -256,13 +256,6 @@ class SelectorCarpeta(QDialog):
             return ruta
         
     def _abrir_dialogo_crear_carpeta(self):
-        '''
-        from componentes.dialogo_crear_carpeta import DialogoCrearCarpeta
-
-        dlg = DialogoCrearCarpeta(self)
-        if dlg.exec_() != QDialog.Accepted:
-            return
-        '''
         from componentes.dialogo_crear_carpeta_con_mapa import DialogoCrearCarpetaConMapa
 
         dlg = DialogoCrearCarpetaConMapa(self)

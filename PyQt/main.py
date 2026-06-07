@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QUrl, QSize, Qt
+from PyQt5.QtCore import QUrl, QSize, Qt, QThread
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap, QTransform
 from PIL import Image
@@ -31,6 +31,7 @@ from config_paths import (
     )
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
+from worker.mapa_grupos_worker import MapaGruposWorker
 from bridge.bridge import Bridge
 from copia_clasificador_fotos import obtener_archivos, cargar_json_unico, calcular_hash_md5
 from componentes.dialogo_configuracion import ConfigDialog
@@ -501,7 +502,7 @@ class MapaWindow(QMainWindow):
     def mapa_finalizado(self):
         self.spinner.movie.stop()
         self.spinner.close()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
+        self.mostrar_mapa_normal()
         QMessageBox.information(self, "Mapa actualizado", "El mapa ha sido generado correctamente.")
 
         config_manager.settings.setValue("Estado/mapa_generado", "True")
@@ -510,10 +511,6 @@ class MapaWindow(QMainWindow):
         self.set_mapa_habilitado(True)
 
         self.contar_pendientes()
-
-    def mostrar_mapa_grupo(self):
-        self.limpiar_datos()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_grupos_html()}")))
 
     def mostrar_mapa_normal(self):
         self.limpiar_datos()
@@ -529,6 +526,86 @@ class MapaWindow(QMainWindow):
         self.ui.labelVisor.clear()
         self.mpv_container.show()
 
+    def modificar_ubicacion(self):
+        from componentes.dialogo_modificar_nombre_carpeta_con_mapa import DialogoModificarNombreCarpetaMapa
+
+        dlg = DialogoModificarNombreCarpetaMapa(self)
+        dlg.generarMapaManual.connect(self.generar_mapa_manual)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        
+    def crear_ubicacion(self):
+        from componentes.dialogo_crear_carpeta_con_mapa import DialogoCrearCarpetaConMapa
+
+        dlg = DialogoCrearCarpetaConMapa(self)
+        if dlg.exec_() != QDialog.Accepted:
+            return
+        
+        QMessageBox.information(self, "Carpeta creada", "La carpeta se ha creado correctamente.")
+
+    # ============================================================
+    # OPCIONES DEL GESTOR DE GRUPOS
+    # ============================================================
+    def gestor_de_grupos(self):
+        carpetas_pc = self.gestor.obtener_carpetas()
+
+        if not carpetas_pc:
+            print("No se detectaron carpetas para mostrar en el grupo.")
+            return
+        
+        ventana = DialogoGestionGrupos(self.gestor, carpetas_pc)
+
+        if ventana.exec_() == QDialog.Accepted:
+            self.iniciar_generacion_mapa_grupos()
+
+    def mostrar_mapa_grupo(self):
+        self.limpiar_datos()
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_grupos_html()}")))
+
+    def iniciar_generacion_mapa_grupos(self):
+        # 1. Mostrar el Spinner bloqueando la ventana actual.
+        self.spinner = SpinnerOverlay(self, "Generando mapa de grupos...")
+        self.spinner.show()
+
+        with open(ruta_json_unico(), "r", encoding="utf-8") as f:
+                self.fotos = json.load(f)
+
+        # 2. Configurar el Hilo y el Worker
+        self.hilo_mapa = QThread()
+        salida_ruta = get_ruta_mapa_grupos_html()
+
+        self.worker_mapa_grupos = MapaGruposWorker(self.gestor, self.fotos, salida_ruta)
+        self.worker_mapa_grupos.moveToThread(self.hilo_mapa)
+
+        # 3. Conectar señales del ciclo de vida del hilo
+        self.hilo_mapa.started.connect(self.worker_mapa_grupos.procesar)
+        self.worker_mapa_grupos.finalizado.connect(self.on_mapa_grupos_listo)
+        self.worker_mapa_grupos.error.connect(self.on_mapa_grupos_error)
+
+        # Limpieza de memoria al terminar
+        self.worker_mapa_grupos.finalizado.connect(self.hilo_mapa.quit)
+        self.worker_mapa_grupos.error.connect(self.hilo_mapa.quit)
+        self.worker_mapa_grupos.finalizado.connect(self.worker_mapa_grupos.deleteLater)
+        self.worker_mapa_grupos.error.connect(self.worker_mapa_grupos.deleteLater)
+        self.hilo_mapa.finished.connect(self.hilo_mapa.deleteLater)
+
+        # 4. Arrancar el hilo en segundo plano
+        self.hilo_mapa.start()
+
+    def on_mapa_grupos_listo(self, ruta_salida):
+        # Ocultar el spinner en el hilo principal
+        if hasattr(self, "spinner"):
+            self.spinner.hide()
+
+        QMessageBox.information(self, "Gestor de Grupos", "Mapa de grupo generado correctamente.")
+        self.mostrar_mapa_grupo()
+
+    def on_mapa_grupos_error(self, mensaje_error):
+        # Ocultar el spinner en el hilo principal
+        if hasattr(self, "spinner"):
+            self.spinner.hide()
+
+        QMessageBox.warning(self, "Error Gestor de Grupos", mensaje_error)
 
     # ============================================================
     # CLASIFICAR ARCHIVOS
@@ -590,25 +667,7 @@ class MapaWindow(QMainWindow):
 
     def contar_clasificados(self):
         data = cargar_json_unico(ruta_json_unico())
-        return data["stats"]["total_clasificados"]
-    
-    def gestor_de_grupos(self):
-        carpetas_pc = self.gestor.obtener_carpetas()
-
-        if not carpetas_pc:
-            print("No se detectaron carpetas para mostrar en el grupo.")
-            return
-        
-        ventana = DialogoGestionGrupos(self.gestor, carpetas_pc)
-
-        if ventana.exec_() == QDialog.Accepted:
-            self.generar_mapa_grupos()
-
-    def generar_mapa_grupos(self):
-        with open(ruta_json_unico(), "r", encoding="utf-8") as f:
-                fotos = json.load(f)
-
-        self.gestor.generar_mapa_todos_los_grupos(fotos)
+        return data["stats"]["total_clasificados"]    
 
     # ============================================================
     # MENÚ PENDIENTES
@@ -695,7 +754,7 @@ class MapaWindow(QMainWindow):
         self.ui.actionConfiguracion.triggered.connect(self.settings_form)
 
         self.ui.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
-        self.ui.actionGenerar_Mapa.triggered.connect(self.generar_mapa_grupos)
+        self.ui.actionGenerar_Mapa.triggered.connect(self.iniciar_generacion_mapa_grupos)
         self.ui.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
         self.ui.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
 
@@ -704,6 +763,9 @@ class MapaWindow(QMainWindow):
         self.ui.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
         self.ui.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
         self.ui.actionEstadistica.triggered.connect(lambda: self.cambiar_vista(2))
+
+        self.ui.actionModificar_Ubicacion.triggered.connect(self.modificar_ubicacion)
+        self.ui.actionCrear_Ubicacion.triggered.connect(self.crear_ubicacion)
 
         self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 

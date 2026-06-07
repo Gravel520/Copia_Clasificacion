@@ -535,10 +535,18 @@ border-radius: 0px;</string>
     <addaction name="separator"/>
     <addaction name="actionGenerar_Mapa"/>
    </widget>
+   <widget class="QMenu" name="menuUbicaci_n">
+    <property name="title">
+     <string>Ubicación</string>
+    </property>
+    <addaction name="actionCrear_Ubicacion"/>
+    <addaction name="actionModificar_Ubicacion"/>
+   </widget>
    <addaction name="menuClasificar"/>
    <addaction name="menuMapa"/>
    <addaction name="menuAgrupar"/>
    <addaction name="menuVista"/>
+   <addaction name="menuUbicaci_n"/>
   </widget>
   <action name="actionMapa_Fotos">
    <property name="text">
@@ -687,6 +695,16 @@ border-radius: 0px;</string>
   <action name="actionCrear_Grupo">
    <property name="text">
     <string>Crear Grupo</string>
+   </property>
+  </action>
+  <action name="actionCrear_Ubicacion">
+   <property name="text">
+    <string>Crear Ubicación</string>
+   </property>
+  </action>
+  <action name="actionModificar_Ubicacion">
+   <property name="text">
+    <string>Modificar Ubicación</string>
    </property>
   </action>
  </widget>

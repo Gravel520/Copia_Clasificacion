@@ -141,12 +141,21 @@ def generar_mapa(features):
         zoom_start=5
         )
     
+    # Formatear tooltip.
+    for f in features:
+        nombre = f["properties"]["nombre"]
+
+        partes = nombre.split()
+        ciudad = " ".join(partes[:-1])
+        pais = partes[-1]
+        f["properties"]["tooltip"] = f"Ubicación: {ciudad}, {pais}"
+    
     # Crear capa GeoJSON
     geojson_layer = folium.GeoJson(
         {"type": "FeatureCollection", "features": features},
         name="Fotos",
         popup=folium.GeoJsonPopup(fields=["popup"], labels=False),
-        tooltip=folium.GeoJsonTooltip(fields=["nombre"])
+        tooltip=folium.GeoJsonTooltip(fields=["tooltip"], aliases=[""], labels=False)
     ).add_to(mapa)
 
     mapa_name = mapa.get_name()

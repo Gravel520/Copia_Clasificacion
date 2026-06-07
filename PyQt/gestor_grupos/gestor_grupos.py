@@ -69,7 +69,7 @@ class GestorGrupos():
     # ---------------------------------------------------------
     # GENERACIÓN DE MAPA GLOBAL DE GRUPOS
     # ---------------------------------------------------------
-    def generar_mapa_todos_los_grupos(self, fotos_json, salida=None):
+    def generar_mapa_todos_los_grupos_logica(self, fotos_json, salida=None):
         if salida is None:
             salida = self.salida
 
@@ -142,10 +142,6 @@ class GestorGrupos():
                 r_segura = f.get("ruta", "").replace("\\", "/")
                 nombre_archivo = os.path.basename(r_segura)
                 diccionario_fotos[nombre_archivo] = r_segura
-
-            # Convertimos el diccionario de Python a un objeto JSON compatible con JS
-            js_diccionario = json.dumps(diccionario_fotos)
-            js_grupo_nombre = json.dumps(grupo_nombre)
 
             # 2. GENERAR ENLACES QUE LLAMAN A TU FUNCIÓN enviarRuta()
             enlaces_html = ""
@@ -397,21 +393,12 @@ class GestorGrupos():
                 m.fit_bounds(coordenadas_totales)
                 
             m.save(salida)
-            QMessageBox.information(
-                None,
-                "Gestor de Grupos",
-                "Mapa de grupo generado correctamente."
-            )
+            return salida
+        
         else:
-            QMessageBox.warning(
-                None,
-                "Error Gestor de Grupos",
-                "Ningún grupo tiene fotos coincidentes."
-            )
-
-        return salida
-    
-    def obtener_carpetas(self):
+            return None
+        
+    def obtener_carpetas(self):        
         try:
             ruta_base = get_ruta_principal()
 
