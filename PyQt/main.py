@@ -270,8 +270,8 @@ class MapaWindow(QMainWindow):
 
         self.ui.button_generar_mapa.setVisible(False)
 
-        self.spinner = SpinnerOverlay(self.view, "Generando mapa...")
-        self.spinner.show()
+        self.spinner_fotos = SpinnerOverlay(self.view, "Generando mapa...")
+        self.spinner_fotos.show()
 
         self.worker_mapa = MapaWorker()
         self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
@@ -464,16 +464,16 @@ class MapaWindow(QMainWindow):
         config_manager.settings.sync()
 
     def iniciar_copia(self, carpeta_origen=None):
-        self.spinner = SpinnerOverlay(self, "Clasificando archivos...")
-        self.spinner.show()
+        self.spinner_copia = SpinnerOverlay(self, "Clasificando archivos...")
+        self.spinner_copia.show()
 
         self.worker_copia = CopiaWorker(carpeta_origen)
         self.worker_copia.terminado.connect(self.copia_finalizada)
         self.worker_copia.start()
 
     def copia_finalizada(self, mensaje):
-        self.spinner.movie.stop()
-        self.spinner.close()
+        self.spinner_copia.movie.stop()
+        self.spinner_copia.close()
 
         if mensaje == '':
             return
@@ -491,8 +491,8 @@ class MapaWindow(QMainWindow):
         dlg.exec_()
 
         if num_copiados > 0:
-            self.spinner = SpinnerOverlay(self, "Generando el mapa...")
-            self.spinner.show()
+            self.spinner_fotos = SpinnerOverlay(self, "Generando el mapa...")
+            self.spinner_fotos.show()
 
             self.worker_mapa = MapaWorker()
             self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
@@ -500,8 +500,8 @@ class MapaWindow(QMainWindow):
             self.worker_mapa.start()
 
     def mapa_finalizado(self):
-        self.spinner.movie.stop()
-        self.spinner.close()
+        self.spinner_fotos.movie.stop()
+        self.spinner_fotos.close()
         self.mostrar_mapa_normal()
         QMessageBox.information(self, "Mapa actualizado", "El mapa ha sido generado correctamente.")
 
@@ -530,9 +530,13 @@ class MapaWindow(QMainWindow):
         from componentes.dialogo_modificar_nombre_carpeta_con_mapa import DialogoModificarNombreCarpetaMapa
 
         dlg = DialogoModificarNombreCarpetaMapa(self)
-        dlg.generarMapaManual.connect(self.generar_mapa_manual)
+        dlg.generarMapaManual.connect(self.generar_mapas_desde_modificar_carpeta)
         if dlg.exec_() != QDialog.Accepted:
             return
+        
+    def generar_mapas_desde_modificar_carpeta(self):
+        self.generar_mapa_manual()
+        self.iniciar_generacion_mapa_grupos()
         
     def crear_ubicacion(self):
         from componentes.dialogo_crear_carpeta_con_mapa import DialogoCrearCarpetaConMapa
@@ -564,8 +568,8 @@ class MapaWindow(QMainWindow):
 
     def iniciar_generacion_mapa_grupos(self):
         # 1. Mostrar el Spinner bloqueando la ventana actual.
-        self.spinner = SpinnerOverlay(self, "Generando mapa de grupos...")
-        self.spinner.show()
+        self.spinner_grupos = SpinnerOverlay(self, "Generando mapa de grupos...")
+        self.spinner_grupos.show()
 
         with open(ruta_json_unico(), "r", encoding="utf-8") as f:
                 self.fotos = json.load(f)
@@ -594,16 +598,14 @@ class MapaWindow(QMainWindow):
 
     def on_mapa_grupos_listo(self, ruta_salida):
         # Ocultar el spinner en el hilo principal
-        if hasattr(self, "spinner"):
-            self.spinner.hide()
+        self.spinner_grupos.hide()
 
         QMessageBox.information(self, "Gestor de Grupos", "Mapa de grupo generado correctamente.")
         self.mostrar_mapa_grupo()
 
     def on_mapa_grupos_error(self, mensaje_error):
         # Ocultar el spinner en el hilo principal
-        if hasattr(self, "spinner"):
-            self.spinner.hide()
+        self.spinner_grupos.hide()
 
         QMessageBox.warning(self, "Error Gestor de Grupos", mensaje_error)
 
@@ -753,19 +755,21 @@ class MapaWindow(QMainWindow):
 
         self.ui.actionConfiguracion.triggered.connect(self.settings_form)
 
-        self.ui.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
-        self.ui.actionGenerar_Mapa_2.triggered.connect(self.iniciar_generacion_mapa_grupos)
+        self.ui.actionSalir_3.triggered.connect(self.close)
+
         self.ui.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
         self.ui.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
+        self.ui.actionGenerar_Mapa_de_Grupos.triggered.connect(self.iniciar_generacion_mapa_grupos)
+        self.ui.actionGenera_Mapa_de_Fotos.triggered.connect(self.generar_mapa_manual)
 
-        self.ui.actionSalir_3.triggered.connect(self.close)
+        self.ui.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
+
+        self.ui.actionModificar_Ubicacion.triggered.connect(self.modificar_ubicacion)
+        self.ui.actionCrear_Ubicacion.triggered.connect(self.crear_ubicacion)
 
         self.ui.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
         self.ui.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
         self.ui.actionEstadistica.triggered.connect(lambda: self.cambiar_vista(2))
-
-        self.ui.actionModificar_Ubicacion.triggered.connect(self.modificar_ubicacion)
-        self.ui.actionCrear_Ubicacion.triggered.connect(self.crear_ubicacion)
 
         self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 
