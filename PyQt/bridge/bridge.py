@@ -795,7 +795,8 @@ class Bridge(QObject):
                     if archivo.lower().endswith(extensiones_validas("video")):
                         ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
                         # Usar miniatura
-                        ruta_thumb = str(ruta_thumb) if ruta_thumb else str("C:/Users/katal/Documents/Python/Copia_Clasificacion/PyQt/assets/marca_video.png")
+                        mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
+                        ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
 
                     # Crear Widget
                     widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)

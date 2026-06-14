@@ -27,7 +27,7 @@ from componentes.video_player_vlc import VideoPlayer
 from config_paths import (
     get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
     get_ruta_principal, get_ruta_mapa_grupos_html,
-    get_ruta_logo
+    get_ruta_logo, ruta_cache_json_geocoding
     )
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
@@ -38,6 +38,7 @@ from componentes.dialogo_configuracion import ConfigDialog
 from pagina_estadistica.pagina_estadistica import PaginaEstadisticas
 from gestor_grupos.gestor_grupos import GestorGrupos
 from gestor_grupos.dialogo_gestion_grupos import DialogoGestionGrupos
+from autodiagnostico.dialogo import DialogoAutodiagnostico
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 NUM_COLS = 7
@@ -716,6 +717,17 @@ class MapaWindow(QMainWindow):
         config_manager.save_config(data)
 
     # ============================================================
+    # AUTODIAGNOSTICO
+    # ============================================================
+    def abrir_autodiagnostico(self):
+        dlg = DialogoAutodiagnostico(
+            ruta_json_unico(), 
+            get_ruta_principal(),
+            modo="completo"
+        )
+        dlg.exec_()
+
+    # ============================================================
     # UTILIDADES
     # ============================================================
     @staticmethod
@@ -754,6 +766,7 @@ class MapaWindow(QMainWindow):
         self.ui.actionPendientes.triggered.connect(self.clasificar_pendientes)
 
         self.ui.actionConfiguracion.triggered.connect(self.settings_form)
+        self.ui.actionAutodiagnostico.triggered.connect(self.abrir_autodiagnostico)
 
         self.ui.actionSalir_3.triggered.connect(self.close)
 

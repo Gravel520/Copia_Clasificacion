@@ -509,6 +509,7 @@ border-radius: 0px;</string>
     <addaction name="actionPendientes"/>
     <addaction name="separator"/>
     <addaction name="actionConfiguracion"/>
+    <addaction name="actionAutodiagnostico"/>
     <addaction name="separator"/>
     <addaction name="actionSalir_3"/>
    </widget>
@@ -722,6 +723,11 @@ border-radius: 0px;</string>
   <action name="actionGenerar_Mapa_de_Grupos">
    <property name="text">
     <string>Generar Mapa de Grupos</string>
+   </property>
+  </action>
+  <action name="actionAutodiagnostico">
+   <property name="text">
+    <string>Diagnóstico</string>
    </property>
   </action>
  </widget>
