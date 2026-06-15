@@ -722,8 +722,7 @@ class MapaWindow(QMainWindow):
     def abrir_autodiagnostico(self):
         dlg = DialogoAutodiagnostico(
             ruta_json_unico(), 
-            get_ruta_principal(),
-            modo="completo"
+            get_ruta_principal()
         )
         dlg.exec_()
 

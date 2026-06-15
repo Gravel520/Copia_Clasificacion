@@ -17,12 +17,11 @@ from .chequeos.corrupcion import check_archivos_corruptos
 
 from .reporte import generar_reporte
 
-def run_autodiagnostico(ruta_json_unico, raiz_backup, modo="completo"):
+def run_autodiagnostico(ruta_json_unico, raiz_backup, chequeos):
     """
-    ruta_json_unico: ruta al JSON único.
-    ruta_cache_ubicaciones: ruta al JSON del cache de geolocalización.
-    raiz_backup: carpeta raíz donde están las carpetas tipo (ciudad)(pais)(fecha).
-    modo: "rapido" o "completo".
+    chequeos: lista de strings:
+      ["completo"] o combinación de:
+      "json_carpetas", "json_cache", "integridad", "directorios", "corrupcion"
     """
 
     data = cargar_json_unico(ruta_json_unico)
@@ -30,15 +29,32 @@ def run_autodiagnostico(ruta_json_unico, raiz_backup, modo="completo"):
 
     resultados = []
 
-    # Chequeos básicos
-    resultados.append(check_json_vs_carpetas(data, raiz_backup))
-    # Normalizar los nombres (Espana por España)
-    resultados.append(check_json_vs_cache(data, cache)) 
+    def ejecutar_completo():
+        res = []
+        res.append(check_json_vs_carpetas(data, raiz_backup))
+        res.append(check_json_vs_cache(data, cache))
+        res.append(check_integridad_archivos(data))
+        res.append(check_directorios_vacios(raiz_backup))
+        res.append(check_archivos_corruptos(data))
+        return res
+    
+    if "completo" in chequeos:
+        resultados.extend(ejecutar_completo())
+        return resultados
+    
+    if "json_carpetas" in chequeos:
+        resultados.append(check_json_vs_carpetas(data, raiz_backup))
+    
+    if "json_cache" in chequeos:
+        resultados.append(check_json_vs_cache(data, cache)) 
 
-    if modo == "completo":
-        resultados.append(check_integridad_archivos(data)) 
+    if "integridad" in chequeos:
+        resultados.append(check_integridad_archivos(data))
+
+    if "directorios" in chequeos:
         resultados.append(check_directorios_vacios(raiz_backup)) 
+
+    if "corrupcion" in chequeos:
         resultados.append(check_archivos_corruptos(data)) 
 
-    reporte = generar_reporte(resultados)
-    return reporte
+    return resultados
