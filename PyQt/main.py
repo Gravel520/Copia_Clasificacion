@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QUrl, QSize, Qt, QThread
+from PyQt5.QtCore import QUrl, QSize, Qt, QThread, QEvent
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap, QTransform
 from PIL import Image
@@ -38,7 +38,7 @@ from componentes.dialogo_configuracion import ConfigDialog
 from pagina_estadistica.pagina_estadistica import PaginaEstadisticas
 from gestor_grupos.gestor_grupos import GestorGrupos
 from gestor_grupos.dialogo_gestion_grupos import DialogoGestionGrupos
-from autodiagnostico.dialogo import DialogoAutodiagnostico
+from autodiagnostico.dialogo.dialogo_autodiagnostico import DialogoAutodiagnostico
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 NUM_COLS = 7
@@ -724,7 +724,12 @@ class MapaWindow(QMainWindow):
             ruta_json_unico(), 
             get_ruta_principal()
         )
+        dlg.cerrado.connect(self.comprobar_mapa_autodiagnostico)
         dlg.exec_()
+
+    def comprobar_mapa_autodiagnostico(self):
+        mapa_ok = settings.value("Estado/mapa_generado") == "True"
+        self.set_mapa_habilitado(mapa_ok)
 
     # ============================================================
     # UTILIDADES

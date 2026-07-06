@@ -16,14 +16,11 @@ def check_integridad_archivos(data_json):
 
     for item in clasificados:
         ruta = item.get("ruta")
+        ubicacion = item.get("ubicacion")
+        fecha = item.get("fecha")
         hash_archivo = item.get("hash")
 
         if not ruta or not os.path.exists(ruta):
-            problemas.append({
-                "tipo": "archivo_no_encontrado",
-                "ruta": ruta,
-                "mensaje": "El archivo no existe en disco"
-            })
             continue
 
         tam = os.path.getsize(ruta)
@@ -31,6 +28,7 @@ def check_integridad_archivos(data_json):
             problemas.append({
                 "tipo": "archivo_vacio",
                 "ruta": ruta,
+                "ubicacion": ubicacion + fecha,
                 "mensaje": "El archivo tiene tamaño 0"
             })
 
@@ -38,11 +36,11 @@ def check_integridad_archivos(data_json):
             problemas.append({
                 "tipo": "hash_vacio",
                 "ruta": ruta,
+                "ubicacion": ubicacion + fecha,
                 "mensaje": "El item no tiene hash definido"
             })
 
-        return {
-            "nombre": "Integridad básica de archivos",
-            "problemas": problemas
-        }
-    
+    return {
+        "nombre": "Integridad básica de archivos",
+        "problemas": problemas
+    }

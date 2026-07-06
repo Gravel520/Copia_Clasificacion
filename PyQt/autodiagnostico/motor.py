@@ -2,9 +2,6 @@
 Script en Python
 '''
 
-import os
-import json
-
 from copia_clasificador_fotos import (
     cargar_json_unico, cargar_cache
 )
@@ -14,8 +11,6 @@ from .chequeos.json_vs_cache import check_json_vs_cache
 from .chequeos.integridad_archivos import check_integridad_archivos
 from .chequeos.directorios_vacios import check_directorios_vacios
 from .chequeos.corrupcion import check_archivos_corruptos
-
-from .reporte import generar_reporte
 
 def run_autodiagnostico(ruta_json_unico, raiz_backup, chequeos):
     """

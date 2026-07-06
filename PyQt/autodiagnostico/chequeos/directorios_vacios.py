@@ -24,7 +24,7 @@ def check_directorios_vacios(raiz_backup):
         if len(archivos) == 0:
             problemas.append({
                 "tipo": "directorio_vacio",
-                "ruta": ruta_carpeta,
+                "ruta": carpeta,
                 "mensaje": "Carpeta sin archivos"
             })
 
