@@ -11,6 +11,16 @@ def check_json_vs_cache(data_json, cache_ubicaciones):
 
     clasificados = data_json.get("clasificados", {}).get("items", [])
 
+    # Detectar hash vacío
+    for item in clasificados:
+        if item.get("hash", "") == "":
+            problemas.append({
+                "tipo": "hash_vacio",
+                "ruta": item.get("ruta"),
+                "mensaje": "El hash está vacio."
+            })
+
+    # Ubicaciones usadas
     ubicaciones_usadas = set(
         item.get("ubicacion")
         for item in clasificados

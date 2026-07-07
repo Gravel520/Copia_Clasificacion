@@ -29,6 +29,8 @@ class DialogoAutodiagnostico(QDialog):
         self.setWindowTitle("Autodiagnóstico del sistema")
         self.resize(600, 600)
 
+        self._testing = False # Necesario para pruebas
+
         self.ruta_json = ruta_json
         self.raiz_backup = raiz_backup
         self.txtReporte = ""
@@ -364,7 +366,7 @@ class DialogoAutodiagnostico(QDialog):
         data = CORRECCIONES[tipo](lista_problemas, data)
         guardar_json(self.ruta_json, data)
 
-        QMessageBox.information(self, "Corrección realizada", "La corrección ha sido realizada correctamente.") 
+        self.mostrar_mensaje("La corrección ha sido realizada correctamente.")
 
         # Re-ejecutar diagnóstico
         self.iniciar()
@@ -378,4 +380,9 @@ class DialogoAutodiagnostico(QDialog):
             f.write(date + '\n\n')
             f.write(self.txtReporte)
             
-        QMessageBox.information(self, "Reporte guardado", "💾 Reporte guardado en 'reporte_autodiagnostico.txt'")
+        self.mostrar_mensaje("💾 Reporte guardado en 'reporte_autodiagnostico.txt'")
+
+    def mostrar_mensaje(self, mensaje):
+        if getattr(self, "_testing", False):
+            return
+        QMessageBox.information(self, "Información", mensaje)

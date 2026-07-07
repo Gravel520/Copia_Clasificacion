@@ -10,7 +10,7 @@ from copia_clasificador_fotos import (
 from config_paths import get_ruta_principal
 
 def reconstruir_archivo_huerfano(ruta_archivo, data):
-    ruta_archivo = os.path.join(get_ruta_principal(), ruta_archivo)
+    ruta_archivo_completa = os.path.join(get_ruta_principal(), ruta_archivo)
 
     archivo = os.path.basename(ruta_archivo)
     carpeta = os.path.basename(os.path.dirname(ruta_archivo))
@@ -29,23 +29,28 @@ def reconstruir_archivo_huerfano(ruta_archivo, data):
         ubicacion = "(Sin_GPS)(Sin_GPS)"
         fecha_str = "(0000-00)"
 
-    # Calcular hash
-    hash = calcular_hash_md5(ruta_archivo)
-
-    # Obtener fecha completa, hora y timestamp desde el archivo
-    fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_archivo, None)
-
-    # Obtener coordenadas desde cache
-    cache = cargar_cache()
-    if ubicacion in cache:
-        lat = cache[ubicacion][0]
-        lon = cache[ubicacion][1]
-    else:
+    # Si el archivo No existe usar valores por defecto.
+    if not os.path.exists(ruta_archivo_completa):
+        hash = "hash_huerfano"
+        fecha_completa = fecha_str
+        timestamp = 0
         lat, lon = 0, 0
+    else:
+        # Calcular hash
+        hash = calcular_hash_md5(ruta_archivo)
 
-    clasificados = data["clasificados"]["items"]
+        # Obtener fecha completa, hora y timestamp desde el archivo
+        fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_archivo, None)
 
-    clasificados.append({
+        # Obtener coordenadas desde cache
+        cache = cargar_cache()
+        if ubicacion in cache:
+            lat = cache[ubicacion][0]
+            lon = cache[ubicacion][1]
+        else:
+            lat, lon = 0, 0
+
+    data["clasificados"]["items"].append({
         "hash": hash,
         "ruta": ruta_archivo,
         "ubicacion": ubicacion,
