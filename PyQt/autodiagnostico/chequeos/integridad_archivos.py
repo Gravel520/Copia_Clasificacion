@@ -29,6 +29,7 @@ def check_integridad_archivos(data_json):
                 "tipo": "archivo_vacio",
                 "ruta": ruta,
                 "ubicacion": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "mensaje": "El archivo tiene tamaño 0"
             })
 
@@ -37,6 +38,7 @@ def check_integridad_archivos(data_json):
                 "tipo": "hash_vacio",
                 "ruta": ruta,
                 "ubicacion": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "mensaje": "El item no tiene hash definido"
             })
 

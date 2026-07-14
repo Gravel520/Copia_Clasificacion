@@ -4,6 +4,7 @@ Script en Python.
 
 import os
 
+from autodiagnostico.utils.deshabilitar_mapa import set_deshabilitar_mapa
 from copia_clasificador_fotos import (
     agrupar_fecha_archivo, calcular_hash_md5, cargar_cache
 )
@@ -37,10 +38,10 @@ def reconstruir_archivo_huerfano(ruta_archivo, data):
         lat, lon = 0, 0
     else:
         # Calcular hash
-        hash = calcular_hash_md5(ruta_archivo)
+        hash = calcular_hash_md5(ruta_archivo_completa)
 
         # Obtener fecha completa, hora y timestamp desde el archivo
-        fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_archivo, None)
+        fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_archivo_completa, None)
 
         # Obtener coordenadas desde cache
         cache = cargar_cache()
@@ -52,7 +53,7 @@ def reconstruir_archivo_huerfano(ruta_archivo, data):
 
     data["clasificados"]["items"].append({
         "hash": hash,
-        "ruta": ruta_archivo,
+        "ruta": ruta_archivo_completa,
         "ubicacion": ubicacion,
         "latitud": lat,
         "longitud": lon,
@@ -67,4 +68,5 @@ def corregir_archivo_huerfano(lista_problemas, data):
     for p in lista_problemas:
         data = reconstruir_archivo_huerfano(p.get("ruta"), data)
 
+    set_deshabilitar_mapa()
     return data

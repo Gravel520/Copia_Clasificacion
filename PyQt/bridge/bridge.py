@@ -203,14 +203,14 @@ class Bridge(QObject):
 
         for i, nombre in enumerate(archivos):
             ruta_completa = os.path.join(self.actual_ruta, nombre)
-            ruta_conver = ruta_completa.replace('/', '\\')
+            ruta_conver = os.path.normpath(ruta_completa)
 
             busqueda_hash = (
                 self.pendientes if '(Sin_GPS)' in ruta_conver else self.historial
             )
 
             coincidencia = next(
-                (r for r in busqueda_hash if r['ruta'] == ruta_conver),
+                (r for r in busqueda_hash if os.path.normpath(r['ruta']) == ruta_conver),
                 None
             )
 

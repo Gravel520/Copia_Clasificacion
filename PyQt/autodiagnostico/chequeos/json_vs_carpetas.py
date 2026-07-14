@@ -33,7 +33,7 @@ def check_json_vs_carpetas(data_json, raiz_backup):
             problemas.append({
                 "tipo": "ruta_vacia",
                 "hash": hash,
-                "ruta": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "ubicacion": ubicacion,
                 "fecha": fecha,
                 "mensaje": "Item sin ruta definida"
@@ -47,20 +47,10 @@ def check_json_vs_carpetas(data_json, raiz_backup):
                 "tipo": "archivo_no_encontrado",
                 "ruta": ruta,
                 "ubicacion": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "mensaje": "El archivo no existe en disco"
             })
             continue
-
-        carpeta_real = extraer_carpeta_de_ruta(ruta)
-        carpeta_esperada = construir_nombre_carpeta(ubicacion, fecha)
-
-        if carpeta_real != carpeta_esperada:
-            problemas.append({
-                "tipo": "carpeta_incorrecta",
-                "ruta": ruta,
-                "carpeta_real": carpeta_real,
-                "carpeta_esperada": carpeta_esperada
-            })
 
     # Archivos en disco que NO están en el JSON
     rutas_fisicas = set()
@@ -83,6 +73,7 @@ def check_json_vs_carpetas(data_json, raiz_backup):
         problemas.append({
             "tipo": "archivo_huerfano",
             "ruta": "(" + ruta.split("(", 1)[1],
+            "detalle": "(" + ruta.split("(", 1)[1],
             "mensaje": "Archivo existe en disco pero no está registrado en el JSON"
         })
 
@@ -105,6 +96,7 @@ def check_json_vs_carpetas(data_json, raiz_backup):
                 "hash": h,
                 "ruta": ruta,
                 "ubicacion": ubic[0],
+                "detalle": ubic[0],
                 "mensaje": "Hash duplicado en el JSON"
             })
 

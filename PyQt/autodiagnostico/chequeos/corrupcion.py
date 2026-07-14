@@ -46,6 +46,7 @@ def check_archivos_corruptos(data_json):
                 "tipo": "imagen_corrupta",
                 "ruta": ruta,
                 "ubicacion": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "mensaje": "No se pudo abrir la imagen"
                 })
         
@@ -73,6 +74,7 @@ def check_archivos_corruptos(data_json):
                 "tipo": "video_corrupto",
                 "ruta": str(ruta),
                 "ubicacion": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "mensaje": "No se pudo abrir el video"
                 })
                 continue
@@ -83,6 +85,7 @@ def check_archivos_corruptos(data_json):
                 "tipo": "video_corrupto",
                 "ruta": str(ruta),
                 "ubicacion": ubicacion + fecha,
+                "detalle": ubicacion + fecha,
                 "mensaje": "No se pudo abrir el video"
                 })
 

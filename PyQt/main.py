@@ -7,9 +7,10 @@ import config_manager
 os.environ['VLC_VERBOSE'] = '-1'
 import vlc
 os.environ["PATH"] = os.path.dirname(__file__) + os.pathsep + os.environ["PATH"]
-
 import mpv
+
 from config_manager import settings
+
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QMessageBox, QFileDialog,
     QDialog, QWidget, QTableWidgetItem, QAbstractItemView
@@ -19,26 +20,36 @@ from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QUrl, QSize, Qt, QThread, QEvent
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap, QTransform
+
 from PIL import Image
-from io import BytesIO
+
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.video_player_vlc import VideoPlayer
+
 from config_paths import (
     get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
     get_ruta_principal, get_ruta_mapa_grupos_html,
     get_ruta_logo, ruta_cache_json_geocoding
     )
+
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from worker.mapa_grupos_worker import MapaGruposWorker
+
 from bridge.bridge import Bridge
+
 from copia_clasificador_fotos import obtener_archivos, cargar_json_unico, calcular_hash_md5
+
 from componentes.dialogo_configuracion import ConfigDialog
+
 from pagina_estadistica.pagina_estadistica import PaginaEstadisticas
+
 from gestor_grupos.gestor_grupos import GestorGrupos
 from gestor_grupos.dialogo_gestion_grupos import DialogoGestionGrupos
+
 from autodiagnostico.dialogo.dialogo_autodiagnostico import DialogoAutodiagnostico
+from autodiagnostico.programador_autodiagnostico import toca_ejecutar
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 NUM_COLS = 7
@@ -183,6 +194,7 @@ class MapaWindow(QMainWindow):
 
         self.contar_pendientes()
         self.signs_controls()
+        self.iniciar_autodiagnostico_programado()
 
     def show(self):
         self.ui.show()
@@ -322,25 +334,28 @@ class MapaWindow(QMainWindow):
 
         self.mpv_container.hide()
 
-        img = Image.open(ruta_archivo)
-        exif = img.getexif()
+        try:
+            img = Image.open(ruta_archivo)
+            exif = img.getexif()
 
-        orientacion = exif.get(274, 1)
+            orientacion = exif.get(274, 1)
 
-        pixmap = QPixmap(ruta_archivo)
-        transform = QTransform()
-        if orientacion == 3:
-            transform.rotate(180)
-        elif orientacion == 6:
-            transform.rotate(90)
-        elif orientacion == 8:
-            transform.rotate(270)
+            pixmap = QPixmap(ruta_archivo)
+            transform = QTransform()
+            if orientacion == 3:
+                transform.rotate(180)
+            elif orientacion == 6:
+                transform.rotate(90)
+            elif orientacion == 8:
+                transform.rotate(270)
 
-        pixmap = pixmap.transformed(transform)
-        
-        if not pixmap.isNull():
-            self.ui.labelVisor.setPixmap(pixmap)
-            self.ui.labelVisor.setScaledContents(True)
+            pixmap = pixmap.transformed(transform)
+            
+            if not pixmap.isNull():
+                self.ui.labelVisor.setPixmap(pixmap)
+                self.ui.labelVisor.setScaledContents(True)
+        except:
+            pass
 
     def mostrar_video(self, ruta_archivo):
         # Limpiar imagen previa.
@@ -719,6 +734,10 @@ class MapaWindow(QMainWindow):
     # ============================================================
     # AUTODIAGNOSTICO
     # ============================================================
+    def iniciar_autodiagnostico_programado(self):
+        if toca_ejecutar():
+            self.abrir_autodiagnostico()
+
     def abrir_autodiagnostico(self):
         dlg = DialogoAutodiagnostico(
             ruta_json_unico(), 

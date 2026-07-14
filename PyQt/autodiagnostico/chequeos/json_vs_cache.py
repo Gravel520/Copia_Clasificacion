@@ -11,15 +11,6 @@ def check_json_vs_cache(data_json, cache_ubicaciones):
 
     clasificados = data_json.get("clasificados", {}).get("items", [])
 
-    # Detectar hash vacío
-    for item in clasificados:
-        if item.get("hash", "") == "":
-            problemas.append({
-                "tipo": "hash_vacio",
-                "ruta": item.get("ruta"),
-                "mensaje": "El hash está vacio."
-            })
-
     # Ubicaciones usadas
     ubicaciones_usadas = set(
         item.get("ubicacion")
@@ -33,8 +24,9 @@ def check_json_vs_cache(data_json, cache_ubicaciones):
     faltan_en_cache = ubicaciones_usadas - ubicaciones_cache
     for ubic in faltan_en_cache:
         problemas.append({
-            "tipo": "ubiacion_sin_cache",
+            "tipo": "ubicacion_sin_cache",
             "ubicacion": ubic,
+            "detalle": ubic,
             "mensaje": "Ubicación usada en clasificados pero no presente en cache."
         })
 

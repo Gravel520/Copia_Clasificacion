@@ -3,6 +3,7 @@ Script en Python.
 '''
 
 from copia_clasificador_fotos import actualizar_stats
+from autodiagnostico.utils.deshabilitar_mapa import set_deshabilitar_mapa
 
 def corregir_archivo_no_encontrado(lista_problemas, data):
     clasificados = data.get("clasificados", {}).get("items", [])
@@ -21,10 +22,10 @@ def corregir_archivo_no_encontrado(lista_problemas, data):
     if "stats" not in data:
         data["stats"] = {
             "total_clasificados": 0,
-            "total_pendientes": 0,
+            "total_eliminados": 0,
         }
 
-    data["stats"]["total_clasificados"] = len(data["clasificados"]["items"])
-    data["stats"]["total_pendientes"] = len(data["pendientes"]["items"])
-
+    actualizar_stats(data)
+    
+    set_deshabilitar_mapa()
     return data

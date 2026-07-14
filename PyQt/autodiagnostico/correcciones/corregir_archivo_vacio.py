@@ -4,6 +4,7 @@ Script en Python.
 
 import os
 
+from autodiagnostico.utils.deshabilitar_mapa import set_deshabilitar_mapa
 from copia_clasificador_fotos import actualizar_stats
 
 def corregir_archivo_vacio(lista_problemas, data):
@@ -26,4 +27,6 @@ def corregir_archivo_vacio(lista_problemas, data):
             })
 
     actualizar_stats(data)
+
+    set_deshabilitar_mapa()
     return data

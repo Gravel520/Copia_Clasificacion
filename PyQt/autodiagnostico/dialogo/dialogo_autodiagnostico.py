@@ -2,6 +2,8 @@
 Script en Python.
 '''
 
+import unicodedata
+
 from datetime import datetime
 from collections import defaultdict
 
@@ -18,7 +20,7 @@ from autodiagnostico.correcciones import CORRECCIONES
 from autodiagnostico.servicios.json_service import cargar_json, guardar_json
 from autodiagnostico.widgets import WidgetError
 
-from config_manager import settings
+from config_manager import load_config, save_config
 from config_paths import get_spinner
 
 class DialogoAutodiagnostico(QDialog):
@@ -78,21 +80,39 @@ class DialogoAutodiagnostico(QDialog):
         hprog = QHBoxLayout()
         hprog.setContentsMargins(0, 0, 0, 0)
         hprog.setSpacing(5)
+
+        self.chProgramar = QCheckBox("")
+        self.chProgramar.stateChanged.connect(self.toggle_programar)
+        
         self.cmbCantidad = QComboBox()
         self.cmbCantidad.addItems([str(i) for i in range(1, 11)])
 
         self.cmbUnidad = QComboBox()
-        self.cmbUnidad.addItems(["días", "meses", "años"])
+        self.cmbUnidad.addItems(["días", "semanas", "meses"])
 
+        hprog.addWidget(self.chProgramar)
         hprog.addWidget(self.cmbCantidad)
         hprog.addWidget(self.cmbUnidad)
 
         hprogramar.addLayout(hprog)
 
+        hboton_prog = QVBoxLayout()
+        hboton_prog.setContentsMargins(0, 0, 0, 0)
+        hboton_prog.setSpacing(5)
+
+        self.btnProgramar = QPushButton()
+        self.btnProgramar.clicked.connect(self.programar_autodiagnostico)
+
+        hboton_prog.addWidget(self.btnProgramar)
+
+        hprogramar.addLayout(hboton_prog)
+
         hseleccion.addLayout(hvchecks)
         hseleccion.addLayout(hprogramar)
 
         layout.addLayout(hseleccion)
+
+        self.comprobar_programar()
 
         # -------------------------
         # Spinner y etiqueta de estado
@@ -100,7 +120,7 @@ class DialogoAutodiagnostico(QDialog):
         hstatus = QHBoxLayout()
 
         hvestado = QVBoxLayout()
-        self.lblEstado = QLabel("Esperando...")
+        self.lblEstado = QLabel("Pulsar (Empezar)")
         self.lblEstado.setAlignment(Qt.AlignCenter)
 
         self.lblSpinner = QLabel()
@@ -306,6 +326,56 @@ class DialogoAutodiagnostico(QDialog):
                 lbl.setStyleSheet("color: #009900; font-weight: bold;")
 
     # ---------------------------------------------------------
+    # Programar autodiagnostico
+    # ---------------------------------------------------------
+    def programar_autodiagnostico(self):
+        cfg = load_config()
+
+        cantidad = int(self.cmbCantidad.currentText())
+        unidad = self.cmbUnidad.currentText()
+        self.btnProgramar.setText(f"Programar autodiagnóstico\ncada {cantidad} {unidad}")
+
+        unidad_norm = unicodedata.normalize("NFKD", unidad)
+        unidad_norm = "".join(c for c in unidad_norm if not unicodedata.combining(c))
+
+        cfg["autodiagnostico_cantidad"] = cantidad
+        cfg["autodiagnostico_unidad"] = unidad_norm
+        cfg["autodiagnostico_ultima"] = datetime.now().strftime("%Y-%m-%d")
+
+        save_config(cfg)
+        
+        self.mostrar_mensaje("Programación guardada con exito.")
+
+    def toggle_programar(self, estado):
+        activar = estado
+
+        # Abrimos el config.
+        cfg = load_config()
+
+        self.chProgramar.setChecked(activar)
+        self.cmbCantidad.setEnabled(activar)
+        self.cmbUnidad.setEnabled(activar)
+
+        # Definimos el texto del botón programar.
+        if activar:
+            cantidad = int(cfg["autodiagnostico_cantidad"])
+            unidad = cfg["autodiagnostico_unidad"]
+            self.btnProgramar.setText(f"Programar autodiagnóstico\ncada {cantidad} {unidad}")
+        else:
+            self.btnProgramar.setText("Programar autodiagnóstico")
+
+        self.btnProgramar.setEnabled(activar)
+
+        # Guardar en config
+        cfg["autodiagnostico_activar"] = "True" if activar else "False"
+        save_config(cfg)
+
+    def comprobar_programar(self):
+        cfg = load_config()
+        programar_ok = cfg["autodiagnostico_activar"] == "True"
+        self.toggle_programar(programar_ok)
+
+    # ---------------------------------------------------------
     # Mostrar resultados
     # ---------------------------------------------------------
     def mostrar_resultados(self, reporte):
@@ -319,7 +389,7 @@ class DialogoAutodiagnostico(QDialog):
             if widget:
                 widget.deleteLater()
 
-        # Abrupar problemas
+        # Agrupar problemas
         grupos = defaultdict(list)
         for bloque in reporte:
             nombre_bloque = bloque["nombre"]

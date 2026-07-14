@@ -5,9 +5,9 @@ Script en Python.
 import os
 
 from autodiagnostico.chequeos.json_vs_carpetas import construir_nombre_carpeta
-from copia_clasificador_fotos import (
-    cargar_json_unico, guardar_json_unico, calcular_hash_md5
-    )
+from autodiagnostico.utils.deshabilitar_mapa import set_deshabilitar_mapa
+
+from copia_clasificador_fotos import calcular_hash_md5
 
 from config_paths import get_ruta_principal
 
@@ -41,4 +41,5 @@ def corregir_ruta_vacia(lista_problemas, data):
             if entrada:
                 entrada["ruta"] = ruta
 
+    set_deshabilitar_mapa()
     return data
