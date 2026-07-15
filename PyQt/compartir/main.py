@@ -7,17 +7,19 @@ Incluye:
     Compartir por enlace (con QR)
 '''
 
-from .email_worker import EmailWorker
-from .compartidor import Compartidor
 from PyQt5.QtWidgets import (
     QVBoxLayout, QPushButton,QMessageBox, QLabel, QDialog,
     QLineEdit, QFormLayout
     )
 from PyQt5.QtGui import QMovie
 from PyQt5.QtCore import QTimer
+
+from .email_worker import EmailWorker
+from .compartidor import Compartidor
 from config_paths import get_enviando
 from config_manager import settings
 from utils.utils_correo import validar
+from utils.thread_manager import thread_manager
 
 class VentanaPrincipal(QDialog):
     def __init__(self, archivos):
@@ -73,6 +75,9 @@ class VentanaPrincipal(QDialog):
                     archivos=self.archivos,
                     destino=txtDestino.text()
                 )
+
+                # Registrar el hilo en el gestor.
+                thread_manager.add(self.worker)
 
                 self.worker.archivo_enviado.connect(self.actualizar_estado)
 

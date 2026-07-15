@@ -23,6 +23,8 @@ from autodiagnostico.widgets import WidgetError
 from config_manager import load_config, save_config
 from config_paths import get_spinner
 
+from utils.thread_manager import thread_manager
+
 class DialogoAutodiagnostico(QDialog):
     cerrado = pyqtSignal() # Se emite cuando se cierra el diálogo
 
@@ -233,6 +235,9 @@ class DialogoAutodiagnostico(QDialog):
             seleccionados
         )
         self.worker.moveToThread(self.thread_)
+
+        # Añadimos el hilo al gestor de hilos
+        thread_manager.add(self.thread_)
 
         # Conexiones
         self.thread_.started.connect(self.worker.run)

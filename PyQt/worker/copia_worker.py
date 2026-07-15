@@ -26,12 +26,13 @@ class CopiaWorker(QThread):
         self.modo = modo
         self.inicio = inicio
         self.fin = fin
+        self.detener = False
 
     def run(self):
         # Estas líneas son para depurar dentro de los hilos.
         try:
-            import debugpy
-            debugpy.debug_this_thread()
+            #import debugpy
+            #debugpy.debug_this_thread()
 
             # 1️⃣ Obtener lista de archivos antes de clasificar
             archivos = obtener_archivos(self.carpeta_origen)
@@ -62,6 +63,9 @@ class CopiaWorker(QThread):
             mensaje = ""            
 
             for archivo in archivos:
+                if self.detener:
+                    break
+
                 mensaje += clasificar_archivo(archivo, ruta_archivos, data)
                 procesados += 1
                 self.progreso.emit(procesados)
@@ -77,3 +81,6 @@ class CopiaWorker(QThread):
 
         except Exception as e:
             self.terminado.emit(f"Error: {e}")
+
+    def stop_thread(self):
+        self.detener = True

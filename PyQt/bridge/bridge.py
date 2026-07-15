@@ -5,7 +5,7 @@
 import os, re
 import shutil
 import config_manager
-import math
+
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QHBoxLayout, QWidget, QMessageBox, QFileDialog, QDialog,
@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
 from PyQt5.QtGui import QPixmap, QColor, QTransform
 from PyQt5.QtCore import Qt
 from PIL import Image
+
 from componentes.controles import (
     Button, CheckBox, SpinnerOverlay, SelectorCarpeta, HeaderWidget
     )
@@ -28,6 +29,7 @@ from config_paths import (
     get_ruta_miniaturas
     )
 from utils.utils_cache import cargar_cache
+from utils.thread_manager import thread_manager
 from worker.mapa_worker import MapaWorker
 from worker.copia_worker import CopiaWorker
 from componentes.progreso_dialog import ProgresoClasificacion
@@ -347,6 +349,9 @@ class Bridge(QObject):
         """Lanza el worker de clasificación con barra de progreso."""
         self.worker_copia = CopiaWorker(ruta, modo, inicio, fin)
 
+        # Registrar hilo en el gestor.
+        thread_manager.add(self.worker_copia)
+
         self.worker_copia.total.connect(self._crear_dialogo_progreso)
         self.worker_copia.progreso.connect(self._actualizar_dialogo_progreso)
         self.worker_copia.terminado.connect(self._cerrar_dialogo_progreso)
@@ -376,6 +381,10 @@ class Bridge(QObject):
         self.spinner.show()
 
         self.worker = MapaWorker()
+
+        # Registrar el hilo en el gestor.
+        thread_manager.add(self.worker)
+
         self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
         self.worker.terminado.connect(self.mapa_generado)
         self.worker.start()
@@ -539,6 +548,10 @@ class Bridge(QObject):
         self.spinner.show()
 
         self.worker = MapaWorker()
+
+        # Registrar el hilo en el gestor.
+        thread_manager.add(self.worker)
+        
         self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
         self.worker.terminado.connect(self.mapa_generado)
         self.worker.start()
@@ -640,6 +653,10 @@ class Bridge(QObject):
         self.spinner.show()
 
         self.worker = MapaWorker()
+
+        # Registrar el hilo en el gestor.
+        thread_manager.add(self.worker)
+        
         self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
         self.worker.terminado.connect(self.mapa_generado)
         self.worker.start()

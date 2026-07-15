@@ -10,16 +10,19 @@ El parámetro 'solo_video', lo utilizamos para elegir los archivos que vamos
 import sys
 import vlc
 import os
+
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
     QSlider, QLabel, QFrame, QGraphicsView, QGraphicsScene,
 )
 from PyQt5.QtCore import Qt, QTime, QTimer, QSize
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform, QPainter
+
 from PIL import Image
+
 from config_paths import extensiones_validas, get_assets
 from worker.vlc_worker import VLCWorker
-
+from utils.thread_manager import thread_manager
 
 class VideoPlayer(QWidget):
     def __init__(self, ruta_visualizado, archivo, datos, solo_videos=None):
@@ -95,6 +98,11 @@ class VideoPlayer(QWidget):
 
         # Instanciar hilo de VLC
         self.vlc_thread = VLCWorker(self.instance, self.mediaplayer, parent=self)
+
+        # Registrar el hilo en el gestor de hilos.
+        thread_manager.add(self.vlc_thread)
+
+        # Conectar señales del ciclo de vida del hilo
         self.vlc_thread.video_loaded.connect(self._on_video_loaded)
         self.vlc_thread.stopped.connect(self._on_vlc_stopped)
         self.vlc_thread.start()
@@ -352,6 +360,7 @@ class VideoPlayer(QWidget):
             self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
 
     def stop(self):
+        self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
         self.vlc_thread.command = "stop"
 
     def set_volume(self, value):

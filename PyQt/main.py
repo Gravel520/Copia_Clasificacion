@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
-from PyQt5.QtCore import QUrl, QSize, Qt, QThread, QEvent
+from PyQt5.QtCore import QUrl, QSize, Qt, QThread
 from PyQt5 import uic
 from PyQt5.QtGui import QPixmap, QTransform
 
@@ -50,6 +50,8 @@ from gestor_grupos.dialogo_gestion_grupos import DialogoGestionGrupos
 
 from autodiagnostico.dialogo.dialogo_autodiagnostico import DialogoAutodiagnostico
 from autodiagnostico.programador_autodiagnostico import toca_ejecutar
+
+from utils.thread_manager import thread_manager
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
 NUM_COLS = 7
@@ -287,6 +289,10 @@ class MapaWindow(QMainWindow):
         self.spinner_fotos.show()
 
         self.worker_mapa = MapaWorker()
+
+        # Registrar el hilo en el gestor.
+        thread_manager.add(self.worker_mapa)
+        
         self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
         self.worker_mapa.terminado.connect(self.mapa_finalizado)
         self.worker_mapa.start()
@@ -484,6 +490,9 @@ class MapaWindow(QMainWindow):
         self.spinner_copia.show()
 
         self.worker_copia = CopiaWorker(carpeta_origen)
+
+        # Registrar el hilo en el gestor.
+        thread_manager.add(self.worker_copia)
         self.worker_copia.terminado.connect(self.copia_finalizada)
         self.worker_copia.start()
 
@@ -511,6 +520,10 @@ class MapaWindow(QMainWindow):
             self.spinner_fotos.show()
 
             self.worker_mapa = MapaWorker()
+
+            # Registrar el hilo en el gestor.
+            thread_manager.add(self.worker_mapa)
+
             self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
             self.worker_mapa.terminado.connect(self.mapa_finalizado)
             self.worker_mapa.start()
@@ -596,6 +609,9 @@ class MapaWindow(QMainWindow):
 
         self.worker_mapa_grupos = MapaGruposWorker(self.gestor, self.fotos, salida_ruta)
         self.worker_mapa_grupos.moveToThread(self.hilo_mapa)
+
+        # Añadimos el hilo de 'hilo_mapa' al gestor de hilos
+        thread_manager.add(self.hilo_mapa)
 
         # 3. Conectar señales del ciclo de vida del hilo
         self.hilo_mapa.started.connect(self.worker_mapa_grupos.procesar)
@@ -768,6 +784,10 @@ class MapaWindow(QMainWindow):
             QMessageBox.No
         )
         if reply == QMessageBox.Yes:
+            thread_manager.stop_all()
+            thread_manager.clear()
+            super().closeEvent(e)
+            
             QApplication.quit()
         else:
             e.ignore()
