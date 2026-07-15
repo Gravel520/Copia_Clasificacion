@@ -210,6 +210,13 @@ class DialogoAutodiagnostico(QDialog):
             QMessageBox.critical(self, "Error", "☣ Debes seleccionar al menos un diagnóstico.")
             return
         
+        # Actualizar la fecha del último autodiagnóstico para comprobar
+        #   la programación
+        cfg = load_config()
+        cfg["autodiagnostico_ultima"] = datetime.now().strftime("%Y-%m-%d")
+        save_config(cfg)
+
+        # Comprobar si se ha programado el autodiagnóstico
         self.progress.setMaximum(len(seleccionados) if "completo" not in seleccionados else 5)
         self.progress.setValue(0)
 

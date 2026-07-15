@@ -18,8 +18,11 @@ def toca_ejecutar():
     if not ultima:
         return True # Primera ejecución
     
-    ultima_dt = datetime.strptime(ultima, "%Y-%m-%d")
-    ahora = datetime.now()
+    try:
+        ultima_dt = datetime.strptime(ultima, "%Y-%m-%d")
+        ahora = datetime.now()
+    except Exception:
+        return False
 
     if unidad == "dias":
         delta = timedelta(days=cantidad)
