@@ -511,6 +511,8 @@ border-radius: 0px;</string>
     <addaction name="actionConfiguracion"/>
     <addaction name="actionAutodiagnostico"/>
     <addaction name="separator"/>
+    <addaction name="actionBackup"/>
+    <addaction name="separator"/>
     <addaction name="actionSalir_3"/>
    </widget>
    <widget class="QMenu" name="menuMapa">
@@ -728,6 +730,11 @@ border-radius: 0px;</string>
   <action name="actionAutodiagnostico">
    <property name="text">
     <string>Diagnóstico</string>
+   </property>
+  </action>
+  <action name="actionBackup">
+   <property name="text">
+    <string>Gestión de Backup</string>
    </property>
   </action>
  </widget>

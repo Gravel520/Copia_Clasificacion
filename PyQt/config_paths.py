@@ -18,6 +18,9 @@ def get_ruta_principal():
     destino = destino.replace("/", "\\\\")
     return os.path.join(destino, "BackupFotos")
 
+def get_ruta_backup():
+    return "./PyQt/"
+
 def get_ruta_temporal():
     unidad = get_unidad()
     return f"{unidad}FotosTemp"
@@ -34,9 +37,6 @@ def get_assets():
 
 def get_ruta_mapa_html():
     return "./PyQt/mapas/mapa_fotos.html"
-
-def get_ruta_mapa_grupos_html():
-    return "./PyQt/mapas/mapa_grupos.html"
 
 def get_ruta_mapa_grupos_html():
     return "./PyQt/mapas/mapa_grupos.html"

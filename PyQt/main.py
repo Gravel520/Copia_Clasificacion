@@ -30,7 +30,7 @@ from componentes.video_player_vlc import VideoPlayer
 from config_paths import (
     get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
     get_ruta_principal, get_ruta_mapa_grupos_html,
-    get_ruta_logo, ruta_cache_json_geocoding
+    get_ruta_logo, get_ruta_backup
     )
 
 from worker.mapa_worker import MapaWorker
@@ -50,6 +50,8 @@ from gestor_grupos.dialogo_gestion_grupos import DialogoGestionGrupos
 
 from autodiagnostico.dialogo.dialogo_autodiagnostico import DialogoAutodiagnostico
 from autodiagnostico.programador_autodiagnostico import toca_ejecutar
+
+from backup.backup_dialog import BackupDialog
 
 from utils.thread_manager import thread_manager
 
@@ -458,7 +460,6 @@ class MapaWindow(QMainWindow):
     # COPIA DESDE MÓVIL
     # ============================================================
     def select_movil(self):
-        #carpeta = ruta_movil()
         archivos = obtener_archivos()
 
         total = len(archivos)
@@ -767,6 +768,22 @@ class MapaWindow(QMainWindow):
         self.set_mapa_habilitado(mapa_ok)
 
     # ============================================================
+    # Gestión de backup
+    # ============================================================
+    def abrir_backup_dialog(self):
+        dlg = BackupDialog()
+        dlg.exec_()
+
+    def guardar_json_backup(self, data):
+        carpeta = os.path.join(get_ruta_backup(), "copia_seguridad")
+        os.makedirs(carpeta, exist_ok=True)
+
+        ruta = os.path.join(carpeta, "archivos_unificados_backup.json")
+
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+    # ============================================================
     # UTILIDADES
     # ============================================================
     @staticmethod
@@ -786,6 +803,8 @@ class MapaWindow(QMainWindow):
         if reply == QMessageBox.Yes:
             thread_manager.stop_all()
             thread_manager.clear()
+            data = cargar_json_unico(ruta_json_unico())
+            self.guardar_json_backup(data)
             super().closeEvent(e)
             
             QApplication.quit()
@@ -810,6 +829,8 @@ class MapaWindow(QMainWindow):
 
         self.ui.actionConfiguracion.triggered.connect(self.settings_form)
         self.ui.actionAutodiagnostico.triggered.connect(self.abrir_autodiagnostico)
+
+        self.ui.actionBackup.triggered.connect(self.abrir_backup_dialog)
 
         self.ui.actionSalir_3.triggered.connect(self.close)
 
