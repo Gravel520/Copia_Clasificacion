@@ -98,6 +98,7 @@ class VideoPlayer(QWidget):
 
         # Instanciar hilo de VLC
         self.vlc_thread = VLCWorker(self.instance, self.mediaplayer, parent=self)
+        self.vlc_thread.worker = self.vlc_thread
 
         # Registrar el hilo en el gestor de hilos.
         thread_manager.add(self.vlc_thread)
@@ -416,12 +417,39 @@ class VideoPlayer(QWidget):
         self.volumen_slider.setEnabled(not valor)
 
     def closeEvent(self, a0):
+        # Detener reproducción
         try:
             if self.mediaplayer:
                 self.mediaplayer.stop()
+                self.mediaplayer.set_media(None)
         except:
             pass
         
+        # Detener el worker VLC
+        try:
+            if hasattr(self, "vlc_thread") and self.vlc_thread is not None:
+                # Señal interna del worker
+                if hasattr(self.vlc_thread, "stop_thread"):
+                    self.vlc_thread.stop_thread()
+
+                # Flag de parada
+                if hasattr(self.vlc_thread, "detener"):
+                    self.vlc_thread.detener = True
+
+                # Cerrar el QThread
+                if self.vlc_thread.isRunning():
+                    self.vlc_thread.quit()
+                    self.vlc_thread.wait()
+        except Exception as e:
+            print("Error al cerrar VLCWorker: ", e)
+
+        # Eliminar del ThreadManager
+        try:
+            if self.vlc_thread in thread_manager.threads:
+                thread_manager.threads.remove(self.vlc_thread)
+        except:
+            pass
+
         a0.accept()
 
 class ImageViewer(QGraphicsView):

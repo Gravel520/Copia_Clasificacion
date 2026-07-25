@@ -98,19 +98,19 @@ class DialogoCrearCarpetaConMapa(QDialog):
         # Bloque ubicación
         bloque_ubicacion = QVBoxLayout()
         bloque_ubicacion.setSpacing(5)
-
+        '''
         # Obtener paises.
         paises = obtener_paises_es()
         completer_paises = QCompleter(paises)
         completer_paises.setCaseSensitivity(Qt.CaseInsensitive)
-
+        '''
         # País
         lbl_pais = QLabel("País:")
         lbl_pais.setStyleSheet("font-weight: bold;")
         bloque_ubicacion.addWidget(lbl_pais)
         self.input_pais = QLineEdit()
-        self.input_pais.setCompleter(completer_paises)
-        self.input_pais.textChanged.connect(self.actualizar_ciudades)
+        #self.input_pais.setCompleter(completer_paises)
+        #self.input_pais.textChanged.connect(self.actualizar_ciudades)
         bloque_ubicacion.addWidget(self.input_pais)
 
         # Ciudad
@@ -172,6 +172,9 @@ class DialogoCrearCarpetaConMapa(QDialog):
 
         form.addStretch()
         form.addLayout(btns)
+
+        # Pasar el foco al input del pais
+        self.input_pais.setFocus()
 
     # ---------------------------------------------------------
     # Autocompletar ciudades según el pais

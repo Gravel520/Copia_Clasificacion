@@ -196,7 +196,7 @@ class DialogoAutodiagnostico(QDialog):
         self.btnCerrar.clicked.connect(self.close)
         self.btnGuardar.clicked.connect(self.guardar_reporte)
 
-        self.thread_ = None
+        self.thread_autodiagnostico = None
         self.worker = None
 
     def closeEvent(self, event):
@@ -228,31 +228,31 @@ class DialogoAutodiagnostico(QDialog):
         self.movie.start()
 
         # Crear hilo + worker
-        self.thread_ = QThread()
+        self.thread_autodiagnostico = QThread()
         self.worker = WorkerAutodiagnostico(
             self.ruta_json,
             self.raiz_backup,
             seleccionados
         )
-        self.worker.moveToThread(self.thread_)
+        self.worker.moveToThread(self.thread_autodiagnostico)
 
         # Añadimos el hilo al gestor de hilos
-        thread_manager.add(self.thread_)
+        thread_manager.add(self.thread_autodiagnostico)
 
         # Conexiones
-        self.thread_.started.connect(self.worker.run)
+        self.thread_autodiagnostico.started.connect(self.worker.run)
         self.worker.progreso.connect(self.actualizar_estado)
         self.worker.avance.connect(self.actualizar_progreso)
         self.worker.estado_chequeo.connect(self.actualizar_progreso_detallado)
         self.worker.terminado.connect(self.mostrar_resultados)
 
         # Cuando termine, cerramos el hilo
-        self.worker.terminado.connect(self.thread_.quit)
+        self.worker.terminado.connect(self.thread_autodiagnostico.quit)
         self.worker.terminado.connect(self.worker.deleteLater)
-        self.thread_.finished.connect(self.thread_.deleteLater)
+        self.thread_autodiagnostico.finished.connect(self.thread_autodiagnostico.deleteLater)
 
         # Iniciar
-        self.thread_.start()
+        self.thread_autodiagnostico.start()
 
     # ---------------------------------------------------------
     # Inicializar el panel de progreso detallado

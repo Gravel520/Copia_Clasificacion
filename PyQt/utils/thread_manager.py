@@ -31,21 +31,49 @@ class ThreadManager:
         self.threads.append(thread)
 
     def stop_all(self):
+        threads_copy = list(self.threads)
+
         # Detener todos los hilos activos de forma segura.
-        for thread in self.threads:
+        for thread in threads_copy:
+            try:
+                # Si el hilo ya está destruido, ignorarlo
+                if thread is None:
+                    continue
 
-            # Si el hilo tiene un método stop_thread, llamarlo.
-            if hasattr(thread, "stop_thread"):
-                thread.stop_thread()
+                # Si el VLCWorker, liberar mediaplayer
+                if hasattr(thread, "mediaplayer"):
+                    try:
+                        thread.mediaplayer.stop()
+                        thread.mediaplayer.set_media(None)
+                    except:
+                        pass
 
-            # Si el hilo tiene flag detener, activarlo
-            if hasattr(thread, "detener"):
-                thread.detener = True
+                # Si el hilo tiene un método stop_thread, llamarlo.
+                if hasattr(thread, "stop_thread"):
+                    try:
+                        thread.stop_thread()
+                    except:
+                        pass
 
-            # Cerrar el hilo correctamente.
-            if thread.isRunning():
-                thread.quit()
-                thread.wait()
+                # Si el hilo tiene flag detener, activarlo
+                if hasattr(thread, "detener"):
+                    thread.detener = True
+
+                # Cerrar el hilo correctamente.
+                if thread.isRunning():
+                    thread.quit()
+                    thread.wait()
+
+            except RuntimeError:
+                # El QThread ya ha sido destuido por Qt lo eliminamos del gestor
+                pass
+
+            except Exception as e:
+                print("Error al cerrar hilo:", e)
+
+            finally:
+                # Eliminar el hilo del gestor.
+                self.threads.remove(thread)    
 
     def clear(self):
         # Vaciar la lista de hilos (después de deternerlos).

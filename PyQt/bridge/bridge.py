@@ -380,14 +380,14 @@ class Bridge(QObject):
         self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
-        self.worker = MapaWorker()
+        self.worker_clasificacion = MapaWorker()
 
         # Registrar el hilo en el gestor.
-        thread_manager.add(self.worker)
+        thread_manager.add(self.worker_clasificacion)
 
-        self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
-        self.worker.terminado.connect(self.mapa_generado)
-        self.worker.start()
+        self.worker_clasificacion.pendientes_actualizados.connect(self._reenviar_pendientes)
+        self.worker_clasificacion.terminado.connect(self.mapa_generado)
+        self.worker_clasificacion.start()
 
     # ============================================================
     # COPIAR / MOVER / BORRAR (SIN CAMBIOS)
@@ -547,14 +547,14 @@ class Bridge(QObject):
         self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
-        self.worker = MapaWorker()
+        self.worker_mover = MapaWorker()
 
         # Registrar el hilo en el gestor.
-        thread_manager.add(self.worker)
+        thread_manager.add(self.worker_mover)
         
-        self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
-        self.worker.terminado.connect(self.mapa_generado)
-        self.worker.start()
+        self.worker_mover.pendientes_actualizados.connect(self._reenviar_pendientes)
+        self.worker_mover.terminado.connect(self.mapa_generado)
+        self.worker_mover.start()
 
         self.actualizar_tabla()
         self.cargar_galeria(self.actual_ruta, True)
@@ -652,14 +652,14 @@ class Bridge(QObject):
         self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
         self.spinner.show()
 
-        self.worker = MapaWorker()
+        self.worker_borrar = MapaWorker()
 
         # Registrar el hilo en el gestor.
-        thread_manager.add(self.worker)
+        thread_manager.add(self.worker_borrar)
         
-        self.worker.pendientes_actualizados.connect(self._reenviar_pendientes)
-        self.worker.terminado.connect(self.mapa_generado)
-        self.worker.start()
+        self.worker_borrar.pendientes_actualizados.connect(self._reenviar_pendientes)
+        self.worker_borrar.terminado.connect(self.mapa_generado)
+        self.worker_borrar.start()
 
         self.actualizar_tabla()
         self.cargar_galeria(self.actual_ruta, True)

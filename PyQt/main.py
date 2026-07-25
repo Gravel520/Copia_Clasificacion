@@ -520,14 +520,14 @@ class MapaWindow(QMainWindow):
             self.spinner_fotos = SpinnerOverlay(self, "Generando el mapa...")
             self.spinner_fotos.show()
 
-            self.worker_mapa = MapaWorker()
+            self.worker_mapa_copia = MapaWorker()
 
             # Registrar el hilo en el gestor.
-            thread_manager.add(self.worker_mapa)
+            thread_manager.add(self.worker_mapa_copia)
 
-            self.worker_mapa.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
-            self.worker_mapa.terminado.connect(self.mapa_finalizado)
-            self.worker_mapa.start()
+            self.worker_mapa_copia.pendientes_actualizados.connect(self.bridge._reenviar_pendientes)
+            self.worker_mapa_copia.terminado.connect(self.mapa_finalizado)
+            self.worker_mapa_copia.start()
 
     def mapa_finalizado(self):
         self.spinner_fotos.movie.stop()

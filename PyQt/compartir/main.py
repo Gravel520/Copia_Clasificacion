@@ -71,22 +71,22 @@ class VentanaPrincipal(QDialog):
 
         def procesar():
             if validar(txtDestino):
-                self.worker = EmailWorker(
+                self.worker_email = EmailWorker(
                     archivos=self.archivos,
                     destino=txtDestino.text()
                 )
 
                 # Registrar el hilo en el gestor.
-                thread_manager.add(self.worker)
+                thread_manager.add(self.worker_email)
 
-                self.worker.archivo_enviado.connect(self.actualizar_estado)
+                self.worker_email.archivo_enviado.connect(self.actualizar_estado)
 
                 self.movie.start()
                 self.lblGif.show()
                 self.lblEstado.setText("Enviando archivos...")
 
-                self.worker.terminado.connect(self.fin_envio)
-                self.worker.start()
+                self.worker_email.terminado.connect(self.fin_envio)
+                self.worker_email.start()
                 dlg.accept()
 
             else:
