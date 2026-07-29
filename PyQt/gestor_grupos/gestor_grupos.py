@@ -23,13 +23,13 @@ class GestorGrupos():
     # CARGA Y GUARDADO
     # ---------------------------------------------------------
     def _cargar_grupos(self):
-        if not os.path.exists(self.ruta_grupos):
+        if not os.path.exists(ruta_json_grupos()):
             return {"grupos": []}
-        with open(self.ruta_grupos, "r", encoding="utf-8") as f:
+        with open(ruta_json_grupos(), "r", encoding="utf-8") as f:
             return json.load(f)
         
     def _guardar(self):
-        with open(self.ruta_grupos, "w", encoding="utf-8") as f:
+        with open(ruta_json_grupos(), "w", encoding="utf-8") as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
 
     # ---------------------------------------------------------

@@ -1,5 +1,10 @@
+'''
+Script en Python.
+'''
+
 import subprocess # Ejecuta comandos externos como 'adb'.
 import os # Gestiona rutas y archivos.
+import re # Expresiones regulares.
 import shutil # Copia y elimina archivos.
 import hashlib # Calcula hashes MD5 para detectar duplicados o eliminados.
 import json # Carga y guarda datos en formato JSON.
@@ -7,9 +12,11 @@ import unicodedata
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.distance import geodesic # Calcula la distancia.
-from config_paths import (ruta_adb, get_ruta_principal, get_ruta_temporal, 
-                          ruta_movil, extensiones_validas, ruta_json_miniaturas,
-                          get_ruta_miniaturas, geocodificador)
+from config_paths import (
+    ruta_adb, get_ruta_principal, get_ruta_temporal, 
+    ruta_movil, extensiones_validas, ruta_json_miniaturas,
+    get_ruta_miniaturas, geocodificador
+)
 from pathlib import Path
 from utils.utils_cache import (
     cargar_cache, guardar_cache, normalizar_texto
@@ -195,13 +202,13 @@ def obtener_archivos(ruta_pc=None):
 # CLASIFICAR UN SOLO ARCHIVOS                                   #
 #===============================================================#
 
-def clasificar_archivo(archivo, ruta_archivos, data):
+def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
     ruta_local = os.path.join(get_ruta_temporal(), archivo)
     ruta_origen = f'{ruta_archivos}/{archivo}'
 
     try:
         # Copiar desde movil
-        if comprobar_movil_conectado():
+        if usar_movil:
             copia_binaria_fuerza(archivo, get_ruta_temporal())
 
         else:
@@ -209,17 +216,21 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             if os.path.exists(ruta_origen):
                 shutil.copy2(ruta_origen, ruta_local)
             else:
-                return f"❌ Error al copiar desde PC: {archivo}\n"
+                print(f'Ruta Origen: {ruta_origen}  --- Ruta Local: {ruta_local}')                
+                return ("error", f"❌ Error al copiar desde PC: {archivo}\n")
             
     except Exception as e:
-        return f"☠ Error inesperado al copiar archivo: {str(e)}"
+        return ("error", f"☠ Error inesperado al copiar archivo: {str(e)}")
 
     # Función obtener el hash del archivo.
     hash_archivo = calcular_hash_md5(ruta_local)    
 
     # Obtención de los metadatos del gps y fecha.
-    if archivo.lower().endswith(extensiones_validas("imagen")): # Archivos de imagen
+    if archivo.lower().endswith(extensiones_validas("imagen")): # Archivos de imagen        
         gps_info, fecha = obtener_datos_exif(ruta_local)
+        if not gps_info:
+            gps_info, fecha = obtener_metadatos_reales(ruta_local)
+            
         ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
         # Actualizar cache geocoding.
@@ -246,7 +257,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_local, fecha)
 
         except Exception as e:
-            return f'💥 ({archivo}) No se puedo clasificar.\n'            
+            return ("error", f'💥 ({archivo}) No se puedo clasificar.\n'            )
 
     # Crear carpeta destino.
     # Si NO hay ubicación, el nombre de la carpeta será, sólamente, '(Sin_GPS)'.
@@ -268,15 +279,15 @@ def clasificar_archivo(archivo, ruta_archivos, data):
 
         # 1️⃣ Está en pendientes
         if not comprobar_hash(hash_archivo, pendientes):
-            return f'❓ {archivo} - Pendiente de clasificar\n'
+            return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
 
         # 2️⃣ Está en clasificados.
         if not comprobar_hash(hash_archivo, clasificados):
-            return f'🔁 ({archivo}) Ya existe en clasificados\n'
+            return ("duplicado", f'🔁 ({archivo}) Ya existe en clasificados\n')
 
         # 3️⃣ Está en eliminados
         if not comprobar_hash(hash_archivo, eliminados):
-            return f'🟥 ({archivo}) Está eliminado\n'
+            return ("eliminado", f'🟥 ({archivo}) Está eliminado\n')
 
         if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
             # Obtenemos o creamos la miniatura del video.
@@ -297,7 +308,7 @@ def clasificar_archivo(archivo, ruta_archivos, data):
             'longitud': 0
         })
 
-        return f'❓ {archivo} - Pendiente de clasificar\n'
+        return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
 
     # Caso 2 ➡ Tiene ubicación.
     if comprobar_hash(hash_archivo, clasificados):
@@ -321,15 +332,15 @@ def clasificar_archivo(archivo, ruta_archivos, data):
                     'latitud': float(lat),
                     'longitud': float(lon)
                 })
-                return f'🆗 {archivo} 🔜 {nombre_carpeta}\n'
+                return ("clasificado", f'🆗 {archivo} 🔜 {nombre_carpeta}\n')
 
             else:
-                return f"🔁 ({archivo}) Estaba en pendientes\n"                        
+                return ("duplicado", f"🔁 ({archivo}) Estaba en pendientes\n")
 
         else:
-            return f'🟥 ({archivo}) Archivo eliminado\n'
+            return ("eliminado", f'🟥 ({archivo}) Archivo eliminado\n')
 
-    return f'🔁 ({archivo}) Archivo duplicado\n'
+    return ("duplicado", f'🔁 ({archivo}) Archivo duplicado\n')
 
 def agrupar_fecha_archivo(ruta_origen, fecha):    
     if not fecha: # Para agrupar por fecha del archivo
@@ -422,7 +433,10 @@ def obtener_miniaturas(ruta_origen, hash):
     
 def normalizar_texto(t):
     t = unicodedata.normalize("NFKD", t)
-    return "".join(c for c in t if not unicodedata.combining(c))
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    # Quedarnos solamente con números, letras y espacios.
+    t = re.sub(r'[^a-zA-Z0-9 ]', '', t)
+    return t
 
 def actualizar_cache_geocoding(ubicacion, lat, lon):
     if ubicacion != '(Sin_GPS)':

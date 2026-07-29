@@ -17,7 +17,7 @@ import shutil
 
 class CopiaWorker(QThread):
     terminado = pyqtSignal(str)     # Mensaje final
-    progreso = pyqtSignal(int)      # Archivos procesados
+    progreso = pyqtSignal(str)      # Archivos procesados
     total = pyqtSignal(int)         # Total de archivos
 
     def __init__(self, carpeta_origen, modo="todos", inicio=0, fin=0):
@@ -31,14 +31,12 @@ class CopiaWorker(QThread):
     def run(self):
         # Estas líneas son para depurar dentro de los hilos.
         try:
-            #import debugpy
-            #debugpy.debug_this_thread()
+            import debugpy
+            debugpy.debug_this_thread()
 
             # 1️⃣ Obtener lista de archivos antes de clasificar
             archivos = obtener_archivos(self.carpeta_origen)
-            if self.modo == "todos":
-                archivos = archivos
-            else:
+            if self.modo != "todos":
                 archivos = archivos[self.inicio:self.fin]
 
             archivos = [
@@ -52,23 +50,26 @@ class CopiaWorker(QThread):
             if total == 0:
                 self.terminado.emit("No hay archivos para clasificar.")
                 return
+            
+            # Deteccion PC / Movil
+            usar_movil = not self.es_ruta_de_pc(self.carpeta_origen)
+            ruta_archivos = self.carpeta_origen if not usar_movil else ruta_movil()
 
             # 2️⃣ preparar el entorno.
             os.makedirs(get_ruta_temporal(), exist_ok=True)
             data = cargar_json_unico(ruta_json_unico())
-            ruta_archivos = self.carpeta_origen if self.carpeta_origen else ruta_movil()
 
             # 3️⃣ Clasificar uno por uno
-            procesados = 0
             mensaje = ""            
 
             for archivo in archivos:
                 if self.detener:
                     break
 
-                mensaje += clasificar_archivo(archivo, ruta_archivos, data)
-                procesados += 1
-                self.progreso.emit(procesados)
+                tipo, msg = clasificar_archivo(archivo, ruta_archivos, data, usar_movil)
+                mensaje += msg
+
+                self.progreso.emit(tipo)
 
             # 4️⃣ Guardar cambios.
             actualizar_stats(data)
@@ -81,6 +82,9 @@ class CopiaWorker(QThread):
 
         except Exception as e:
             self.terminado.emit(f"Error: {e}")
+
+    def es_ruta_de_pc(self, ruta):
+        return ruta is not None and ruta != "" and os.path.exists(ruta)
 
     def stop_thread(self):
         self.detener = True

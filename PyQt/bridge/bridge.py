@@ -355,26 +355,35 @@ class Bridge(QObject):
         self.worker_copia.total.connect(self._crear_dialogo_progreso)
         self.worker_copia.progreso.connect(self._actualizar_dialogo_progreso)
         self.worker_copia.terminado.connect(self._cerrar_dialogo_progreso)
-        self.worker_copia.terminado.connect(self._clasificacion_finalizada)
+        #self.worker_copia.terminado.connect(self._clasificacion_finalizada)
 
         self.worker_copia.start()
 
     def _crear_dialogo_progreso(self, total):
         self.dialogo_progreso = ProgresoClasificacion(total)
+        self.dialogo_progreso.cancelar.connect(self._cancelar_clasificacion)
         self.dialogo_progreso.show()
 
-    def _actualizar_dialogo_progreso(self, valor):
+    def _actualizar_dialogo_progreso(self, tipo_resultado):
         if hasattr(self, "dialogo_progreso"):
-            self.dialogo_progreso.actualizar(valor)
+            self.dialogo_progreso.actualizar(tipo_resultado)
 
-    def _cerrar_dialogo_progreso(self, _):
+    def _cerrar_dialogo_progreso(self, mensaje):
         if hasattr(self, "dialogo_progreso"):
+            msg = QMessageBox.information(
+                None, "Clasificación finalizada",
+                  "Desea ver la información?",
+                  QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+            )
+            if msg == QMessageBox.Yes:
+                dlg = CustomMessageBox("Clasificación finalizada", mensaje, None)
+                dlg.exec_()
+
             self.dialogo_progreso.close()
+            self._clasificacion_finalizada(None)
 
-    def _clasificacion_finalizada(self, mensaje):
-        dlg = CustomMessageBox("Clasificación finalizada", mensaje, None)
-        dlg.exec_()
-
+    def _clasificacion_finalizada(self, _):
         self.cargar_pendientes()
 
         self.spinner = SpinnerOverlay(self.view, "Generando el mapa...")
@@ -388,6 +397,11 @@ class Bridge(QObject):
         self.worker_clasificacion.pendientes_actualizados.connect(self._reenviar_pendientes)
         self.worker_clasificacion.terminado.connect(self.mapa_generado)
         self.worker_clasificacion.start()
+
+    def _cancelar_clasificacion(self):
+        if hasattr(self, "worker_copia"):
+            self.worker_copia.stop_thread()
+        self.dialogo_progreso.close()
 
     # ============================================================
     # COPIAR / MOVER / BORRAR (SIN CAMBIOS)

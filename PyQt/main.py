@@ -30,7 +30,8 @@ from componentes.video_player_vlc import VideoPlayer
 from config_paths import (
     get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
     get_ruta_principal, get_ruta_mapa_grupos_html,
-    get_ruta_logo, get_ruta_backup
+    get_ruta_logo, get_ruta_backup, ruta_cache_json_geocoding,
+    ruta_json_grupos
     )
 
 from worker.mapa_worker import MapaWorker
@@ -53,6 +54,7 @@ from autodiagnostico.programador_autodiagnostico import toca_ejecutar
 
 from backup.backup_dialog import BackupDialog
 
+from utils.utils_cache import cargar_cache
 from utils.thread_manager import thread_manager
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo
@@ -744,6 +746,10 @@ class MapaWindow(QMainWindow):
             "ultima_destino": unidad,
             "correo": "",
             "password": "",
+            "autodiagnostico_activar": "False",
+            "autodiagnostico_cantidad": "0",
+            "autodiagnostico_unidad": "dias",
+            "autodiagnostico_ultima": "0",
         }
 
         config_manager.save_config(data)
@@ -774,11 +780,11 @@ class MapaWindow(QMainWindow):
         dlg = BackupDialog()
         dlg.exec_()
 
-    def guardar_json_backup(self, data):
+    def guardar_json_backup(self, data, archivo):
         carpeta = os.path.join(get_ruta_backup(), "copia_seguridad")
         os.makedirs(carpeta, exist_ok=True)
 
-        ruta = os.path.join(carpeta, "archivos_unificados_backup.json")
+        ruta = os.path.join(carpeta, archivo)
 
         with open(ruta, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
@@ -804,7 +810,11 @@ class MapaWindow(QMainWindow):
             thread_manager.stop_all()
             thread_manager.clear()
             data = cargar_json_unico(ruta_json_unico())
-            self.guardar_json_backup(data)
+            data_geocoding = cargar_cache()
+            data_grupos = GestorGrupos._cargar_grupos(None)
+            self.guardar_json_backup(data, "archivos_unificados_backup.json")
+            self.guardar_json_backup(data_geocoding, "geocoding_backup.json")
+            self.guardar_json_backup(data_grupos, "grupos_backup.json")
             super().closeEvent(e)
             
             QApplication.quit()
