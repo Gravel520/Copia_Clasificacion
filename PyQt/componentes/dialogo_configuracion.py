@@ -63,6 +63,11 @@ class ConfigDialog(QDialog):
             "ultima_destino": self.ui.txt_destino.text(),
             "correo": self.ui.txt_correo.text(),
             "password": self.ui.txt_password.text(),
+            # Estos se mantienen sin cambios aqui.
+            "autodiagnostico_activar": config_manager.settings.value("Autodiagnostico/activar", "False"),
+            "autodiagnostico_cantidad": config_manager.settings.value("Autodiagnostico/cantidad", "0"),
+            "autodiagnostico_unidad": config_manager.settings.value("Autodiagnostico/unidad", "0"),
+            "autodiagnostico_ultima": config_manager.settings.value("Autodiagnostico/ultima", "0"),
         }
         config_manager.save_config(data)
 

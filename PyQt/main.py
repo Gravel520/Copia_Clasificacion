@@ -766,6 +766,7 @@ class MapaWindow(QMainWindow):
             ruta_json_unico(), 
             get_ruta_principal()
         )
+        
         dlg.cerrado.connect(self.comprobar_mapa_autodiagnostico)
         dlg.exec_()
 
@@ -778,6 +779,8 @@ class MapaWindow(QMainWindow):
     # ============================================================
     def abrir_backup_dialog(self):
         dlg = BackupDialog()
+
+        dlg.cerrado.connect(self.comprobar_mapa_autodiagnostico)
         dlg.exec_()
 
     def guardar_json_backup(self, data, archivo):

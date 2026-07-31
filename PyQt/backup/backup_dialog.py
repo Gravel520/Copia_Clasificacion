@@ -5,6 +5,7 @@ Script en Python.
 import os
 import json
 import subprocess
+import config_manager
 
 from config_paths import (
     ruta_adb, ruta_movil, get_ruta_backup
@@ -14,7 +15,7 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget,
     QTextEdit, QProgressBar, QFileDialog, QMessageBox, QApplication
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 
 from backup.hash_indexer import calcular_hash
 from backup.hash_indexer_adb import (
@@ -31,9 +32,12 @@ PASO_RESTAURAR = 3
 PASO_BACKUP = 4
 
 class BackupDialog(QDialog):
+    cerrado = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self._restaurados = False
         self.paso_actual = None
         self.style_normal = "background-color: none;"
         self.style_resaltado = "background-color: #4CAF50;"
@@ -99,7 +103,7 @@ class BackupDialog(QDialog):
         self.btn_simular = QPushButton("Simular Restauración")
         self.btn_cerrar = QPushButton("Cerrar")
         self.btn_simular.clicked.connect(self.simular_restauracion)
-        self.btn_cerrar.clicked.connect(self.accept)
+        self.btn_cerrar.clicked.connect(self.close)
         cerrar.addWidget(self.btn_simular)
         cerrar.addStretch()
         cerrar.addWidget(self.btn_cerrar)
@@ -108,6 +112,18 @@ class BackupDialog(QDialog):
         self.setLayout(layout)
 
         self.actualizar_botones()
+
+    def closeEvent(self, a0):
+        super().closeEvent(a0)
+
+        if self._restaurados:
+            self._reset_estado_mapa()
+
+        self.cerrado.emit()
+
+    def _reset_estado_mapa(self):
+        config_manager.settings.setValue("Estado/mapa_generado", "False")
+        config_manager.settings.sync()
         
     def anadir_ruta(self):
         ruta = QFileDialog.getExistingDirectory(self, "Seleccionar carpeta")
@@ -219,6 +235,9 @@ class BackupDialog(QDialog):
 
         # Llamada al módulo externo
         resultado = restaurar_desde_json(data_json_backup, self.indice_hashes)
+
+        # Generamos el mapa si se han restaurado archivos.
+        self._restaurados = len(resultado["restaurados"]) > 0
 
         # Avanzar la barra por cada items del JSON
         for _ in items:

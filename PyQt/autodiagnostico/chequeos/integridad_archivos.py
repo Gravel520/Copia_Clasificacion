@@ -12,37 +12,53 @@ import os
 def check_integridad_archivos(data_json):
     problemas = []
 
-    clasificados = data_json.get("clasificados", {}).get("items", [])
+    try:
+        clasificados = data_json.get("clasificados", {}).get("items", [])
 
-    for item in clasificados:
-        ruta = item.get("ruta")
-        ubicacion = item.get("ubicacion")
-        fecha = item.get("fecha")
-        hash_archivo = item.get("hash")
+        for item in clasificados:
+            ruta = item.get("ruta")
+            ubicacion = item.get("ubicacion")
+            fecha = item.get("fecha")
+            hash_archivo = item.get("hash")
 
-        if not ruta or not os.path.exists(ruta):
-            continue
+            if not ruta or not os.path.exists(ruta):
+                continue
 
-        tam = os.path.getsize(ruta)
-        if tam == 0:
-            problemas.append({
-                "tipo": "archivo_vacio",
-                "ruta": ruta,
-                "ubicacion": ubicacion + fecha,
-                "detalle": ubicacion + fecha,
-                "mensaje": "El archivo tiene tamaño 0"
-            })
+            tam = os.path.getsize(ruta)
+            if tam == 0:
+                problemas.append({
+                    "tipo": "archivo_vacio",
+                    "ruta": ruta,
+                    "ubicacion": ubicacion + fecha,
+                    "detalle": ubicacion + fecha,
+                    "mensaje": "El archivo tiene tamaño 0"
+                })
 
-        if not hash_archivo:
-            problemas.append({
-                "tipo": "hash_vacio",
-                "ruta": ruta,
-                "ubicacion": ubicacion + fecha,
-                "detalle": ubicacion + fecha,
-                "mensaje": "El item no tiene hash definido"
-            })
+            if not hash_archivo:
+                problemas.append({
+                    "tipo": "hash_vacio",
+                    "ruta": ruta,
+                    "ubicacion": ubicacion + fecha,
+                    "detalle": ubicacion + fecha,
+                    "mensaje": "El item no tiene hash definido"
+                })
 
-    return {
-        "nombre": "Integridad básica de archivos",
-        "problemas": problemas
-    }
+        return {
+            "nombre": "Integridad básica de archivos",
+            "problemas": problemas
+        }
+
+    except Exception as e:
+        return {
+            "nombre": "error",
+            "problemas": [
+                {
+                    "tipo": "Integridad básica de archivos",
+                    "ruta": None,
+                    "ubicacion": None,
+                    "detalle": str(e),
+                    "mensaje": "Error al comprobar integridad de archivos"
+                }
+            ]
+        }
+    

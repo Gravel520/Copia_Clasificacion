@@ -3,6 +3,7 @@ Script en Python.
 '''
 
 import unicodedata
+import config_manager
 
 from datetime import datetime
 from collections import defaultdict
@@ -33,7 +34,7 @@ class DialogoAutodiagnostico(QDialog):
         self.setWindowTitle("Autodiagnóstico del sistema")
         self.resize(600, 600)
 
-        self._testing = False # Necesario para pruebas
+        self._corregir = False # Si el true generar mapa.
 
         self.ruta_json = ruta_json
         self.raiz_backup = raiz_backup
@@ -200,8 +201,16 @@ class DialogoAutodiagnostico(QDialog):
         self.worker = None
 
     def closeEvent(self, event):
-        self.cerrado.emit()
         super().closeEvent(event)
+
+        if self._corregir:
+            self._reset_estado_mapa()
+
+        self.cerrado.emit()
+
+    def _reset_estado_mapa(self):
+        config_manager.settings.setValue("Estado/mapa_generado", "False")
+        config_manager.settings.sync()
 
     # ---------------------------------------------------------
     # Iniciar autodiagnóstico
@@ -420,11 +429,16 @@ class DialogoAutodiagnostico(QDialog):
                 for p in lista_problemas:
                     detalle += f" · {p.get('detalle')}\n"
 
+                if nombre_bloque == "error":
+                    callback = None
+                else:
+                    callback = lambda _, lista=lista_problemas: self.corregir_grupo(lista)
+
                 # Crear widget
                 widget = WidgetError(
                     titulo=titulo,
                     detalle = detalle,
-                    callback_corregir=lambda _, lista=lista_problemas: self.corregir_grupo(lista)
+                    callback_corregir=callback
                 )
 
                 self.txtReporte += f"{titulo}\n{detalle}\n\n"
@@ -442,6 +456,7 @@ class DialogoAutodiagnostico(QDialog):
     # Corrección modular
     # ---------------------------------------------------------
     def corregir_grupo(self, lista_problemas):
+        self._corregir = True
         tipo = lista_problemas[0].get("tipo")
 
         data = cargar_json(self.ruta_json)
