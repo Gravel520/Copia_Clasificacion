@@ -25,29 +25,46 @@ from worker.vlc_worker import VLCWorker
 from utils.thread_manager import thread_manager
 
 class VideoPlayer(QWidget):
-    def __init__(self, ruta_visualizado, archivo, datos, solo_videos=None):
+    def __init__(self, ruta_visualizado, archivo, datos, solo_videos=None, lista_archivos=None):
         super().__init__()
+
+        # Ruta base (solo en modo carpeta)
         self.ruta_carpeta = ruta_visualizado
-
-        # Lista de archivos válidos, si son solo videos o tambien imágenes.
-        ext = extensiones_validas("video") if solo_videos else (
-            extensiones_validas("video") + extensiones_validas("imagen")
-        )
-
-        self.lista_archivos = [
-            f for f in os.listdir(self.ruta_carpeta)
-            if f.lower().endswith(ext)
-        ]
-
-        self.indice = self.lista_archivos.index(os.path.basename(archivo))
-        self.archivo_actual = os.path.join(self.ruta_carpeta, self.lista_archivos[self.indice])
-
-        self.setWindowTitle(os.path.basename(archivo))
-        self.resize(1000, 650)
-
-        # Añadimos atributos para rotar la imagen.
-        self.archivo_original = archivo
+        self.archivo_original = os.path.normpath(archivo)
         self.pixmap_actual = None
+        self.archivo_pendiente = None
+
+        # --------------------------
+        # 1. CALCULAR LISTA E INDICE
+        # --------------------------
+        if lista_archivos is not None:
+            # MODO LISTA UNIFICADA: lista_archivos son rutas completas
+            self.lista_archivos = [os.path.normpath(r) for r in lista_archivos]
+            self.ruta_carpeta = None
+            # El archivo inicial también es ruta completa
+            self.indice = self.lista_archivos.index(archivo)
+            self.archivo_actual = archivo
+        else:
+            # MODO CARPETA: usamos os.listdir sobre ruta_visualizado
+            ext = extensiones_validas("video") if solo_videos else (
+                extensiones_validas("video") + extensiones_validas("imagen")
+            )
+
+            # Guardamos rutas completas
+            self.lista_archivos = [
+                os.path.normpath(os.path.join(self.ruta_carpeta, f))
+                for f in os.listdir(self.ruta_carpeta)
+                if f.lower().endswith(ext)
+            ]
+
+            self.indice = self.lista_archivos.index(archivo)
+            self.archivo_actual = archivo
+
+        # --------------------------
+        # 2. CONFIGURACIÓN BÁSICA
+        # --------------------------
+        self.setWindowTitle(os.path.basename(self.archivo_actual))
+        self.resize(1000, 650)
 
         # Comprobamos si es imagen o video.
         self.es_imagen = archivo.lower().endswith(extensiones_validas("imagen"))
@@ -82,7 +99,9 @@ class VideoPlayer(QWidget):
             }
         """)
 
-        # Instancia VLC
+        # --------------------------
+        # 3. WIDGET DE VÍDEO + VLC
+        # --------------------------
         self.instance = vlc.Instance()
         self.mediaplayer = self.instance.media_player_new()
         self.archivo_pendiente = None
@@ -231,7 +250,7 @@ class VideoPlayer(QWidget):
         # Comprobar si es imagen.
         if self.es_imagen:
             self.update_controls(True) # Habilitar controles de imagen.
-            self.mostrar_imagen(archivo)
+            self.mostrar_imagen(self.archivo_actual)
 
         else:
             self.update_controls(False) # Habilitar controles de video.
@@ -241,7 +260,7 @@ class VideoPlayer(QWidget):
             self.timer.timeout.connect(self.update_ui)
             self.timer.start()
 
-            self.open_file(archivo)
+            self.open_file(self.archivo_actual)
 
     # -----------------------------------
     # MOSTRAR LA IMAGEN EN EL REPRODUCTOR
@@ -309,10 +328,10 @@ class VideoPlayer(QWidget):
         self.cargar_archivo_actual()
 
     def cargar_archivo_actual(self):
-        self.archivo_actual = os.path.join(self.ruta_carpeta, self.lista_archivos[self.indice])
+        self.archivo_actual = self.lista_archivos[self.indice]
 
         # Actualizar título
-        self.setWindowTitle(self.lista_archivos[self.indice])
+        self.setWindowTitle(os.path.basename(self.archivo_actual))
 
         # Limpiar frame
         for i in reversed(range(self.video_layout.count())):

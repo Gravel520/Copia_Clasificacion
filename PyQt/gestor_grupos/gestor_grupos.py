@@ -90,11 +90,16 @@ class GestorGrupos():
             new QWebChannel(qt.webChannelTransport, function(channel) {
                 window.bridge = channel.objects.bridge;
             });
+
             function enviarRuta(ruta) {
                 if (window.bridge && typeof window.bridge.recibirRuta === 'function') {
                     window.bridge.recibirRuta(ruta);
-                } else {
-                    console.log("Bridge no disponible. Ruta: " + ruta);
+                }
+            }
+
+            function enviarListaArchivos(datos) {
+                if (window.bridge && typeof window.bridge.recibirListaArchivos === 'function') {
+                    window.bridge.recibirListaArchivos(datos);
                 }
             }
             </script>
@@ -116,6 +121,10 @@ class GestorGrupos():
                 ruta_normalizada = os.path.normpath(foto["ruta"]).lower()
                 if any(carpeta in ruta_normalizada for carpeta in carpetas_busqueda):
                     fotos_grupo.append(foto)
+
+            # Generar la lista de rutas del grupo.
+            lista_rutas = [f["ruta"].replace("\\", "/") for f in fotos_grupo]
+            lista_json = json.dumps(lista_rutas)
 
             if not fotos_grupo:
                 QMessageBox.warning(
@@ -166,7 +175,16 @@ class GestorGrupos():
             <div style="font-family: Arial, sans-serif; font-size: 13px; width: 220px; max-height: 200px; overflow-y: auto;">
                 <b style="color: #2c3e50; font-size: 14px;">{grupo_nombre}</b><br>
                 <hr style="margin: 4px 0; border: 0; border-top: 1px solid #ccc;">
-                <b>Total archivos:</b> {len(fotos_grupo)}<br>
+
+                <a href="#"
+                onclick='enviarListaArchivos({{
+                    rutas: {lista_json},
+                    titulo: "{grupo_nombre}"
+                }}); return false;'
+                style="color:#e67e22; font-weight:bold; text-decoration:none;">
+                📷 Total archivos: {len(fotos_grupo)}
+                </a>
+
                 <div style="margin-top: 8px; font-weight: bold; color: #7f8c8d;">Selecciona una ruta:</div>
                 {enlaces_html}
             </div>

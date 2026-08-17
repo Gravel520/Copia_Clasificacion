@@ -3,6 +3,7 @@
 '''
 
 import os, re
+import json
 import shutil
 import config_manager
 
@@ -143,12 +144,106 @@ class Bridge(QObject):
         # Cargamos la galería de clasificación si esta en esa vista.
         if self.vista_actual == 1: self.cargar_galeria(self.actual_ruta, True)
 
+    @pyqtSlot('QVariantMap')
+    def recibirListaArchivos(self, datos):
+        lista_rutas = datos.get("rutas", [])
+        titulo = datos.get("titulo", "Grupo")
+
+        self.lista_archivos = [os.path.normpath(r) for r in lista_rutas]
+        self.actual_ruta = None
+
+        # Mostrar el nombre del grupo
+        self.label.setText(titulo)
+
+        # Mostrar tabla con todos los archivos seguidos
+        self.actualizar_tabla_desde_lista()
+
+        # Si estás en la vista de clasificación -> mostrar galería unificada
+        if self.vista_actual == 1:
+            self.cargar_galeria_desde_lista(self.lista_archivos, True)
+
     def set_vista(self, indice):
         self.vista_actual = indice
 
     # ============================================================
     # TABLA
     # ============================================================
+    def actualizar_tabla_desde_lista(self):
+        ARCHIVOS_SEL.clear()
+
+        self.data = cargar_json_unico(ruta_json_unico())
+        self.historial = self.data["clasificados"]["items"]
+        self.eliminado = self.data["eliminados"]["items"]
+        self.pendientes = self.data["pendientes"]["items"]
+
+        archivos = self.lista_archivos
+        self.numero_archivos = len(archivos)
+
+        self.tabla.setVisible(True)
+        self.tabla.setRowCount(self.numero_archivos)
+        self.tabla.setColumnCount(5)
+
+        self.tabla.setStyleSheet("""
+            QTableWidget::item {
+                border: none;
+                padding: 0px;
+                margin: 0px;
+            }
+            QTableWidget::item:selected {
+                color: black;
+                background-color: lightblue;
+            }
+        """)
+
+        self.tabla.setHorizontalHeaderLabels(
+            ['Sel', 'Nombre de Archivo', 'Ruta', 'Acción', 'Hash']
+        )
+
+        tamaño = 185 if self.numero_archivos > 8 else 205
+        self.tabla.setColumnWidth(0, 40)
+        self.tabla.setColumnWidth(1, tamaño)
+        self.tabla.setColumnWidth(3, 140)
+
+        self.tabla.setColumnHidden(0, True)
+        self.tabla.setColumnHidden(2, True)
+        self.tabla.setColumnHidden(4, True)
+
+        self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.tabla.horizontalHeader().setSectionsClickable(False)
+
+        for i, ruta_completa in enumerate(archivos):
+            nombre = os.path.basename(ruta_completa)
+            ruta_conver = os.path.normpath(ruta_completa)
+
+            busqueda_hash = (
+                self.pendientes if '(Sin_GPS)' in ruta_conver else self.historial
+            )
+
+            coincidencia = next(
+                (r for r in busqueda_hash if os.path.normpath(r['ruta']) == ruta_conver),
+                None
+            )
+
+            hash_val = coincidencia['hash'] if coincidencia else ""
+            fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
+
+            # Nombre del archivo con el tooltip de la fecha.
+            item_nombre = QTableWidgetItem(nombre)
+            if fecha_val:
+                item_nombre.setToolTip(fecha_val)
+
+            self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
+            self.tabla.setItem(i, 1, item_nombre)
+            self.tabla.setItem(i, 2, QTableWidgetItem(ruta_completa))
+            self.tabla.setCellWidget(i, 3, self.botones_accion(i))
+            self.tabla.setItem(i, 4, QTableWidgetItem(hash_val))
+            self.tabla.setRowHeight(i, 30)
+
+        if self.tabla.rowCount() > 0:
+            self.tabla.setCurrentCell(0, 1)
+            ruta_archivo = self.tabla.item(0, 2).text()
+            self.actualizarFoto.emit(ruta_archivo)
+
     def actualizar_tabla(self):
         ARCHIVOS_SEL.clear()
 
@@ -747,6 +842,122 @@ class Bridge(QObject):
     # ============================================================
     # VISTA CLASIFICACIÓN
     # ============================================================
+    def cargar_galeria_desde_lista(self, lista_rutas, miniatura, tamano=100):
+        try:
+            ARCHIVOS_SEL.clear()
+            self.numArcSel = 0
+            self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
+
+            #archivos = os.listdir(ruta)
+            NUM_COLS = 7 if tamano == 180 else 13
+
+            # 1️⃣ Agrupar archivos por fecha completa
+            from collections import defaultdict
+            grupos = defaultdict(list)
+
+            for ruta_completa in lista_rutas:
+                #ruta_completa = os.path.join(ruta, archivo)
+
+                # Obtener fecha completa para agrupar
+                fecha_completa = self.obtener_fecha_json(ruta_completa, self.data)
+                grupos[fecha_completa].append(ruta_completa)
+
+            # Ordenar por fecha
+            grupos = dict(sorted(grupos.items()))
+
+            # 2️⃣ Preparar la tabla
+            self.tablaClasificacion.clearContents()
+            self.tablaClasificacion.setColumnCount(NUM_COLS)
+
+            # Mapa fecha > fila del header (para búsqueda rápida)
+            self._fila_por_fecha = {}
+
+            fila_actual = 0
+
+            # 3️⃣ Dibujar encabezados + miniaturas
+            for fecha, archivos_dia in grupos.items():
+
+                # ---- Encabezado de fecha ----
+                self.tablaClasificacion.insertRow(fila_actual)
+
+                # Si la ruta contiene 'Sin_GPS' -> dibujar encabezado
+                #if 'Sin_GPS' in ruta:
+
+                # Widget con checkbox + fecha
+                header_widget = HeaderWidget(fecha)
+                header_widget.toggled.connect(self._seleccionar_grupo)
+
+                # Expandir encabezado a todas las columnas
+                self.tablaClasificacion.setCellWidget(fila_actual, 0, header_widget)
+                self.tablaClasificacion.setSpan(fila_actual, 0, 1, NUM_COLS)
+
+                # Marcar TODA la fila como header
+                for col in range(NUM_COLS):
+                    item_header = QTableWidgetItem()                
+                    item_header.setData(Qt.UserRole, "header") # Para saber que fila es encabezado
+                    # Evitar selección de la fila header
+                    item_header.setFlags(Qt.ItemIsEnabled)
+                    self.tablaClasificacion.setItem(fila_actual, col, item_header)
+
+                # Guardar fila del header
+                self._fila_por_fecha[fecha] = fila_actual
+
+                fila_actual += 1 # Avenzar después del encabezado
+                col = 0
+
+                # ---- Miniaturas del día ----
+                for ruta_completa in archivos_dia:
+
+                    if col == 0:
+                        self.tablaClasificacion.insertRow(fila_actual)
+
+                    #ruta_completa = os.path.join(ruta, archivo)
+
+                    # Obtener hash
+                    hash_archivo = calcular_hash_md5(ruta_completa)
+
+                    # Miniatura si es video
+                    ruta_thumb = None
+                    nombre_archivo = os.path.basename(ruta_completa)
+                    if nombre_archivo.lower().endswith(extensiones_validas("video")):
+                        ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
+                        # Usar miniatura
+                        mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
+                        ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
+
+                    # Crear Widget
+                    widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
+                    #widget.filepath = ruta_completa
+                    widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+
+                    self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
+
+                    col += 1
+                    if col == NUM_COLS:
+                        col = 0
+                        fila_actual += 1
+                
+                # Si la última fila no estaba completa, pasar a la siguiente
+                if col != 0:
+                    fila_actual += 1
+
+            # Ajustes visuales
+            valor = tamano if miniatura else 50
+
+            for r in range(self.tablaClasificacion.rowCount()):
+                item = self.tablaClasificacion.item(r, 0)
+                if item and item.data(Qt.UserRole) == "header":
+                    self.tablaClasificacion.setRowHeight(r, 28)
+                else:
+                    self.tablaClasificacion.setRowHeight(r, valor)
+
+            for c in range(NUM_COLS):
+                self.tablaClasificacion.setColumnWidth(c, tamano)
+
+        except Exception as e:
+            self.tablaClasificacion.clear()
+            print(f'Error al cargar galeria: {e}')
+
     def cargar_galeria(self, ruta, miniatura, tamano=100):
         try:
             ARCHIVOS_SEL.clear()
@@ -780,6 +991,7 @@ class Bridge(QObject):
             fila_actual = 0
 
             # 3️⃣ Dibujar encabezados + miniaturas
+
             for fecha, lista_archivos in grupos.items():
 
                 # ---- Encabezado de fecha ----

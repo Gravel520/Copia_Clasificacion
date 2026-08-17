@@ -404,8 +404,26 @@ class MapaWindow(QMainWindow):
             self.vp.close()
             self.vp = None
 
+        # Carpeta real del archivo SIEMPRE
+        carpeta_real = os.path.dirname(ruta_archivo)
+
         # Creamos uno nuevo.
-        self.vp = VideoPlayer(self.ruta_clasificacion, ruta_archivo, datos)
+        if self.bridge.actual_ruta is None and self.bridge.lista_archivos:
+            # Modo lista unificada
+            self.vp = VideoPlayer(
+                None,
+                ruta_archivo,
+                datos,
+                lista_archivos=self.bridge.lista_archivos
+            )
+        else:
+            # Modo carpeta
+            self.vp = VideoPlayer(
+                carpeta_real,
+                ruta_archivo,
+                datos
+            )
+
         self.vp.show()
 
     def resizeEvent(self, a0):
