@@ -6,7 +6,8 @@ import os
 
 from autodiagnostico.utils.deshabilitar_mapa import set_deshabilitar_mapa
 from copia_clasificador_fotos import (
-    agrupar_fecha_archivo, calcular_hash_md5, cargar_cache
+    agrupar_fecha_archivo, calcular_hash_md5, cargar_cache,
+    actualizar_stats
 )
 from config_paths import get_ruta_principal
 
@@ -67,6 +68,8 @@ def reconstruir_archivo_huerfano(ruta_archivo, data):
 def corregir_archivo_huerfano(lista_problemas, data):
     for p in lista_problemas:
         data = reconstruir_archivo_huerfano(p.get("ruta"), data)
+
+    actualizar_stats(data)
 
     set_deshabilitar_mapa()
     return data

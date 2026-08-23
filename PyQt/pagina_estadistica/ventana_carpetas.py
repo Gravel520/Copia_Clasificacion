@@ -69,11 +69,11 @@ class VentanaCarpetas(QDialog):
         fecha_ruta = self.tabla.item(row, 1).text()
         
         # Completamos la ruta de visualización desde la principal.
-        ruta = os.path.join(get_ruta_principal(), f'{carpeta}{fecha_ruta}')
+        ruta = os.path.normpath(os.path.join(get_ruta_principal(), f'{carpeta}{fecha_ruta}'))
 
         # Obtenemos los archivos y seleccionamos el primero.
         archivos = os.listdir(f'{ruta}')
-        archivo = f'{ruta}/{archivos[0]}'
+        archivo = os.path.normpath(os.path.join(ruta, archivos[0]))
 
         # Creamos los datos del més, en letra, y el año.
         datos = f'{meses()[int(fecha_ruta[6:8]) - 1]} del {fecha_ruta[1:5]}'

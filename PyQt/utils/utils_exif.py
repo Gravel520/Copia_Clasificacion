@@ -158,25 +158,38 @@ def obtener_metadatos_reales(ruta_archivo):
         datos = json.loads(salida)
         gps_info = datos[0]
 
-        fecha_str = gps_info['CreateDate']
-        fecha = datetime.strptime(fecha_str, '%Y:%m:%d %H:%M:%S')
+        #fecha_str = gps_info['CreateDate']
+        #fecha = datetime.strptime(fecha_str, '%Y:%m:%d %H:%M:%S')
+        fecha_str = gps_info.get('CreateDate')
+        fecha = None
+        if fecha_str:
+            try:
+                fecha = datetime.strptime(fecha_str, '%Y:%m:%d %H:%M:%S')
+            except:
+                fecha = None
 
         # Lógica para obtener las referencias.
         lat = gps_info.get('GPSLatitude')
         lon = gps_info.get('GPSLongitude')
-        lat_ref = 'N' if float(lat) >= 0 else 'S'
-        lon_ref = 'E' if float(lon) >=0 else 'W'
 
+        # Si falta cualquiera -> devolver vacío
+        if lat is None or lon is None:
+            return {}, fecha
+        
+        # Convertir con seguridad
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except:
+            return {}, fecha
+        
         gps_info = {
-            'GPSLatitudeRef': lat_ref,
+            'GPSLatitudeRef': 'N' if lat >= 0 else 'S',
             'GPSLatitude': abs(float(lat)),
-            'GPSLongitudeRef': lon_ref,
+            'GPSLongitudeRef': 'E' if lon >= 0 else 'W',
             'GPSLongitude': abs(float(lon)),
             'GPSDateStamp': fecha_str
         }
-
-        if any(v is None for v in gps_info.values()):
-            gps_info = {}
 
         return gps_info, fecha
 

@@ -440,7 +440,7 @@ def normalizar_texto(t):
 
 def actualizar_cache_geocoding(ubicacion, lat, lon):
     if ubicacion != '(Sin_GPS)':
-        clave_norm = normalizar_texto(ubicacion)
+        clave_norm = ubicacion
         cache_geocoding = cargar_cache()
 
         # Solo guardar si no existe

@@ -7,7 +7,7 @@ import os
 from autodiagnostico.chequeos.json_vs_carpetas import construir_nombre_carpeta
 from autodiagnostico.utils.deshabilitar_mapa import set_deshabilitar_mapa
 
-from copia_clasificador_fotos import calcular_hash_md5
+from copia_clasificador_fotos import calcular_hash_md5, actualizar_stats
 
 from config_paths import get_ruta_principal
 
@@ -40,6 +40,8 @@ def corregir_ruta_vacia(lista_problemas, data):
             entrada = next((x for x in clasificados if x["hash"] == hash_buscado), None)
             if entrada:
                 entrada["ruta"] = ruta
+
+    actualizar_stats(data)
 
     set_deshabilitar_mapa()
     return data

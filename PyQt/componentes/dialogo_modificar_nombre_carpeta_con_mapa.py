@@ -21,10 +21,15 @@ from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
 # ---------------------------------------------------------
 class Bridge(QObject):
     coordenadasSeleccionadas = pyqtSignal(float, float, str, str, str)
+    nuevaPoscicion = pyqtSignal(str, float, float)
 
     @pyqtSlot(float, float, str, str, str)
     def enviarCoordenadas(self, lat, lon, ciudad, pais, clave):
         self.coordenadasSeleccionadas.emit(lat, lon, ciudad, pais, clave)
+
+    @pyqtSlot(str, float, float)
+    def enviarNuevaPosicion(self, clave, lat, lon):
+        self.nuevaPoscicion.emit(clave, lat, lon)
 
 # ---------------------------------------------------------
 # DIÁLOGO COMPLETO
@@ -34,7 +39,7 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
 
     def __init__(self, parent = None):
         super().__init__(parent)
-        self.setWindowTitle("Modificar Nombre de Carpeta")
+        self.setWindowTitle("Modificar Ubicación")
         self.resize(900, 500)
 
         # Layout principal
@@ -64,6 +69,7 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
         # Bridge y canal
         self.bridge = Bridge()
         self.bridge.coordenadasSeleccionadas.connect(self._recibir_coordenadas)
+        self.bridge.nuevaPoscicion.connect(self._actualizar_coordenadas_marca)
 
         self.channel = QWebChannel()
         self.channel.registerObject("pybridge", self.bridge)
@@ -200,7 +206,9 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
             <div id="map"></div>
 
             <script>
-                var map = L.map('map').setView([{lat}, {lon}], 6);
+                var map = L.map('map', {{
+                    doubleClickZoom: false
+                }}).setView([{lat}, {lon}], 6);
 
                 L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
                     maxZoom: 19
@@ -212,21 +220,37 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
                     pybridge = channel.objects.pybridge;
                 }});
 
-                // Lista de ciudades desde Python
                 var CIUDADES_JSON = {ciudades_json_str};
                 var ciudades = CIUDADES_JSON;
 
-                // Crear marcadores
+                var claveSeleccionada = null;
+
                 ciudades.forEach(function(item) {{
                     var marker = L.marker([item.lat, item.lon]).addTo(map);
 
-                    marker.bindTooltip("Ubicación:" + item.ciudad + ", " + item.pais);
+                    marker.bindTooltip("Ubicación: " + item.ciudad + ", " + item.pais);
 
                     marker.on('click', function() {{
+                        claveSeleccionada = item.clave;
+
                         if (pybridge) {{
                             pybridge.enviarCoordenadas(item.lat, item.lon, item.ciudad, item.pais, item.clave);
                         }}
                     }});
+                }});
+
+                map.on('dblclick', function(e) {{
+                    if (!claveSeleccionada) {{
+                        alert("Primero selecciona una marca.");
+                        return;
+                    }}
+
+                    var nuevaLat = e.latlng.lat;
+                    var nuevaLon = e.latlng.lng;
+
+                    if (pybridge) {{
+                        pybridge.enviarNuevaPosicion(claveSeleccionada, nuevaLat, nuevaLon);
+                    }}
                 }});
 
                 var bounds = [];
@@ -235,12 +259,10 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
                 }});
 
                 map.fitBounds(bounds);
-                
             </script>
         </body>
         </html>
         """
-
         self.view.page().setHtml(html, QUrl("qrc:///"))
 
     def separar_ciudad_pais(self, clave):
@@ -249,7 +271,8 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
             ciudad = partes[0].strip()
             pais = partes[1].strip()
             return ciudad, pais
-        return None, None
+        
+        return "Desconocido", "Desconocido"
 
     # ---------------------------------------------------------
     # Recibir coordenadas desde el mapa
@@ -257,14 +280,67 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
     def _recibir_coordenadas(self, lat, lon, ciudad, pais, clave_original):
         self.lat = lat
         self.lon = lon
-        self.label_lat.setText(f"Latitud: {lat:.6f}")
-        self.label_lon.setText(f"Longitud: {lon:.6f}")
+        self.label_lat.setText(f"Latitud: {self.lat:.6f}")
+        self.label_lon.setText(f"Longitud: {self.lon:.6f}")
 
         # Rellenar ciudad y pais
         self.input_ciudad.setText(ciudad)
         self.input_pais.setText(pais)
 
         self.clave_original = clave_original
+        self.clave_actual = clave_original # CLAVE VIGENTE
+
+    # ---------------------------------------------------------
+    # Actualizar los archivos json de cache y unificado
+    # ---------------------------------------------------------
+    def _actualizar_coordenadas_json(self, clave, lat, lon):
+        # 1. Actualizar cache
+        cache = cargar_cache()
+        cache[clave] = [lat, lon]
+        guardar_cache(cache)
+
+        # 2. Actualizar archivo unifcado
+        data = cargar_json_unico(ruta_json_unico())
+        items = data["clasificados"]["items"]
+
+        for item in items:
+            if item["ubicacion"] == clave:
+                item["latitud"] = lat
+                item["longitud"] = lon
+
+        guardar_json_unico(ruta_json_unico(), data)
+
+    # ---------------------------------------------------------
+    # Actualizar coordenadas desde el mapa
+    # ---------------------------------------------------------
+    def _actualizar_coordenadas_marca(self, clave, lat, lon):        
+        # Mostrar coordenadas nuevas
+        self.lat = lat
+        self.lon = lon
+        self.label_lat.setText(f"Latitud: {self.lat:.6f}")
+        self.label_lon.setText(f"Longitud: {self.lon:.6f}")
+
+        # Pedir confirmación de las nuevas coordenadas.
+        respuesta = QMessageBox.question(
+            self, "Confirmar coordenadas",
+            f"Las nuevas coordenadas son:\n"
+            f"Latitud: {self.lat:.6f}\n"
+            f"Longitud: {self.lon:.6f}\n"
+            f"\n"
+            f"¿Desea actualizar las coordenadas?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if respuesta == QMessageBox.No:
+            return
+
+        # Actualizar coordenadas en la clave vigente
+        self._actualizar_coordenadas_json(self.clave_actual, lat, lon)
+
+        QMessageBox.information(self, "Coordenadas actualizadas",
+                                f"Las coordenadas para la clave {clave} han sido actualizadas.")
+        
+        # Regenerar mapa de coordenadas.
+        self._cargar_mapa(self.lat, self.lon)
 
     # --------------------------------------------------------------
     # Actualizar el archivo unificado en los campos ruta y ubicación
@@ -276,7 +352,7 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
 
         # Clave antigua y nueva
         clave_antigua = self.clave_original
-        clave_nueva = f"({ciudad_nueva})({pais_nuevo})"
+        clave_nueva = self.clave_actual
 
         for item in items:
             if item["ubicacion"] == clave_antigua:
@@ -294,7 +370,7 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
                 fecha = item["fecha"]
                 carpeta_nueva = os.path.join(
                     os.path.dirname(carpeta_antigua),
-                    f"({ciudad_nueva})({pais_nuevo}){fecha}"
+                    f"{clave_nueva}{fecha}"
                 )
 
                 # Renombrar carpeta física si existe
@@ -305,9 +381,6 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
                 item["ruta"] = os.path.join(carpeta_nueva, os.path.basename(ruta_antigua))
 
         guardar_json_unico(ruta_json_unico(), data)
-
-        # Generamos el mapa manualmente.
-
 
     # ---------------------------------------------------------
     # Validar y devolver datos
@@ -323,24 +396,29 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
         if self.lat is None or self.lon is None:
             QMessageBox.warning(self, "Error", "Debes seleccionar una ubicación en el mapa.")
             return
+        
+        if not self.validar_clave(ciudad, pais):
+            QMessageBox.warning(self, "Error", "Ciudad o país contienen caracteres inválidos.")
+            return
 
-        # Guardar en cache
-        cache = cargar_cache()
-
-        # Eliminar la clave original
-        if self.clave_original in cache:
-            del cache[self.clave_original]
-
+        # CLAVE VIGENTE
         nueva_clave = f"({ciudad})({pais})"
-        cache[nueva_clave] = [self.lat, self.lon]
-        guardar_cache(cache)
+        self.clave_actual = nueva_clave
 
-        # Actualizar archivo unificado
+        # Actualizar archivo unificado (ubicación + rutas + carpetas)
         self._actualizar_archivo_unificado(ciudad, pais)
 
-        QMessageBox.information(self, "Modificar Carpeta", "La carpeta se ha modificado correctamente.")
+        # Generar mapa de fotos.
         self.generarMapaManual.emit()
         self.accept()
+
+    def validar_clave(self, ciudad, pais):
+        # No permitir paréntesis dentro de ciudad o pais
+        if "(" in ciudad or ")" in ciudad:
+            return False
+        if "(" in pais or ")" in pais:
+            return False
+        return True
 
     def _separador(self):
         sep = QFrame()
