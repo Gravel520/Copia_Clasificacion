@@ -310,8 +310,26 @@ class DialogoCrearCarpetaConMapa(QDialog):
         
         # Guardar en cache
         cache = cargar_cache()
-        nombre = f"({ciudad})({pais})"
-        cache[nombre] = [self.lat, self.lon]
+
+        clave = f"({ciudad})({pais})"
+        # Si ya existe entrada en formato nuevo, conservar provincia/postal
+        if clave in cache and isinstance(cache[clave], dict):
+            provincia = cache[clave].get("provincia", "")
+            postal = cache[clave].get("postal", "")
+        else:
+            provincia = ""
+            postal = ""
+
+        # Guardar en formato nuevo
+        cache[clave] = {
+            "lat": float(self.lat),
+            "lon": float(self.lon),
+            "ciudad": ciudad,
+            "pais": pais,
+            "provincia": provincia,
+            "postal": postal,
+            "fuente": "manual"
+        }
         guardar_cache(cache)
 
         self.resultado = (ciudad, pais, fecha)

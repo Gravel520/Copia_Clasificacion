@@ -28,6 +28,7 @@ import folium
 import os
 import time
 import datetime
+import json
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
 from config_paths import (
@@ -36,6 +37,7 @@ from config_paths import (
 from utils.utils_cache import (
     cargar_cache, normalizar_texto
 )
+from folium import IFrame
 
 # Función para extraer el nombre de la ciudad.
 def extraer_ciudad(nombre):
@@ -54,35 +56,46 @@ def parse_fecha_key(fecha):
     Soporta formatos comunes: 'YYYY-MM', 'YYYY-M', 'YYYY-MM-DD', 'YYYY'.
     Si no puede parsear, devuelve la cadena tal cual (orden lexicográfico)
     '''
-    formatos = ['%Y-%m', '%Y-%m-%d', '%Y-%m-%d', '%Y-%m', '%Y']
+    f = fecha.strip()    
+    formatos = ['%Y-%m-%d', '%Y-%m', '%Y']
     # Normalizar guiones y ceros (por ejemplo '2021-7' -> '2021-07' si es posible)
-    f = fecha.strip()
-    # Intentos con formatos comunes
+    parts = f.split('-')
+    if len(parts) >= 2 and len(parts[1]) == 1:
+        parts[1] = parts[1].zfill(2)
+        f_normalizada = '-'.join(parts)
+    else:
+        f_normalizada = f
+
     for fmt in formatos:
         try:
-            return datetime.datetime.strftime(f, fmt)
+            dt = datetime.datetime.strptime(f_normalizada, fmt)
+            return dt
         except Exception:
-            # Intentar rellenar mes con cero si vivne 'YYYY-M'
-            parts = f.split('-')
-            if len(parts) == 2 and len(parts[1]) == 1:
-                try:
-                    return datetime.datetime.strftime(f.replace('-', '-0', 1), '%Y-%m')
-                except Exception:
-                    pass
             continue
+
     # Fallback: devolver la cadena para orden lexicográfica
     return f
 
 def obtener_coordenadas(ciudad, pais):
     nombre = f"({ciudad})({pais})"
-    cache = cargar_cache()
+    cache = cargar_cache() or {}
 
     # 1. Si está en cache > usarlo SIEMPRE
     if nombre in cache:
-        lat, lon = cache[nombre]
-        return lat, lon
+        val = cache[nombre]
+        if isinstance(val, (list, tuple)) and len(val) >= 2:
+            try:
+                lat = float(val[0])
+                lon = float(val[1])
+                return lat, lon
+            except Exception:
+                # 2. Si no esta > no inventamos nada
+                print(f"[WARN] Coordenadas inválidas en cache para: {nombre}")
+                return None
+        else:
+            print(f"[WARN] Formato de cache inesperado para {nombre}: {val}")
+            return None
     
-    # 2. Si no esta > no inventamos nada
     print(f"[WARN] No hay coordenadas en cache para: {nombre}")
     return None
 
@@ -99,13 +112,14 @@ como (\\) al HTML, y luego como (\) al JavaScript.
 def crear_popup_html(ciudad, pais, entradas):
     html = f"<div style='width:250px;'>"
     for fecha, ruta, num in entradas:
+        ruta_str = str(ruta)
         # Creamos la corrección de las barras barras invertidas para que la
         #   ruta del directorio se interprete correctamente.
-        ruta = ruta.replace('\\', '\\\\')
+        ruta_js = ruta_str.replace('\\', '\\\\')
         html += f"""
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
             <span><b>{ciudad}, {pais} - {fecha} ({num} archivos)</b></span>
-            <button onclick="enviarRuta('{ruta}')" 
+            <button onclick="enviarRuta('{ruta_js}')" 
                     style="border:none; background:none; cursor:pointer; padding:0;">
                 <svg width="20" height="20" viewBox="0 0 24 24">
                     <path fill="black" d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 
@@ -121,34 +135,37 @@ def crear_popup_html(ciudad, pais, entradas):
     return html    
 
 def generar_mapa(features):
-    cache_json_geocoding = cargar_cache()
-    coords = list(cache_json_geocoding.values())
+    cache_json_geocoding = cargar_cache() or {}
+    coords = [v for v in cache_json_geocoding.values() if isinstance(v, (list, tuple)) and len(v) >= 2]
 
     if coords:
         # Calculamos el promedio de latitud y longitud
-        lat_centro = sum(p[0] for p in coords) / len(coords)
-        lon_centro = sum(p[1] for p in coords) / len(coords)
-        coordenadas = [lat_centro, lon_centro]
+        lat_centro = sum(float(p[0]) for p in coords) / len(coords)
+        lon_centro = sum(float(p[1]) for p in coords) / len(coords)
+        centro = [lat_centro, lon_centro]
     else: # Fallback a Madrid si el json está vacío
-        lat_centro = 40.4167
-        lon_centro = -3.7033
+        centro = [40.4167, -3.7033]
 
     # Inicializamos la localización en el centro de la localización
     #   del archivo .json
-    lat, lon = lat_centro, lon_centro
     mapa = folium.Map(
-        location=[lat, lon],
+        location=centro,
         zoom_start=5
         )
     
     # Formatear tooltip.
     for f in features:
-        nombre = f["properties"]["nombre"]
+        props = f.get("properties", {})
+        nombre = props.get("nombre", "")
 
         partes = nombre.split()
-        ciudad = " ".join(partes[:-1])
-        pais = partes[-1]
-        f["properties"]["tooltip"] = f"Ubicación: {ciudad}, {pais}"
+        if len(partes) >= 2:
+            ciudad = " ".join(partes[:-1])
+            pais = partes[-1]
+        else:
+            ciudad = props.get("ciudad", "Desconocido")
+            pais = props.get("pais", "Desconocido")
+        props["tooltip"] = f"Ubicación: {ciudad}, {pais}"
     
     # Crear capa GeoJSON
     geojson_layer = folium.GeoJson(
@@ -292,7 +309,7 @@ def generar_mapa(features):
         </div>
     """))
 
-        # Definimos el título flotante y centrado para el mapa
+    # Definimos el título flotante y centrado para el mapa
     # Si estás en el otro mapa, solo cambia "MAPA DE GRUPOS" por "MAPA NORMAL"
     texto_titulo = "MAPA DE FOTOS" 
 
@@ -323,11 +340,23 @@ def generar_mapa(features):
         </div>
     """))
 
+    # Ajustar vista inicial a todos los puntos si hay features
+    puntos = []
+    for f in features:
+        geom = f.get('geometry', {})
+        coords = geom.get('coordinates', [])
+        if coords and len(coords) >= 2:
+            puntos.append([coords[1], coords[0]])
 
-    if coordenadas:
-        mapa.fit_bounds(coordenadas)
+    if puntos:
+        mapa.fit_bounds(puntos)
 
-    mapa.save(f'{get_ruta_mapa_html()}')
+    # Guardar el mapa
+    ruta_salida = get_ruta_mapa_html()
+    try:
+        mapa.save(ruta_salida)
+    except Exception as e:
+        print(f"Error al guardar el mapa: {e}")
 
 def cargar_datos_desde_historial():
     '''
@@ -336,19 +365,25 @@ def cargar_datos_desde_historial():
         clasificados, que serán los que fijemos en el mapa.
     '''
     data = cargar_json_unico(ruta_json_unico())
-
-    historial = data["clasificados"]["items"]
+    historial = data.get("clasificados", {}).get("items", [])
 
     agrupadas = defaultdict(list)
     combinaciones_unicas = set()
 
     for item in historial:
-        clave = item['ubicacion'] + item['fecha']
+        ubic = item.get('ubicacion', '')
+        fecha = item.get('fecha', '')
+        clave = f"{ubic}{fecha}"
         combinaciones_unicas.add(clave)
 
     for directorio in combinaciones_unicas:
         ruta_directorio = os.path.join(get_ruta_principal(), directorio)
-        archivos = os.listdir(ruta_directorio)
+        try:
+            archivos = os.listdir(ruta_directorio)
+        except Exception:
+            print(f"[WARN] No se puede listar {ruta_directorio}, se omite.")
+            continue
+
         ciudad, pais, fecha = extraer_ciudad(directorio)
         ciudad = normalizar_texto(ciudad)
         pais = normalizar_texto(pais)
@@ -387,7 +422,7 @@ def cargar_datos_desde_historial():
         }
         
         features.append(feature)
-        time.sleep(1) # Evitar sobrecarga del geocodificador
+        time.sleep(0.01) # Evitar sobrecarga del geocodificador
 
     # Filtrar features sin propiedades válidas
     features = [
@@ -396,3 +431,258 @@ def cargar_datos_desde_historial():
     ]
     if features:
         generar_mapa(features)
+    else:
+        print("[INFO] No hay features para generar el mapa.")
+
+def agrupar_ciudades_por_provincia():
+    """
+    Agrupa todas las ciudades por provincia usando:
+    - historial de clasificados
+    - cache geocoding extendido (lat, lon, provincia, postal
+        ciudad, pais)
+    """
+
+    # 1. Cargar datos
+    data = cargar_json_unico(ruta_json_unico())
+    historial = data.get("clasificados", {}).get("items", [])
+
+    cache = cargar_cache() or {}
+
+    # Estructura final:
+    # provincia -> lista de ciudades -> lista de entradas (fecha, ruta,
+    #   num_archivos)
+    provincias = defaultdict(lambda: defaultdict(list))
+
+    # 2. Obtener combinaciones únicas de directorios
+    combinaciones_unicas = set()
+    for item in historial:
+        ubic = item.get("ubicacion", "")
+        fecha = item.get("fecha", "")
+        clave = f"{ubic}{fecha}"
+        combinaciones_unicas.add(clave)
+
+    # 3. Procesar cada directorio
+    for directorio in combinaciones_unicas:
+        ruta_directorio = os.path.join(get_ruta_principal(), directorio)
+
+        try:
+            archivos = os.listdir(ruta_directorio)
+        except Exception:
+            print(f"[WARN] No se puede listar {ruta_directorio}, se omite.")
+            continue
+
+        ciudad, pais, fecha = extraer_ciudad(directorio)
+        ciudad = normalizar_texto(ciudad)
+        pais = normalizar_texto(pais)
+
+        # 4. Buscar provincia en cache
+        clave_cache = f"({ciudad})({pais})"
+        info = cache.get(clave_cache)
+
+        if not info:
+            print(f"[WARN] No hay información de geocoding para: {clave_cache}, se omite.")
+            continue
+
+        provincia = info.get("provincia", "")
+        lat = info.get("lat")
+        lon = info.get("lon")
+
+        if not provincia:
+            print(f"[WARN] No hay provincia en geocoding para: {clave_cache}, se omite.")
+            continue
+
+        # 5. Añadir entrada a la provincia correspondiente
+        provincias[provincia][ciudad].append({
+            "fecha": fecha,
+            "ruta": ruta_directorio,
+            "num_archivos": len(archivos),
+            "lat": lat,
+            "lon": lon,
+            "pais": pais
+        })
+
+    return provincias, cache
+
+def generar_mapa_por_provincias():
+    """
+    provincias = estructura devuelta por agrupar_ciudades_por_provincia
+    cache = cache geocoding extendido
+    """
+
+    provincias, cache = agrupar_ciudades_por_provincia()
+
+    # Obtener centro del mapa usando todas las coordenadas del cache
+    coords = [
+        (info["lat"], info["lon"])
+        for info in cache.values()
+        if isinstance(info, dict) and "lat" in info and "lon" in info
+    ]
+
+    if coords:
+        lat_centro = sum(p[0] for p in coords) / len(coords)
+        lon_centro = sum(p[1] for p in coords) / len(coords)
+    else:
+        lat_centro, lon_centro = 40.4167, -3.7033 # Madrid fallback
+
+    mapa = folium.Map(
+        location=[lat_centro, lon_centro],
+        zoom_start=6
+    )
+
+    # Crear una marca por provincia
+    for provincia, ciudades in provincias.items():
+
+        # Obtener coordenadas promedio de la provincia
+        lat_list = []
+        lon_list = []
+
+        for ciudad, entradas in ciudades.items():
+            for e in entradas:
+                lat_list.append(e["lat"])
+                lon_list.append(e["lon"])
+
+            if not lat_list or not lon_list:
+                continue
+
+            lat_prov = sum(lat_list) / len(lat_list)
+            lon_prov = sum(lon_list) / len(lon_list)
+
+            html = f"<h4>{provincia}</h4><p>Haz clic para ver ciudades.</p>"
+            iframe = IFrame(html, width=220, height=80)
+            popup = folium.Popup(iframe, max_width=250)
+
+            marker = folium.Marker(
+                location=[lat_prov, lon_prov],
+                popup=popup,
+                tooltip=f"Provincia: {provincia}"
+            )
+            marker.add_to(mapa)
+
+            # Vincular click a selector avanzado
+            # (Leaflet no expone directamente el click desde Python,
+            #  así que lo manejamos vía JS usando provinciasData)
+            # El popup simple sirve de "pista" visual; el selector se abre con JS.
+    
+        # Inyectar datos en JS
+        mapa.get_root().html.add_child(folium.Element(
+            f"<script>window.provinciasData = {json.dumps(provincias)};</script>"
+        ))
+
+        mapa.get_root().html.add_child(folium.Element(
+            f"<script>window.mapInstance = {mapa.get_name()};</script>"
+        ))
+
+        # Popup avanzado: selector de ciudades y carpetas
+        mapa.get_root().html.add_child(folium.Element("""
+        <script>
+        function mostrarSelectorProvincia(provincia, lat, lon) {
+            let ciudades = window.provinciasData[provincia];
+
+            let html = `
+                <div style="font-family:Segoe UI; width:260px;">
+                    <h3 style="margin-bottom:8px;">${provincia}</h3>
+                    <p style="margin:0 0 6px 0;">Selecciona una ciudad:</p>
+                    <ul style="padding-left:16px;">
+            `;
+
+            for (let ciudad in ciudades) {
+                html += `
+                    <li style="margin-bottom:4px;">
+                        <a href="#" onclick="mostrarCiudad('${provincia}', '${ciudad}')">
+                            ${ciudad} (${ciudades[ciudad].length} entradas)
+                        </a>
+                    </li>
+                `;
+            }
+
+            html += `
+                    </ul>
+                </div>
+            `;
+
+            let popup = L.popup({maxWidth:300})
+                .setLatLng([lat, lon])
+                .setContent(html)
+                .openOn(window.mapInstance);
+        }
+
+        function mostrarCiudad(provincia, ciudad) {
+            let data = window.provinciasData[provincia][ciudad];
+
+            let html = `
+                <div style="font-family:Segoe UI; width:260px;">
+                    <h3 style="margin-bottom:8px;">${ciudad}</h3>
+                    <p style="margin:0 0 6px 0;">Carpetas encontradas:</p>
+                    <ul style="padding-left:16px;">
+            `;
+
+            for (let i = 0; i < data.length; i++) {
+                let e = data[i];
+                let rutaEscapada = e.ruta.replace(/\\\\/g, '\\\\\\\\');
+
+                html += `
+                    <li style="margin-bottom:6px;">
+                        <b>${e.fecha}</b> (${e.num_archivos} archivos)
+                        <br>
+                        <button onclick="enviarRuta('${rutaEscapada}')"
+                                style="margin-top:4px; padding:3px 6px; font-size:11px;">
+                            Abrir carpeta
+                        </button>
+                    </li>
+                `;
+            }
+
+            html += `
+                    </ul>
+                </div>
+            `;
+
+            let popup = L.popup({maxWidth:300})
+                .setLatLng([data[0].lat, data[0].lon])
+                .setContent(html)
+                .openOn(window.mapInstance);
+        }
+        </script>
+        """))
+
+        # Canal PyQt
+        mapa.get_root().html.add_child(folium.Element("""
+            <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+            <script>
+            new QWebChannel(qt.webChannelTransport, function(channel) {
+                window.bridge = channel.objects.bridge;
+            });
+            function enviarRuta(ruta) {
+                window.bridge.recibirRuta(ruta);
+            }
+            </script>
+        """))
+
+        # Título flotante
+        mapa.get_root().html.add_child(folium.Element("""
+            <style>
+            #tituloMapa {
+                position: fixed;
+                top: 15px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 9999;
+                background: rgba(255, 255, 255, 0.9);
+                color: #2c3e50;
+                padding: 8px 20px;
+                border: 2px solid #2A81CB;
+                border-radius: 8px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 14px;
+                font-weight: bold;
+                letter-spacing: 1px;
+                pointer-events: none;
+            }
+            </style>
+            <div id="tituloMapa">MAPA POR PROVINCIAS</div>
+        """))
+
+        # Guardar mapa
+        ruta_salida = get_ruta_mapa_html()
+        mapa.save(ruta_salida)

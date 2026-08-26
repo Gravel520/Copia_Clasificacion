@@ -54,7 +54,7 @@ from autodiagnostico.programador_autodiagnostico import toca_ejecutar
 
 from backup.backup_dialog import BackupDialog
 
-from utils.utils_cache import cargar_cache
+from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
 from utils.thread_manager import thread_manager
 
 ARCHIVOS_SEL = {}  # clave: ruta_archivo, valor: hash_archivo

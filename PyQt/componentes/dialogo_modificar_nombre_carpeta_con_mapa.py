@@ -179,12 +179,21 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
         for clave, coords in self.data.items():
             ciudad, pais = self.separar_ciudad_pais(clave)
 
+            # Compatibilidad con cache antiguo (por si queda alguna entrada)
+            if isinstance(coords, list):
+                lat = coords[0]
+                lon = coords[1]
+
+            else:
+                lat = coords.get("lat", 0)
+                lon = coords.get("lon", 0)
+
             ciudades_js.append({
                 "ciudad": ciudad,
                 "pais": pais,
                 "clave": clave,
-                "lat": coords[0],
-                "lon": coords[1]
+                "lat": lat,
+                "lon": lon
             })
         
         ciudades_json_str = json.dumps(ciudades_js)
@@ -296,7 +305,36 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
     def _actualizar_coordenadas_json(self, clave, lat, lon):
         # 1. Actualizar cache
         cache = cargar_cache()
-        cache[clave] = [lat, lon]
+        
+        # Si ya existe entrada en formato nuevo, conservar provincia/postal
+        if clave in cache and isinstance(cache[clave], dict):
+            provincia = cache[clave].get("provincia", "")
+            postal = cache[clave].get("postal", "")
+            ciudad = cache[clave].get("ciudad", "")
+            pais = cache[clave].get("pais", "")
+        else:
+            # Extraer ciudad y país desde la clave "(ciudad)(pais)"
+            try:
+                ciudad = clave.split(')')[0][1:]
+                pais = clave.split(')')[1][1:]
+            except:
+                ciudad = ""
+                pais = ""
+
+            provincia = ""
+            postal = ""
+
+        # Guardar en formato nuevo
+        cache[clave] = {
+            "lat": float(lat),
+            "lon": float(lon),
+            "ciudad": ciudad,
+            "pais": pais,
+            "provincia": provincia,
+            "postal": postal,
+            "fuente": "manual"
+        }
+
         guardar_cache(cache)
 
         # 2. Actualizar archivo unifcado

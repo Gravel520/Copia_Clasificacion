@@ -138,8 +138,11 @@ def obtener_ubicación(gps_info):
             return "Sin_GPS"
 
         datos = ubicacion.raw.get("address", {})
+
         ciudad = datos.get("city") or datos.get("town") or datos.get("village")
         pais = datos.get("country_code", "").upper()
+        provincia = datos.get("state", "")
+        postal = datos.get("postcode", "")
 
         # Validación: si el pais no es ES, FR o PT > comprobar
         paises_validos = ["ES", "FR", "PT"]
@@ -153,17 +156,33 @@ def obtener_ubicación(gps_info):
                 if posible:
                     dist = geodesic((lat, lon), (posible.latitude, posible.longitude)).km
                     if dist < 100: # Distancia razonable
-                        return f'({ciudad}({p}))', lat, lon
+                        return {
+                            "ciudad": normalizar_texto(ciudad),
+                            "pais": normalizar_texto(p),
+                            "provincia": normalizar_texto(provincia),
+                            "postal": postal,
+                            "lat": lat,
+                            "lon": lon,
+                            "fuente": "nominatim"
+                        }
+                        
             # Si ninguna coincide > GPS incorrecto
             return "Sin_GPS"
         
         # Si el país es válido, devolvemos directamente
-        return f'({normalizar_texto(ciudad)})({normalizar_texto(datos.get("country"))})', lat, lon
+        return {
+            "ciudad": normalizar_texto(ciudad),
+            "pais": normalizar_texto(datos.get("country", "")),
+            "provincia": normalizar_texto(provincia),
+            "postal": postal,
+            "lat": lat,
+            "lon": lon,
+            "fuente": "nominatim"
+        }
         
     except Exception as e:
         print("Error GPS: ", e)
-
-    return 'Sin_GPS'
+        return 'Sin_GPS'
 
 # Comprobar archivos duplicados a través de su hash.
 def calcular_hash_md5(ruta_archivo):
@@ -231,10 +250,24 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
         if not gps_info:
             gps_info, fecha = obtener_metadatos_reales(ruta_local)
             
-        ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
+        info = obtener_ubicación(gps_info) if gps_info else None
+        #ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
         # Actualizar cache geocoding.
-        actualizar_cache_geocoding(ubicacion, lat, lon)
+        if info:
+            # Guardar en cache geocoding
+            actualizar_cache_geocoding(info)
+
+            # Para el sistema actual
+            ubicacion = f"({info['ciudad']})({info['pais']})"
+            lat = info["lat"]
+            lon = info["lon"]
+
+        else:
+            # Sin GPS -> no guardar en cache
+            ubicacion = '(Sin_GPS)'
+            lat = lon = 0
+        #actualizar_cache_geocoding(ubicacion, lat, lon)
 
         # El string de la fecha será (año-mes)
         fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
@@ -438,12 +471,26 @@ def normalizar_texto(t):
     t = re.sub(r'[^a-zA-Z0-9 ]', '', t)
     return t
 
-def actualizar_cache_geocoding(ubicacion, lat, lon):
-    if ubicacion != '(Sin_GPS)':
-        clave_norm = ubicacion
-        cache_geocoding = cargar_cache()
+def actualizar_cache_geocoding(info):
+    if not info:
+        return
+    
+    ciudad = info["ciudad"]
+    pais = info["pais"]
 
-        # Solo guardar si no existe
-        if clave_norm not in cache_geocoding:
-            cache_geocoding[clave_norm] = [float(lat), float(lon)]
-            guardar_cache(cache_geocoding)
+    clave = f"({ciudad}), ({pais})"
+
+    cache = cargar_cache()
+
+    # Solo guardar si no existe
+    if clave not in cache:
+        cache[clave] = {
+            "lat": float(info["lat"]),
+            "lon": float(info["lon"]),
+            "ciudad": ciudad,
+            "pais": pais,
+            "provincia": info.get("provincia", ""),
+            "postal": info.get("postal", ""),
+            "fuente": info.get("fuente", "nominatim")
+        }
+        guardar_cache(cache)

@@ -3,7 +3,7 @@
 '''
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from mapa_generator import cargar_datos_desde_historial
+from mapa_generator import cargar_datos_desde_historial, generar_mapa_por_provincias
 from copia_clasificador_fotos import cargar_json_unico
 from config_paths import ruta_json_unico
 
@@ -19,7 +19,8 @@ class MapaWorker(QThread):
         if self.detener:
             return
         
-        cargar_datos_desde_historial()
+        #cargar_datos_desde_historial()
+        generar_mapa_por_provincias()
 
         if self.detener:
             return
