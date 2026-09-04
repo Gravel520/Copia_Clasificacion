@@ -32,7 +32,8 @@ import json
 from collections import defaultdict
 from copia_clasificador_fotos import cargar_json_unico
 from config_paths import (
-    get_ruta_mapa_html, get_ruta_principal, ruta_json_unico
+    get_ruta_mapa_fotos_html, get_ruta_principal, ruta_json_unico,
+    get_ruta_mapa_provincias_html
     )
 from utils.utils_cache import (
     cargar_cache, normalizar_texto
@@ -80,23 +81,39 @@ def obtener_coordenadas(ciudad, pais):
     nombre = f"({ciudad})({pais})"
     cache = cargar_cache() or {}
 
-    # 1. Si está en cache > usarlo SIEMPRE
-    if nombre in cache:
-        val = cache[nombre]
-        if isinstance(val, (list, tuple)) and len(val) >= 2:
+    if nombre not in cache:
+        print(f"[WARN] No hay coordenadas en cache para: {nombre}")
+        return None
+
+    val = cache[nombre]
+
+    # Formato nuevo: {"lat": 40.1, "lon": -3.1}
+    if isinstance(val, dict):
+        if "lat" in val and "lon" in val:
             try:
-                lat = float(val[0])
-                lon = float(val[1])
+                lat = float(val["lat"])
+                lon = float(val["lon"])
                 return lat, lon
             except Exception:
-                # 2. Si no esta > no inventamos nada
                 print(f"[WARN] Coordenadas inválidas en cache para: {nombre}")
                 return None
         else:
             print(f"[WARN] Formato de cache inesperado para {nombre}: {val}")
             return None
-    
-    print(f"[WARN] No hay coordenadas en cache para: {nombre}")
+
+    # Formato antiguo: [40.1, -3.1]
+    if isinstance(val, (list, tuple)) and len(val) >= 2:
+        try:
+            lat = float(val[0])
+            lon = float(val[1])
+            return lat, lon
+        except Exception:
+            # 2. Si no esta > no inventamos nada
+            print(f"[WARN] Coordenadas inválidas en cache para: {nombre}")
+            return None
+
+    # Formato desconocido
+    print(f"[WARN] Formato de cache inesperado para {nombre}: {val}")
     return None
 
 '''
@@ -324,7 +341,7 @@ def generar_mapa(features):
             background: rgba(255, 255, 255, 0.9); /* Fondo blanco semitransparente */
             color: #2c3e50; /* Color de texto elegante */
             padding: 8px 20px;
-            border: 2px solid #2A81CB; /* Borde naranja a juego con tus marcadores */
+            border: 2px solid #2A81CB; /* Borde azul a juego con tus marcadores */
             border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -352,7 +369,7 @@ def generar_mapa(features):
         mapa.fit_bounds(puntos)
 
     # Guardar el mapa
-    ruta_salida = get_ruta_mapa_html()
+    ruta_salida = get_ruta_mapa_fotos_html()
     try:
         mapa.save(ruta_salida)
     except Exception as e:
@@ -504,14 +521,11 @@ def agrupar_ciudades_por_provincia():
     return provincias, cache
 
 def generar_mapa_por_provincias():
-    """
-    provincias = estructura devuelta por agrupar_ciudades_por_provincia
-    cache = cache geocoding extendido
-    """
-
     provincias, cache = agrupar_ciudades_por_provincia()
 
-    # Obtener centro del mapa usando todas las coordenadas del cache
+    # ---------------------------------------------------------
+    # 1. Calcular centro del mapa
+    # ---------------------------------------------------------
     coords = [
         (info["lat"], info["lon"])
         for info in cache.values()
@@ -522,17 +536,16 @@ def generar_mapa_por_provincias():
         lat_centro = sum(p[0] for p in coords) / len(coords)
         lon_centro = sum(p[1] for p in coords) / len(coords)
     else:
-        lat_centro, lon_centro = 40.4167, -3.7033 # Madrid fallback
+        lat_centro, lon_centro = 40.4167, -3.7033
 
-    mapa = folium.Map(
-        location=[lat_centro, lon_centro],
-        zoom_start=6
-    )
+    mapa = folium.Map(location=[lat_centro, lon_centro], zoom_start=5)
 
-    # Crear una marca por provincia
+    # ---------------------------------------------------------
+    # 2. Marcadores por provincia (uno por provincia)
+    # ---------------------------------------------------------
+    lista_provincias = list(provincias.keys())
+
     for provincia, ciudades in provincias.items():
-
-        # Obtener coordenadas promedio de la provincia
         lat_list = []
         lon_list = []
 
@@ -541,148 +554,254 @@ def generar_mapa_por_provincias():
                 lat_list.append(e["lat"])
                 lon_list.append(e["lon"])
 
-            if not lat_list or not lon_list:
-                continue
+        if not lat_list:
+            continue
 
-            lat_prov = sum(lat_list) / len(lat_list)
-            lon_prov = sum(lon_list) / len(lon_list)
+        lat_prov = sum(lat_list) / len(lat_list)
+        lon_prov = sum(lon_list) / len(lon_list)
 
-            html = f"<h4>{provincia}</h4><p>Haz clic para ver ciudades.</p>"
-            iframe = IFrame(html, width=220, height=80)
-            popup = folium.Popup(iframe, max_width=250)
+        popup_html = f"<b>{provincia}</b>"
+        popup = folium.Popup(popup_html, max_width=250)
 
-            marker = folium.Marker(
-                location=[lat_prov, lon_prov],
-                popup=popup,
-                tooltip=f"Provincia: {provincia}"
-            )
-            marker.add_to(mapa)
+        folium.Marker(
+            location=[lat_prov, lon_prov],
+            popup=popup,
+            tooltip=provincia,
+            icon=folium.Icon(color="green", icon="info-sign", icon_color="#008000")
+        ).add_to(mapa)
 
-            # Vincular click a selector avanzado
-            # (Leaflet no expone directamente el click desde Python,
-            #  así que lo manejamos vía JS usando provinciasData)
-            # El popup simple sirve de "pista" visual; el selector se abre con JS.
-    
-        # Inyectar datos en JS
-        mapa.get_root().html.add_child(folium.Element(
-            f"<script>window.provinciasData = {json.dumps(provincias)};</script>"
-        ))
+    # ---------------------------------------------------------
+    # 3. Inyectar datos en JS
+    # ---------------------------------------------------------
+    mapa.get_root().html.add_child(
+        folium.Element(
+            "<script>window.provinciasData = " + json.dumps(provincias) + ";</script>"
+        )
+    )
 
-        mapa.get_root().html.add_child(folium.Element(
-            f"<script>window.mapInstance = {mapa.get_name()};</script>"
-        ))
+    mapa.get_root().html.add_child(
+        folium.Element(
+            "<script>window.listaProvincias = " + json.dumps(lista_provincias) + ";</script>"
+        )
+    )
 
-        # Popup avanzado: selector de ciudades y carpetas
-        mapa.get_root().html.add_child(folium.Element("""
-        <script>
-        function mostrarSelectorProvincia(provincia, lat, lon) {
-            let ciudades = window.provinciasData[provincia];
+    # ---------------------------------------------------------
+    # 4. JS principal
+    # ---------------------------------------------------------
+    mapa.get_root().html.add_child(folium.Element("""
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 
-            let html = `
-                <div style="font-family:Segoe UI; width:260px;">
-                    <h3 style="margin-bottom:8px;">${provincia}</h3>
-                    <p style="margin:0 0 6px 0;">Selecciona una ciudad:</p>
-                    <ul style="padding-left:16px;">
-            `;
+<script>
 
-            for (let ciudad in ciudades) {
-                html += `
-                    <li style="margin-bottom:4px;">
-                        <a href="#" onclick="mostrarCiudad('${provincia}', '${ciudad}')">
-                            ${ciudad} (${ciudades[ciudad].length} entradas)
-                        </a>
-                    </li>
-                `;
-            }
+let bridge = null;
+
+new QWebChannel(qt.webChannelTransport, function(channel) {
+    bridge = channel.objects.bridge;
+});
+
+function obtenerMapaFolium() {
+    return Object.values(window).find(v => v instanceof L.Map);
+}
+
+let intentos = 0;
+function inicializarMapa() {
+    window.mapInstance = obtenerMapaFolium();
+    if (!window.mapInstance) {
+        if (intentos++ < 20) setTimeout(inicializarMapa, 200);
+        return;
+    }
+}
+inicializarMapa();
+
+
+// ===============================
+//  MOSTRAR CIUDADES DE UNA PROVINCIA
+// ===============================
+function mostrarSelectorProvincia(provincia, lat, lon) {
+    let ciudades = window.provinciasData[provincia];
+
+    let html = `
+        <div style="font-family:Segoe UI; width:260px;">
+            <h3>${provincia}</h3>
+            <p>Selecciona una ciudad:</p>
+            <ul>
+    `;
+
+
+    for (let ciudad of Object.keys(ciudades).sort((a, b) => a.localeCompare(b))) {
+        html += `
+            <li>
+                <a href="#" onclick="mostrarCiudad('${provincia}', '${ciudad}')">
+                    ${ciudad} (${ciudades[ciudad].length} entradas)
+                </a>
+            </li>
+        `;
+    }
+
+    html += `</ul></div>`;
+
+    L.popup({maxWidth:300})
+        .setLatLng([lat, lon])
+        .setContent(html)
+        .openOn(window.mapInstance);
+}
+
+
+// ===============================
+//  MOSTRAR CARPETAS DE UNA CIUDAD
+// ===============================
+function mostrarCiudad(provincia, ciudad) {
+    if (!window.mapInstance) return;
+                                                  
+    let data = window.provinciasData[provincia][ciudad];
+
+    // ===============================
+    // AGRUPAR POR AÑO
+    // ===============================
+    let grupos = {};
+
+    for (let e of data) {
+        let año = e.fecha.split("-")[0];
+        if (!grupos[año]) grupos[año] = [];
+        grupos[año].push(e);
+    }
+
+    // ===============================
+    // ORDENAR CADA AÑO (más reciente primero)
+    // ===============================
+    for (let año in grupos) {
+        grupos[año].sort((a, b) => b.fecha.localeCompare(a.fecha));
+    }
+
+    // ===============================
+    // GENERAR HTML CON SCROLL
+    // ===============================
+    let html = `
+        <div style="font-family:Segoe UI; width:260px; max-height:300px; overflow-y:auto; padding-right:10px;">
+            <h3>${ciudad}</h3>
+            <p>Carpetas encontradas:</p>
+    `;
+
+    for (let año of Object.keys(grupos).sort().reverse()) {
+        html += `<h4 style="margin-bottom:4px; margin-top:12px;">${año}</h4>`;
+        html += `<ul style="padding-left:0; list-style:none;">`;
+
+        for (let e of grupos[año]) {
+            let rutaEscapada = e.ruta.replace(/\\\\/g, '\\\\\\\\');
 
             html += `
-                    </ul>
-                </div>
-            `;
-
-            let popup = L.popup({maxWidth:300})
-                .setLatLng([lat, lon])
-                .setContent(html)
-                .openOn(window.mapInstance);
-        }
-
-        function mostrarCiudad(provincia, ciudad) {
-            let data = window.provinciasData[provincia][ciudad];
-
-            let html = `
-                <div style="font-family:Segoe UI; width:260px;">
-                    <h3 style="margin-bottom:8px;">${ciudad}</h3>
-                    <p style="margin:0 0 6px 0;">Carpetas encontradas:</p>
-                    <ul style="padding-left:16px;">
-            `;
-
-            for (let i = 0; i < data.length; i++) {
-                let e = data[i];
-                let rutaEscapada = e.ruta.replace(/\\\\/g, '\\\\\\\\');
-
-                html += `
-                    <li style="margin-bottom:6px;">
+                <li style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="padding-left:12px;">
                         <b>${e.fecha}</b> (${e.num_archivos} archivos)
-                        <br>
-                        <button onclick="enviarRuta('${rutaEscapada}')"
-                                style="margin-top:4px; padding:3px 6px; font-size:11px;">
-                            Abrir carpeta
-                        </button>
-                    </li>
-                `;
-            }
+                    </div>
 
-            html += `
-                    </ul>
-                </div>
+                    <div onclick="abrirCarpeta('${rutaEscapada}')"
+                         style="cursor:pointer; padding-left:10px;">
+                        <svg class="icono-ojo" width="22" height="22" viewBox="0 0 24 24">
+                            <path d="M12 5c-7.633 0-11 7-11 7s3.367 7 11 7 11-7 11-7-3.367-7-11-7zm0 
+                            12c-2.761 0-5-2.239-5-5s2.239-5 
+                            5-5 5 2.239 5 5-2.239 5-5 5zm0-8c-1.654 
+                            0-3 1.346-3 3s1.346 3 3 3 
+                            3-1.346 3-3-1.346-3-3-3z"/>
+                        </svg>
+                    </div>
+                </li>
             `;
-
-            let popup = L.popup({maxWidth:300})
-                .setLatLng([data[0].lat, data[0].lon])
-                .setContent(html)
-                .openOn(window.mapInstance);
         }
-        </script>
-        """))
 
-        # Canal PyQt
-        mapa.get_root().html.add_child(folium.Element("""
-            <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
-            <script>
-            new QWebChannel(qt.webChannelTransport, function(channel) {
-                window.bridge = channel.objects.bridge;
+        html += `</ul>`;
+    }
+
+    html += `</div>`;
+
+    // ===============================
+    // MOSTRAR POPUP
+    // ===============================
+    L.popup({maxWidth:300})
+        .setLatLng([data[0].lat, data[0].lon])
+        .setContent(html)
+        .openOn(window.mapInstance);
+}
+
+
+// ===============================
+//  ABRIR CARPETA
+// ===============================
+function abrirCarpeta(ruta) {
+    if (bridge) bridge.recibirRuta(ruta);
+}
+
+</script>
+
+<style>
+.icono-ojo path {
+    fill: #2c3e50;
+    transition: fill 0.2s ease;
+}
+.icono-ojo:hover path {
+    fill: #007bff;
+}
+</style>
+"""))
+
+    # ---------------------------------------------------------
+    # 5. CLIC DIRECTO EN MARCADORES DE PROVINCIA
+    # ---------------------------------------------------------
+    mapa.get_root().html.add_child(folium.Element("""
+<script>
+setTimeout(() => {
+    const map = Object.values(window).find(v => v instanceof L.Map);
+    if (!map) return;
+
+    let indice = 0;
+
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.Marker) {
+
+            // Asignar provincia según el orden de creación
+            layer._provincia = window.listaProvincias[indice];
+            indice++;
+
+            const lat = layer.getLatLng().lat;
+            const lon = layer.getLatLng().lng;
+
+            layer.on('click', function() {
+                mostrarSelectorProvincia(layer._provincia, lat, lon);
             });
-            function enviarRuta(ruta) {
-                window.bridge.recibirRuta(ruta);
-            }
-            </script>
-        """))
+        }
+    });
+}, 600);
+</script>
+"""))
+    
+    texto_titulo = "MAPA DE PROVINCIAS" 
 
-        # Título flotante
-        mapa.get_root().html.add_child(folium.Element("""
-            <style>
-            #tituloMapa {
-                position: fixed;
-                top: 15px;
-                left: 50%;
-                transform: translateX(-50%);
-                z-index: 9999;
-                background: rgba(255, 255, 255, 0.9);
-                color: #2c3e50;
-                padding: 8px 20px;
-                border: 2px solid #2A81CB;
-                border-radius: 8px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                font-size: 14px;
-                font-weight: bold;
-                letter-spacing: 1px;
-                pointer-events: none;
-            }
-            </style>
-            <div id="tituloMapa">MAPA POR PROVINCIAS</div>
-        """))
+    mapa.get_root().html.add_child(folium.Element(f"""
+        <style>
+        #tituloMapa {{
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%); /* Centrado horizontal perfecto */
+            z-index: 9999;
+            background: rgba(255, 255, 255, 0.9); /* Fondo blanco semitransparente */
+            color: #2c3e50; /* Color de texto elegante */
+            padding: 8px 20px;
+            border: 2px solid #008000; /* Borde verde a juego con tus marcadores */
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            pointer-events: none; /* Permite hacer clic a través del título si hay algo detrás */
+        }}
+        </style>
 
-        # Guardar mapa
-        ruta_salida = get_ruta_mapa_html()
-        mapa.save(ruta_salida)
+        <div id="tituloMapa">
+            {texto_titulo}
+        </div>
+    """))
+
+    ruta_salida = get_ruta_mapa_provincias_html()
+    mapa.save(ruta_salida)

@@ -26,7 +26,7 @@ from copia_clasificador_fotos import (
     )
 from mapa_generator import extraer_ciudad
 from config_paths import (
-    ruta_json_unico, meses, get_ruta_mapa_html, extensiones_validas,
+    ruta_json_unico, meses, get_ruta_mapa_fotos_html, extensiones_validas,
     get_ruta_miniaturas
     )
 from utils.utils_cache import cargar_cache
@@ -596,8 +596,8 @@ class Bridge(QObject):
                 cache_geocoding = cargar_cache()
                 clave_norm = ubicacion
                 if clave_norm in cache_geocoding:
-                    entrada["latitud"] = cache_geocoding[clave_norm][0]
-                    entrada["longitud"] = cache_geocoding[clave_norm][1]
+                    entrada["latitud"] = cache_geocoding[clave_norm]["lat"]
+                    entrada["longitud"] = cache_geocoding[clave_norm]["lon"]
                 
                 # --- LOGICA DE CLASIFICACIÓN AUTOMÁTICA ---
                 if ciudad == 'Sin_GPS':
@@ -1204,7 +1204,7 @@ class Bridge(QObject):
     def mapa_generado(self):
         if hasattr(self, "spinner"):
             self.spinner.close()
-            self.view.load(QUrl.fromLocalFile(os.path.abspath(get_ruta_mapa_html())))
+            self.view.load(QUrl.fromLocalFile(os.path.abspath(get_ruta_mapa_fotos_html())))
             QMessageBox.information(None, "Mapa actualizado", "El mapa ha sido generado correctamente.")
 
         self.set_mapa_habilitado(True)

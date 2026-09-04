@@ -158,8 +158,6 @@ def obtener_metadatos_reales(ruta_archivo):
         datos = json.loads(salida)
         gps_info = datos[0]
 
-        #fecha_str = gps_info['CreateDate']
-        #fecha = datetime.strptime(fecha_str, '%Y:%m:%d %H:%M:%S')
         fecha_str = gps_info.get('CreateDate')
         fecha = None
         if fecha_str:

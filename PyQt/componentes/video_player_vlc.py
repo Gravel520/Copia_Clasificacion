@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout,
     QSlider, QLabel, QFrame, QGraphicsView, QGraphicsScene,
 )
-from PyQt5.QtCore import Qt, QTime, QTimer, QSize
+from PyQt5.QtCore import Qt, QTime, QTimer, QSize, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QTransform, QPainter
 
 from PIL import Image
@@ -25,6 +25,9 @@ from worker.vlc_worker import VLCWorker
 from utils.thread_manager import thread_manager
 
 class VideoPlayer(QWidget):
+    # Definimos la señal de finalización de VLC
+    video_finalizado_signal = pyqtSignal()
+
     def __init__(self, ruta_visualizado, archivo, datos, solo_videos=None, lista_archivos=None):
         super().__init__()
 
@@ -106,6 +109,10 @@ class VideoPlayer(QWidget):
         self.mediaplayer = self.instance.media_player_new()
         self.archivo_pendiente = None
 
+        # Capturar el evento de finalización de VLC
+        self.vlc_events = self.mediaplayer.event_manager()
+        self.vlc_events.event_attach(vlc.EventType.MediaPlayerEndReached, lambda event: self._on_video_ended(event))
+
         # Widget central donde se mostrará el video
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: black;")
@@ -113,7 +120,6 @@ class VideoPlayer(QWidget):
         self.video_layout.setContentsMargins(0, 0, 0, 0)
 
         # Asignar el handle ANTES de usar el hilo
-        self._set_video_widget()
 
         # Instanciar hilo de VLC
         self.vlc_thread = VLCWorker(self.instance, self.mediaplayer, parent=self)
@@ -262,6 +268,10 @@ class VideoPlayer(QWidget):
 
             self.open_file(self.archivo_actual)
 
+    def showEvent(self, a0):
+        super().showEvent(a0)
+        self._set_video_widget()    
+
     # -----------------------------------
     # MOSTRAR LA IMAGEN EN EL REPRODUCTOR
     # -----------------------------------
@@ -379,9 +389,24 @@ class VideoPlayer(QWidget):
             self.mediaplayer.play()
             self.play_btn.setIcon(QIcon(f'{get_assets()}pausa.png'))
 
+            # Reactivar timer
+            if hasattr(self, "timer"):
+                self.timer.start()
+
     def stop(self):
         self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
         self.vlc_thread.command = "stop"
+
+        # Detener timer de UI
+        if hasattr(self, "timer"):
+            self.timer.stop()
+
+        # Reset UI
+        self.position_slider.setValue(0)
+        self.time_label.setText("00:00 / 00:00")
+
+        # Forzar la actualización de controles para dejarlo listo
+        self.update_controls(False)
 
     def set_volume(self, value):
         self.mediaplayer.audio_set_volume(value)
@@ -397,6 +422,12 @@ class VideoPlayer(QWidget):
             archivo = self.archivo_pendiente
             self.archivo_pendiente = None
             self.open_file(archivo)
+
+    def _on_video_ended(self, event):
+        # Este método se ejecuta en un hilo secundario de VLC,
+        # así que le indicamos al worker que se detenga.
+        self.play_btn.setIcon(QIcon(f'{get_assets()}play.png'))
+        self.vlc_thread.command = "stop"
 
     # ----------------------
     # ACTUALIZACION DE LA UI
@@ -420,9 +451,6 @@ class VideoPlayer(QWidget):
         
         if length > 0:
             self.time_label.setText(f"{fmt(time)} / {fmt(length)}")
-
-        if fmt(length) == fmt(time):
-            self.stop()
 
     # -----------------------------
     # ACTUALIZAR BARRA DE CONTROLES

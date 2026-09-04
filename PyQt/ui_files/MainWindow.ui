@@ -527,6 +527,7 @@ border-radius: 0px;</string>
      <addaction name="actionGenerar_Mapa_de_Grupos"/>
     </widget>
     <addaction name="actionMapa_Fotos"/>
+    <addaction name="actionMapa_de_Provincias"/>
     <addaction name="actionMapa_Grupo"/>
     <addaction name="separator"/>
     <addaction name="menuGenerar_mapa"/>
@@ -735,6 +736,11 @@ border-radius: 0px;</string>
   <action name="actionBackup">
    <property name="text">
     <string>Gestión de Backup</string>
+   </property>
+  </action>
+  <action name="actionMapa_de_Provincias">
+   <property name="text">
+    <string>Mapa de Provincias</string>
    </property>
   </action>
  </widget>

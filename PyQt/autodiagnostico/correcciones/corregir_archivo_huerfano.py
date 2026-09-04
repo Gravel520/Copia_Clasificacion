@@ -47,8 +47,8 @@ def reconstruir_archivo_huerfano(ruta_archivo, data):
         # Obtener coordenadas desde cache
         cache = cargar_cache()
         if ubicacion in cache:
-            lat = cache[ubicacion][0]
-            lon = cache[ubicacion][1]
+            lat = cache[ubicacion]["lat"]
+            lon = cache[ubicacion]["lon"]
         else:
             lat, lon = 0, 0
 

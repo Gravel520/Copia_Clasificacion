@@ -28,10 +28,10 @@ from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.video_player_vlc import VideoPlayer
 
 from config_paths import (
-    get_ruta_mapa_html, get_ruta_ui, ruta_json_unico, 
+    get_ruta_mapa_fotos_html, get_ruta_ui, ruta_json_unico, 
     get_ruta_principal, get_ruta_mapa_grupos_html,
     get_ruta_logo, get_ruta_backup, ruta_cache_json_geocoding,
-    ruta_json_grupos
+    ruta_json_grupos, get_ruta_mapa_provincias_html
     )
 
 from worker.mapa_worker import MapaWorker
@@ -94,7 +94,7 @@ class MapaWindow(QMainWindow):
         # Visor web
         self.view = QWebEngineView()
         # Mostramos el mapa o el logo.
-        ruta_mapa = get_ruta_mapa_html()
+        ruta_mapa = get_ruta_mapa_fotos_html()
         ruta_logo = get_ruta_logo()
 
         mostrar = ruta_mapa if os.path.exists(ruta_mapa) else ruta_logo
@@ -564,7 +564,11 @@ class MapaWindow(QMainWindow):
 
     def mostrar_mapa_normal(self):
         self.limpiar_datos()
-        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_html()}")))
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_fotos_html()}")))
+
+    def mostrar_mapa_provincias(self):
+        self.limpiar_datos()
+        self.view.load(QUrl.fromLocalFile(os.path.abspath(f"{get_ruta_mapa_provincias_html()}")))
 
     def limpiar_datos(self):
         # Limpiamos los datos de la etiqueta de de los datos del listado,
@@ -866,6 +870,7 @@ class MapaWindow(QMainWindow):
         self.ui.actionSalir_3.triggered.connect(self.close)
 
         self.ui.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
+        self.ui.actionMapa_de_Provincias.triggered.connect(self.mostrar_mapa_provincias)
         self.ui.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
         self.ui.actionGenerar_Mapa_de_Grupos.triggered.connect(self.iniciar_generacion_mapa_grupos)
         self.ui.actionGenera_Mapa_de_Fotos.triggered.connect(self.generar_mapa_manual)

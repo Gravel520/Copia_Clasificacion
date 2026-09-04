@@ -160,7 +160,8 @@ class VentanaCarpetasVideo(QDialog):
 
         # 4. Seleccionamos el primer archivo de la lista para
         #   pasarlo como parámetro.
-        archivo = f'{ruta}/{archivos[0]}'
+        #archivo = f'{ruta}/{archivos[0]}'
+        archivo = os.path.normpath(os.path.join(ruta, archivos[0]))
 
         # 5. El més, en letra, junto con el año también como parámetro.
         datos = f'{meses()[int(fecha[5:]) - 1]} del {fecha[0:4]}'

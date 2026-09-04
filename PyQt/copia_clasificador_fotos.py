@@ -9,13 +9,15 @@ import shutil # Copia y elimina archivos.
 import hashlib # Calcula hashes MD5 para detectar duplicados o eliminados.
 import json # Carga y guarda datos en formato JSON.
 import unicodedata
+import time
 from PIL import Image # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.distance import geodesic # Calcula la distancia.
 from config_paths import (
-    ruta_adb, get_ruta_principal, get_ruta_temporal, 
-    ruta_movil, extensiones_validas, ruta_json_miniaturas,
-    get_ruta_miniaturas, geocodificador
+    get_ruta_principal, get_ruta_temporal, 
+    extensiones_validas, ruta_json_miniaturas,
+    get_ruta_miniaturas, geocodificador,
+    PROVINCIAS_ES, PROVINCIAS_FR, PROVINCIAS_PT
 )
 from pathlib import Path
 from utils.utils_cache import (
@@ -25,6 +27,9 @@ from utils.utils_exif import (
     buscar_movil, listar_archivos_mtp, copiar_archivo_mtp,
     obtener_metadatos_reales, copia_binaria_fuerza,
     obtener_archivos_movil, comprobar_movil_conectado
+)
+from utils.utils_provincias import (
+    extraer_provincia_geocode_ciudad
 )
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
@@ -37,13 +42,31 @@ geolocalizador, reverse = geocodificador()
 
 # Convierte coordenadas GPS en formato º, m y s, a grados decimales.
 def convertir_a_grados(valor):
+    # Si el valor es None, abortamos de inmediato.
+    if valor is None:
+        return 0.0
+    
     # Si el valor ya es un número (int o float), son grados decimales
     if isinstance(valor, (int, float)):
-        return valor
+        return float(valor)
     
-    # Si es una secuencia (tupla o lista), asume formato (d, m, s)
-    d, m, s = valor
-    return d + m / 60 + s / 3600
+    # Si es una secuencia (tupla, lista o el objeto PFDRational de PIL)
+    try:
+        # Forzamos la conversión a float de cada elemento por si vienen
+        #   en formato PFDRational de PIL.
+        # Nos aseguramos que tenga al menos 3 elementos.
+        if hasattr(valor, '__len__') and len(valor) >= 3:
+            d, m, s = [float(x) for x in valor[:3]]
+            return d + (m / 60.0) + (s / 3600.0)
+        
+        # Si tiene 1 solo elemento pero no entro en isinstance.
+        elif hasattr(valor, '__len__') and len(valor) == 1:
+            return float(valor[0])
+        
+    except (TypeError, ValueError, ZeroDivisionError, IndexError):
+        return 0.0
+    
+    return 0.0    
 
 # Leemos el archivo JSON, si existe.
 def cargar_json_unico(ruta):
@@ -121,7 +144,27 @@ def obtener_datos_exif(imagen_path):
         print(f'Error al leer EXIF: {e}')
         return {}, None
     
+def provincia_por_postal(postal, pais):
+    if not postal or len(postal) < 2:
+        return ""
+    
+    prefijo = postal[:2]
+
+    if pais == "España":
+        return PROVINCIAS_ES.get(prefijo, "")
+    elif pais == "Portugal":
+        prefijo = postal[:1]
+        return PROVINCIAS_PT.get(prefijo, "")
+    elif pais == "Francia":
+        return PROVINCIAS_FR.get(prefijo, "")
+    else:
+        return ""
+    
 def obtener_ubicación(gps_info):
+    # Si nos pasan None o un diccionario vacío no hacemos nada
+    if not gps_info or 'GPSLatitude' not in gps_info or 'GPSLongitude' not in gps_info:
+        return None
+    
     try:
         lat = convertir_a_grados(gps_info['GPSLatitude'])
         lon = convertir_a_grados(gps_info['GPSLongitude'])
@@ -132,57 +175,52 @@ def obtener_ubicación(gps_info):
         if gps_info['GPSLongitudeRef'] != 'E':
             lon = -lon
 
+        # Redondear a 4 decimales (~11 metros de precisión).
+        # Evita hacer peticiones repetidas por micro-variaciones del GPS.
+        lat_cache = round(lat, 4)
+        lon_cache = round(lon, 4)
+
+        # Buscar en cache
+        ubicacion = buscar_ubicacion_cache(lat_cache, lon_cache)
+        if ubicacion:
+            return ubicacion
+
         # Reverse geocoding
-        ubicacion = reverse((lat, lon), language='es', exactly_one=True)
+        time.sleep(1)
+        ubicacion = reverse((lat_cache, lon_cache), language='es', exactly_one=True)
         if not ubicacion:
-            return "Sin_GPS"
+            return None
 
         datos = ubicacion.raw.get("address", {})
 
         ciudad = datos.get("city") or datos.get("town") or datos.get("village")
-        pais = datos.get("country_code", "").upper()
-        provincia = datos.get("state", "")
+        pais_code = datos.get("country_code", "").upper()
+        pais_nombre = datos.get("country", "")
+
         postal = datos.get("postcode", "")
+        provincia = provincia_por_postal(postal, pais_nombre)
 
-        # Validación: si el pais no es ES, FR o PT > comprobar
-        paises_validos = ["ES", "FR", "PT"]
+        # Si no hay provincia -> usar postal
+        if not provincia:
+            provincia = extraer_provincia_geocode_ciudad(ciudad, pais_nombre)
 
-        if pais not in paises_validos:
-            # Intentamos encontrar la ciudad en los países válidos
-            for p in paises_validos:
-                consulta = f"{ciudad}, {p}"
-                posible = geolocalizador.geocode(consulta, language="es")
-
-                if posible:
-                    dist = geodesic((lat, lon), (posible.latitude, posible.longitude)).km
-                    if dist < 100: # Distancia razonable
-                        return {
-                            "ciudad": normalizar_texto(ciudad),
-                            "pais": normalizar_texto(p),
-                            "provincia": normalizar_texto(provincia),
-                            "postal": postal,
-                            "lat": lat,
-                            "lon": lon,
-                            "fuente": "nominatim"
-                        }
-                        
-            # Si ninguna coincide > GPS incorrecto
-            return "Sin_GPS"
-        
-        # Si el país es válido, devolvemos directamente
-        return {
+        info = {
             "ciudad": normalizar_texto(ciudad),
-            "pais": normalizar_texto(datos.get("country", "")),
+            "pais": normalizar_texto(pais_nombre),
             "provincia": normalizar_texto(provincia),
             "postal": postal,
-            "lat": lat,
-            "lon": lon,
+            "lat": lat_cache,
+            "lon": lon_cache,
             "fuente": "nominatim"
         }
+
+        # Guardar en cache.
+        actualizar_cache_geocoding(info)
+        return info
         
     except Exception as e:
         print("Error GPS: ", e)
-        return 'Sin_GPS'
+        return None
 
 # Comprobar archivos duplicados a través de su hash.
 def calcular_hash_md5(ruta_archivo):
@@ -249,15 +287,14 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
         gps_info, fecha = obtener_datos_exif(ruta_local)
         if not gps_info:
             gps_info, fecha = obtener_metadatos_reales(ruta_local)
-            
-        info = obtener_ubicación(gps_info) if gps_info else None
-        #ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
-        # Actualizar cache geocoding.
-        if info:
-            # Guardar en cache geocoding
-            actualizar_cache_geocoding(info)
+        # Validar que gps_info NO esté vacío y tenga la latidud antes de proceder
+        if gps_info and 'GPSLatitude' in gps_info and gps_info['GPSLatitude'] is not None:
+            info = obtener_ubicación(gps_info)
+        else:
+            info = None
 
+        if info is not None:
             # Para el sistema actual
             ubicacion = f"({info['ciudad']})({info['pais']})"
             lat = info["lat"]
@@ -267,7 +304,6 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
             # Sin GPS -> no guardar en cache
             ubicacion = '(Sin_GPS)'
             lat = lon = 0
-        #actualizar_cache_geocoding(ubicacion, lat, lon)
 
         # El string de la fecha será (año-mes)
         fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
@@ -278,10 +314,24 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
     else: # Archivos de video
         try:
             gps_info, fecha = obtener_metadatos_reales(ruta_local)
-            ubicacion, lat, lon = obtener_ubicación(gps_info) if gps_info else ('(Sin_GPS)', 0, 0)
 
-            # Actualizar cache geocoding.
-            actualizar_cache_geocoding(ubicacion, lat, lon)
+            
+            # Validar que gps_info NO esté vacío y tenga la latidud antes de proceder
+            if gps_info and 'GPSLatitude' in gps_info and gps_info['GPSLatitude'] is not None:
+                info = obtener_ubicación(gps_info)
+            else:
+                info = None
+
+            if info is not None:
+                # Para el sistema actual
+                ubicacion = f"({info['ciudad']})({info['pais']})"
+                lat = info["lat"]
+                lon = info["lon"]
+
+            else:
+                # Sin GPS -> no guardar en cache
+                ubicacion = '(Sin_GPS)'
+                lat = lon = 0
             
             # El string de la fecha será (año-mes)
             fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
@@ -365,7 +415,7 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
                     'latitud': float(lat),
                     'longitud': float(lon)
                 })
-                return ("clasificado", f'🆗 {archivo} 🔜 {nombre_carpeta}\n')
+                return ("clasificado", f'🆗 {archivo} 🔜 {nombre_carpeta} - {info["provincia"]}:{info["postal"]}\n')
 
             else:
                 return ("duplicado", f"🔁 ({archivo}) Estaba en pendientes\n")
@@ -465,11 +515,35 @@ def obtener_miniaturas(ruta_origen, hash):
         return False
     
 def normalizar_texto(t):
+    if not t or not isinstance(t, str):
+        return ""
+    
     t = unicodedata.normalize("NFKD", t)
     t = "".join(c for c in t if not unicodedata.combining(c))
     # Quedarnos solamente con números, letras y espacios.
     t = re.sub(r'[^a-zA-Z0-9 ]', '', t)
     return t
+
+def buscar_ubicacion_cache(lat_foto, lon_foto):
+    '''
+    Busca en el JSON si ya existe una ubicación guardada muy carca
+    de las coordenadas de la nueva foto.
+    '''
+    cache = cargar_cache()
+    # Definir un margen de tolerancia (precisión)
+    # 0.005 grados de diferencia equivalesn a un radio de unos 500 metros.
+    TOLERANCIA = 0.005
+
+    for datos_lugar in cache.values():
+        lat_cache = datos_lugar.get("lat")
+        lon_cache = datos_lugar.get("lon")
+
+        if lat_cache and lon_cache:
+            # Comprobamos si la distancia en ambos ejes está dentro del margen
+            if abs(lat_foto - lat_cache) <= TOLERANCIA and abs(lon_foto - lon_cache) <= TOLERANCIA:
+                return datos_lugar
+            
+    return None
 
 def actualizar_cache_geocoding(info):
     if not info:
@@ -478,7 +552,7 @@ def actualizar_cache_geocoding(info):
     ciudad = info["ciudad"]
     pais = info["pais"]
 
-    clave = f"({ciudad}), ({pais})"
+    clave = f"({ciudad})({pais})"
 
     cache = cargar_cache()
 

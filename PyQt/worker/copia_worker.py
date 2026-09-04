@@ -14,6 +14,7 @@ from copia_clasificador_fotos import (
 from config_paths import ruta_json_unico, get_ruta_temporal, ruta_movil, extensiones_validas
 import os
 import shutil
+import time
 
 class CopiaWorker(QThread):
     terminado = pyqtSignal(str)     # Mensaje final
@@ -31,8 +32,8 @@ class CopiaWorker(QThread):
     def run(self):
         # Estas líneas son para depurar dentro de los hilos.
         try:
-            #import debugpy
-            #debugpy.debug_this_thread()
+            import debugpy
+            debugpy.debug_this_thread()
 
             # 1️⃣ Obtener lista de archivos antes de clasificar
             archivos = obtener_archivos(self.carpeta_origen)

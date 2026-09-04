@@ -19,7 +19,7 @@ class MapaWorker(QThread):
         if self.detener:
             return
         
-        #cargar_datos_desde_historial()
+        cargar_datos_desde_historial()
         generar_mapa_por_provincias()
 
         if self.detener:

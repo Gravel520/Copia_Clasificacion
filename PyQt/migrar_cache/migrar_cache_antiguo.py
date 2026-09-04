@@ -11,6 +11,8 @@ sys.path.insert(0, BASE_DIR)
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
+from PyQt.utils.utils_provincias import extraer_provincia_geocode_ciudad
+
 PROVINCIAS_ES = {
     "01": "Vitoria", "02": "Albacete", "03": "Alicante", "04": "Almería",
     "05": "Ávila", "06": "Badajoz", "07": "Baleares", "08": "Barcelona",
@@ -169,4 +171,42 @@ def obtener_provincia_por_postal(postal, pais):
     else:
         return ""
     
-migrar_cache_geocoding()
+def detectar_provincia():
+    cache = cargar_cache()
+    corregidos = 0
+    fallidos = 0
+
+    for clave, datos in cache.items():
+        provincia = datos.get("provincia", "").strip()
+        ciudad = datos.get("ciudad")
+        pais = datos.get("pais")
+
+        # Solo corregimos los que NO tienen provincia
+        if provincia:
+            continue
+
+        print(f"[INFO] Provincia faltante -> {clave}")
+
+        resultado = extraer_provincia_geocode_ciudad(ciudad, pais)
+
+        if not resultado:
+            fallidos += 1
+            continue
+
+        # Actualizar cache
+        datos["provincia"] = resultado["provincia"]
+        datos["postal"] = resultado["postal"]
+        datos["fuente"] = "geocoding"
+
+        corregidos += 1
+        print(f"[OK] Provincia corregida: {ciudad} -> {resultado['provincia'], resultado['postal']}")
+
+    guardar_cache(cache)
+
+    print("\n==============================")
+    print(f" Provincias corregidas: {corregidos}")
+    print(f" Sin corregir (fallos): {fallidos}")
+    print("==============================\n")
+
+detectar_provincia()
+#migrar_cache_geocoding()
