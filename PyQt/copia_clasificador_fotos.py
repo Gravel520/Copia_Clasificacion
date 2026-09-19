@@ -273,77 +273,62 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
             if os.path.exists(ruta_origen):
                 shutil.copy2(ruta_origen, ruta_local)
             else:
-                print(f'Ruta Origen: {ruta_origen}  --- Ruta Local: {ruta_local}')                
                 return ("error", f"❌ Error al copiar desde PC: {archivo}\n")
             
     except Exception as e:
         return ("error", f"☠ Error inesperado al copiar archivo: {str(e)}")
 
     # Función obtener el hash del archivo.
-    hash_archivo = calcular_hash_md5(ruta_local)    
+    hash_archivo = calcular_hash_md5(ruta_local)
 
-    # Obtención de los metadatos del gps y fecha.
-    if archivo.lower().endswith(extensiones_validas("imagen")): # Archivos de imagen        
-        gps_info, fecha = obtener_datos_exif(ruta_local)
-        if not gps_info:
-            gps_info, fecha = obtener_metadatos_reales(ruta_local)
+    clasificados = data["clasificados"]["items"]
+    pendientes = data["pendientes"]["items"]
+    eliminados = data["eliminados"]["items"]
 
-        # Validar que gps_info NO esté vacío y tenga la latidud antes de proceder
-        if gps_info and 'GPSLatitude' in gps_info and gps_info['GPSLatitude'] is not None:
-            info = obtener_ubicación(gps_info)
+    # Eliminado -> fin
+    if not comprobar_hash(hash_archivo, eliminados):
+        return ("eliminado", f'🟥 ({archivo}) Está eliminado\n')
+    
+    # Clasificado -> duplicado
+    if not comprobar_hash(hash_archivo, clasificados):
+        return ("duplicado", f'🔁 ({archivo}) Ya existe en clasificados\n')
+    
+    # Pendiente -> fin
+    if not comprobar_hash(hash_archivo, pendientes):
+        return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
+
+    # Es nuevo -> clasificar
+    es_imagen = archivo.lower().endswith(extensiones_validas("imagen"))
+
+    try:
+        if es_imagen:
+            gps_info, fecha = obtener_datos_exif(ruta_local)
+            if not gps_info:
+                gps_info, fecha = obtener_metadatos_reales(ruta_local)
+
         else:
-            info = None
-
-        if info is not None:
-            # Para el sistema actual
-            ubicacion = f"({info['ciudad']})({info['pais']})"
-            lat = info["lat"]
-            lon = info["lon"]
-
-        else:
-            # Sin GPS -> no guardar en cache
-            ubicacion = '(Sin_GPS)'
-            lat = lon = 0
-
-        # El string de la fecha será (año-mes)
-        fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
-
-        # Para agrupar por fecha del archivo
-        fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_origen, fecha)
-
-    else: # Archivos de video
-        try:
             gps_info, fecha = obtener_metadatos_reales(ruta_local)
+    except Exception:
+        return ("error", f'💥 ({archivo}) No se puedo clasificar.\n')
+    
+    # Ubicación -> solo si GPS válido
+    if gps_info and gps_info.get("GPSLatitude") is not None:
+        info = obtener_ubicación(gps_info)
+        ubicacion = f"({info['ciudad']})({info['pais']})"
+        lat, lon = info["lat"], info["lon"]
+    else:
+        ubicacion = '(Sin_GPS)'
+        lat = lon = 0
+        info = None
 
-            
-            # Validar que gps_info NO esté vacío y tenga la latidud antes de proceder
-            if gps_info and 'GPSLatitude' in gps_info and gps_info['GPSLatitude'] is not None:
-                info = obtener_ubicación(gps_info)
-            else:
-                info = None
+    # Fecha
+    fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
+    fecha_completa, timestamp, hora = agrupar_fecha_archivo(
+        ruta_origen if es_imagen else ruta_local,
+        fecha
+    )
 
-            if info is not None:
-                # Para el sistema actual
-                ubicacion = f"({info['ciudad']})({info['pais']})"
-                lat = info["lat"]
-                lon = info["lon"]
-
-            else:
-                # Sin GPS -> no guardar en cache
-                ubicacion = '(Sin_GPS)'
-                lat = lon = 0
-            
-            # El string de la fecha será (año-mes)
-            fecha_str = fecha.strftime('(%Y-%m)') if fecha else '(0000-00)'
-
-            # Para agrupar por fecha del archivo
-            fecha_completa, timestamp, hora = agrupar_fecha_archivo(ruta_local, fecha)
-
-        except Exception as e:
-            return ("error", f'💥 ({archivo}) No se puedo clasificar.\n'            )
-
-    # Crear carpeta destino.
-    # Si NO hay ubicación, el nombre de la carpeta será, sólamente, '(Sin_GPS)'.
+    # Carpeta destino
     if ubicacion == '(Sin_GPS)':
         nombre_carpeta = '(Sin_GPS)(Sin_GPS)(0000-00)'
     else:
@@ -352,31 +337,12 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
     ruta_destino = os.path.join(get_ruta_principal(), nombre_carpeta)
     os.makedirs(ruta_destino, exist_ok=True)
 
-    # Creamos las listas separadas.
-    clasificados = data["clasificados"]["items"]
-    pendientes = data["pendientes"]["items"]
-    eliminados = data["eliminados"]["items"]
-
-    # Case 1 ➡ Sin GPS.
-    if ubicacion == '(Sin_GPS)':
-
-        # 1️⃣ Está en pendientes
-        if not comprobar_hash(hash_archivo, pendientes):
-            return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
-
-        # 2️⃣ Está en clasificados.
-        if not comprobar_hash(hash_archivo, clasificados):
-            return ("duplicado", f'🔁 ({archivo}) Ya existe en clasificados\n')
-
-        # 3️⃣ Está en eliminados
-        if not comprobar_hash(hash_archivo, eliminados):
-            return ("eliminado", f'🟥 ({archivo}) Está eliminado\n')
-
-        if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
-            # Obtenemos o creamos la miniatura del video.
+    # Clasificación final
+    # Caso A -> sin GPS -> va a pendientes
+    if ubicacion == "(Sin_GPS)":
+        if archivo.lower().endswith(extensiones_validas("video")):
             obtener_miniaturas(ruta_local, hash_archivo)
 
-        # 4️⃣ No está en ninguna lista ➡ añadir a pendientes
         shutil.copy2(ruta_local, ruta_destino)
 
         pendientes.append({
@@ -392,38 +358,26 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
         })
 
         return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
+    
+    # Caso B -> con GPS -> va a clasificados
+    if archivo.lower().endswith(extensiones_validas("video")):
+        obtener_miniaturas(ruta_local, hash_archivo)
 
-    # Caso 2 ➡ Tiene ubicación.
-    if comprobar_hash(hash_archivo, clasificados):
-        # Comprobamos que el archivo NO este elimnado por nosotros.
-        if comprobar_hash(hash_archivo, eliminados):
+    shutil.copy2(ruta_local, ruta_destino)
 
-            # Comprobar que NO está en pendientes.
-            if comprobar_hash(hash_archivo, pendientes):
-                if archivo.lower().endswith(extensiones_validas("video")): # Archivos de video
-                    # Obtenemos o creamos la miniatura del video.
-                    obtener_miniaturas(ruta_local, hash_archivo)
+    clasificados.append({
+        'hash': hash_archivo,
+        'ruta': os.path.join(ruta_destino, archivo),
+        'ubicacion': ubicacion,
+        'fecha': fecha_str,
+        'latitud': float(lat),
+        'longitud': float(lon)
+    })
 
-                # Copiar archivo del directorio temporal al definitivo.
-                shutil.copy2(ruta_local, ruta_destino)
-                # Añadimos los datos al historial.
-                clasificados.append({
-                    'hash': hash_archivo,
-                    'ruta': os.path.join(ruta_destino, archivo),
-                    'ubicacion': ubicacion,
-                    'fecha': fecha_str,
-                    'latitud': float(lat),
-                    'longitud': float(lon)
-                })
-                return ("clasificado", f'🆗 {archivo} 🔜 {nombre_carpeta} - {info["provincia"]}:{info["postal"]}\n')
+    provincia = info["provincia"] if info else ""
+    postal = info["postal"] if info else ""
 
-            else:
-                return ("duplicado", f"🔁 ({archivo}) Estaba en pendientes\n")
-
-        else:
-            return ("eliminado", f'🟥 ({archivo}) Archivo eliminado\n')
-
-    return ("duplicado", f'🔁 ({archivo}) Archivo duplicado\n')
+    return ("clasificado", f'🆗 {archivo} 🔜 {nombre_carpeta} - {provincia}:{postal}\n')
 
 def agrupar_fecha_archivo(ruta_origen, fecha):    
     if not fecha: # Para agrupar por fecha del archivo
