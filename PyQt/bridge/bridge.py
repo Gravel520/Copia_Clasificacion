@@ -3,6 +3,7 @@
 '''
 
 import os, re
+import time
 import json
 import shutil
 import config_manager
@@ -10,19 +11,21 @@ import config_manager
 from pathlib import Path
 from PyQt5.QtWidgets import (
     QHBoxLayout, QWidget, QMessageBox, QFileDialog, QDialog,
-    QVBoxLayout, QCheckBox, QLabel
+    QVBoxLayout, QCheckBox, QLabel, QApplication, QProgressDialog
 )
 from PyQt5.QtCore import QObject, pyqtSlot, QUrl, pyqtSignal
 from PyQt5.QtWidgets import QTableWidgetItem, QAbstractItemView
-from PyQt5.QtGui import QPixmap, QColor, QTransform
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap, QColor, QTransform, QImageReader
+from PyQt5.QtCore import Qt, QSize
 from PIL import Image
 
 from componentes.controles import (
-    Button, CheckBox, SpinnerOverlay, SelectorCarpeta, HeaderWidget
+    Button, CheckBox, SpinnerOverlay, SelectorCarpeta, HeaderWidget,
+    DialogoCargando
     )
 from copia_clasificador_fotos import (
-    cargar_json_unico, guardar_json_unico, actualizar_stats, calcular_hash_md5
+    cargar_json_unico, guardar_json_unico, actualizar_stats, calcular_hash_md5,
+    obtener_o_crear_miniaturas
     )
 from mapa_generator import extraer_ciudad
 from config_paths import (
@@ -61,30 +64,24 @@ class WidgetGaleria(QWidget):
         layout.addWidget(self.chk, alignment=Qt.AlignRight)
 
         # === Miniatura ===
-        if miniatura:
-            lbl_thumb = QLabel()
-            lbl_thumb.setAlignment(Qt.AlignCenter)
+        lbl_thumb = QLabel()
+        lbl_thumb.setAlignment(Qt.AlignCenter)
 
-            img = Image.open(ruta_thumb if ruta_thumb else ruta)
-            exif = img.getexif()
-            orientacion = exif.get(274, 1)
+        fichero = ruta_thumb if ruta_thumb else ruta
 
-            pix = QPixmap(ruta_thumb if ruta_thumb else ruta).scaled(
-                tamano, tamano, Qt.KeepAspectRatio, Qt.SmoothTransformation
-            )
-            transform = QTransform()
-            if orientacion == 3:
-                transform.rotate(180)
-            elif orientacion == 6:
-                transform.rotate(90)
-            elif orientacion == 8:
-                transform.rotate(270)
-            pix = pix.transformed(transform)
-            
-            lbl_thumb.setPixmap(pix)
-            lbl_thumb.setAlignment(Qt.AlignCenter)
+        reader = QImageReader(fichero)
 
-            layout.addWidget(lbl_thumb)
+        # Aplica automáticamente la orientación EXIF
+        reader.setAutoTransform(True)
+
+        # Carga ya escalada
+        reader.setScaledSize(QSize(tamano, tamano))
+        pix = QPixmap.fromImage(reader.read())
+
+        lbl_thumb.setPixmap(pix)
+        lbl_thumb.setAlignment(Qt.AlignCenter)
+
+        layout.addWidget(lbl_thumb)
 
         # === Nombre ===
         lbl_nombre = QLabel(self.nombre)
@@ -104,6 +101,32 @@ class WidgetGaleria(QWidget):
     @property
     def filepath(self):
         return getattr(self, "ruta", None)
+    
+class LoadingOverlay(QWidget):
+    def __init__(self, parent = None, texto= "Cargando..."):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+
+        self.label = QLabel(texto, self)
+        self.label.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+            }
+        """)
+        self.label.setAlignment(Qt.AlignCenter)
+
+        self.setStyleSheet("""
+            background-color: rgba(0, 0, 0, 120);
+            border-radius: 8px;
+        """)
+
+    def resizeEvent(self, a0):
+        self.label.resize(self.size())
+        super().resizeEvent(a0)
         
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str)
@@ -128,6 +151,9 @@ class Bridge(QObject):
         self.actual_ruta = None
         self.set_mapa_habilitado = set_mapa_habilitado_callback
         self.contar_pendientes = contar_pendientes
+
+        self.overlayClasificacion = LoadingOverlay(self.tablaClasificacion, "Cargando archivos...")
+        self.overlayClasificacion.hide()
 
         # Definir vista de la aplicación 'Principal', 'Clasificación'
         self.vista_actual = 0
@@ -165,10 +191,27 @@ class Bridge(QObject):
     def set_vista(self, indice):
         self.vista_actual = indice
 
+    def dialog_cargando(self, tabla):
+        dlg = QProgressDialog("Cargando archivos...", None, 0, 0, tabla)
+        dlg.setWindowTitle("Espere...")
+        dlg.setWindowModality(Qt.ApplicationModal)
+        dlg.setCancelButton(None)
+        dlg.setMinimumDuration(0)
+
+        # Barra indeterminada (modo animado)
+        dlg.setRange(0, 0)
+
+        dlg.show()
+        return dlg
+
     # ============================================================
     # TABLA
     # ============================================================
     def actualizar_tabla_desde_lista(self):
+        dlg = DialogoCargando("Cargando archivos...", self.tabla)
+        dlg.show()
+        QApplication.processEvents()
+
         ARCHIVOS_SEL.clear()
 
         self.data = cargar_json_unico(ruta_json_unico())
@@ -179,7 +222,6 @@ class Bridge(QObject):
         archivos = self.lista_archivos
         self.numero_archivos = len(archivos)
 
-        self.tabla.setVisible(True)
         self.tabla.setRowCount(self.numero_archivos)
         self.tabla.setColumnCount(5)
 
@@ -244,7 +286,13 @@ class Bridge(QObject):
             ruta_archivo = self.tabla.item(0, 2).text()
             self.actualizarFoto.emit(ruta_archivo)
 
+        dlg.close()
+
     def actualizar_tabla(self):
+        dlg = DialogoCargando("Cargando archivos...", self.tabla)
+        dlg.show()
+        QApplication.processEvents()
+
         ARCHIVOS_SEL.clear()
 
         self.data = cargar_json_unico(ruta_json_unico())
@@ -253,16 +301,17 @@ class Bridge(QObject):
         self.pendientes = self.data["pendientes"]["items"]
 
         if not self.actual_ruta:
+            dlg.close()
             return
 
         if not os.path.isdir(self.actual_ruta):
+            dlg.close()
             QMessageBox.warning(None, "Error", f"No se encontró el directorio:\n{self.actual_ruta}")
             return
 
         archivos = os.listdir(self.actual_ruta)
         self.numero_archivos = len(archivos)
 
-        self.tabla.setVisible(True)
         self.tabla.setRowCount(self.numero_archivos)
         self.tabla.setColumnCount(5)
 
@@ -325,11 +374,14 @@ class Bridge(QObject):
             self.tabla.setCellWidget(i, 3, self.botones_accion(i))
             self.tabla.setItem(i, 4, QTableWidgetItem(hash_val))
             self.tabla.setRowHeight(i, 30)
+            QApplication.processEvents()
 
         if self.tabla.rowCount() > 0:
             self.tabla.setCurrentCell(0, 1)
             ruta_archivo = self.tabla.item(0, 2).text()
             self.actualizarFoto.emit(ruta_archivo)
+
+        dlg.close()
 
     # ============================================================
     # CHECKBOXES
@@ -450,7 +502,6 @@ class Bridge(QObject):
         self.worker_copia.total.connect(self._crear_dialogo_progreso)
         self.worker_copia.progreso.connect(self._actualizar_dialogo_progreso)
         self.worker_copia.terminado.connect(self._cerrar_dialogo_progreso)
-        #self.worker_copia.terminado.connect(self._clasificacion_finalizada)
 
         self.worker_copia.start()
 
@@ -510,31 +561,45 @@ class Bridge(QObject):
         if not carpeta_destino:
             return # El usuario canceló.
         
-        # Obtenemos la lista de los archivos o el archivo a copiar.
-        if not ARCHIVOS_SEL:
-            ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
-            ARCHIVOS_SEL[ruta_archivo] = hash_archivo
+        try:
+            dlg = DialogoCargando("Copiando archivos...", self.tabla)
+            dlg.show()
+            QApplication.processEvents()
 
-        # Extraemos el nombre del archivo con 'basename' para evitar
-        #   duplicar rutas.
-        errores = []
-        for archivo, _ in ARCHIVOS_SEL.items():
-            nombre = os.path.basename(archivo)
-            destino = os.path.join(carpeta_destino, nombre)
-            try:
-                shutil.copy2(archivo, destino)
-                print(f'Copiado: {archivo} ➡ {destino}')
-            except Exception as e:
-                errores.append((archivo, str(e)))
-                print(f'Error al copiar {archivo}: {e}')
+            # Obtenemos la lista de los archivos o el archivo a copiar.
+            if not ARCHIVOS_SEL:
+                ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
+                ARCHIVOS_SEL[ruta_archivo] = hash_archivo
 
-        # Mensaje final
-        if errores:
-            mensaje = "Algunos archivos no se pudieron copiar: \n\n"
-            mensaje += "\n".join(f"{a}: {err}" for a, err in errores)
-            QMessageBox.warning(None, "Errores al copiar", mensaje)
-        else:
-            QMessageBox.information(None, "Copia completada", "Todos los archivos copiados\ncorrectamente.")
+            # Extraemos el nombre del archivo con 'basename' para evitar
+            #   duplicar rutas.
+            errores = []
+            for archivo, _ in ARCHIVOS_SEL.items():
+                nombre = os.path.basename(archivo)
+                destino = os.path.join(carpeta_destino, nombre)
+                try:
+                    shutil.copy2(archivo, destino)
+                    print(f'Copiado: {archivo} ➡ {destino}')
+                except Exception as e:
+                    errores.append((archivo, str(e)))
+                    print(f'Error al copiar {archivo}: {e}')
+
+                finally:
+                    dlg.close()
+
+            # Mensaje final
+            if errores:
+                mensaje = "Algunos archivos no se pudieron copiar: \n\n"
+                mensaje += "\n".join(f"{a}: {err}" for a, err in errores)
+                QMessageBox.warning(None, "Errores al copiar", mensaje)
+            else:
+                QMessageBox.information(None, "Copia completada", "Todos los archivos copiados\ncorrectamente.")
+
+        except Exception as e:
+            print(f"Error al copiar: {e}")
+
+        finally:
+            dlg.close()
 
     def mover(self, row=None, col=None):
         carpeta_destino = ''
@@ -546,88 +611,103 @@ class Bridge(QObject):
         if not carpeta_destino:
             return # El usuario canceló.
         
-        # Cargar JSON unificado
-        self.data = cargar_json_unico(ruta_json_unico())
-        self.historial = self.data["clasificados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
+        try:
+            dlg = DialogoCargando("Moviendo archivos...", self.tabla)
+            dlg.show()
+            QApplication.processEvents()
 
-        # Obtenemos la lista de los archivos o el archivo a mover.
-        if not ARCHIVOS_SEL:            
-            ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
-            ARCHIVOS_SEL[ruta_archivo] = hash_archivo
+            # Cargar JSON unificado
+            self.data = cargar_json_unico(ruta_json_unico())
+            self.historial = self.data["clasificados"]["items"]
+            self.pendientes = self.data["pendientes"]["items"]
 
-        # Extraemos el nombre del archivo con 'basename' para evitar
-        #   duplicar rutas.
-        errores = []
-        for archivo, hash in ARCHIVOS_SEL.items():
-            nombre = os.path.basename(archivo)
-            origen = os.path.dirname(os.path.abspath(archivo))
-            destino = os.path.join(carpeta_destino, nombre)
-            try:
-                shutil.copy2(archivo, destino)
-                os.remove(archivo)
+            # Obtenemos la lista de los archivos o el archivo a mover.
+            if not ARCHIVOS_SEL:            
+                ruta_archivo, hash_archivo = self.obtener_archivo(row, col)
+                ARCHIVOS_SEL[ruta_archivo] = hash_archivo
 
-                # Normalizar ruta para JSON
-                destino_norm = destino.replace('/', '//')
+            # Extraemos el nombre del archivo con 'basename' para evitar
+            #   duplicar rutas.
+            errores = []
+            for archivo, hash in ARCHIVOS_SEL.items():
+                nombre = os.path.basename(archivo)
+                origen = os.path.dirname(os.path.abspath(archivo))
+                destino = os.path.join(carpeta_destino, nombre)
+                try:
+                    shutil.copy2(archivo, destino)
+                    os.remove(archivo)
 
-                # Buscar en clasificados
-                entrada = next((e for e in self.historial if e["hash"] == hash), None)
+                    # Normalizar ruta para JSON
+                    destino_norm = destino.replace('/', '//')
 
-                # Si no está en clasificados, buscar en pendientes
-                if entrada is None:
-                    entrada = next((e for e in self.pendientes if e["hash"] == hash), None)
-                
-                if entrada is None:
-                    print(f'No se encontró el hash {hash} en el JSON.')
+                    # Buscar en clasificados
+                    entrada = next((e for e in self.historial if e["hash"] == hash), None)
 
-                # Actualizar ruta.
-                entrada["ruta"] = destino_norm
+                    # Si no está en clasificados, buscar en pendientes
+                    if entrada is None:
+                        entrada = next((e for e in self.pendientes if e["hash"] == hash), None)
+                    
+                    if entrada is None:
+                        print(f'No se encontró el hash {hash} en el JSON.')
 
-                # Extraer ciudad, país, fecha desde la ruta
-                parentesis = re.findall(r'\([^)]+\)', destino_norm)
-                resultado = ''.join(parentesis)
-                ciudad, pais, fecha = extraer_ciudad(resultado)
+                    # Actualizar ruta.
+                    entrada["ruta"] = destino_norm
 
-                ubicacion = f"({ciudad})({pais})"
-                entrada["ubicacion"] = ubicacion
-                entrada["fecha"] = f"({fecha})"
+                    # Extraer ciudad, país, fecha desde la ruta
+                    parentesis = re.findall(r'\([^)]+\)', destino_norm)
+                    resultado = ''.join(parentesis)
+                    ciudad, pais, fecha = extraer_ciudad(resultado)
 
-                # Extraer coordenadas desde cache.
-                cache_geocoding = cargar_cache()
-                clave_norm = ubicacion
-                if clave_norm in cache_geocoding:
-                    entrada["latitud"] = cache_geocoding[clave_norm]["lat"]
-                    entrada["longitud"] = cache_geocoding[clave_norm]["lon"]
-                
-                # --- LOGICA DE CLASIFICACIÓN AUTOMÁTICA ---
-                if ciudad == 'Sin_GPS':
-                    # Mover a pendientes.
-                    if entrada in self.historial:
-                        self.historial.remove(entrada)
-                    if entrada not in self.pendientes:
-                        self.pendientes.append(entrada)
-                else:
-                    # Mover a clasificados.
-                    if entrada in self.pendientes:
-                        self.pendientes.remove(entrada)
-                    if entrada not in self.historial:
-                        self.historial.append(entrada)
+                    ubicacion = f"({ciudad})({pais})"
+                    entrada["ubicacion"] = ubicacion
+                    entrada["fecha"] = f"({fecha})"
 
-            except Exception as e:
-                errores.append((archivo, str(e)))
-                print(f'Error al mover {archivo}: {e}')
+                    # Extraer coordenadas desde cache.
+                    cache_geocoding = cargar_cache()
+                    clave_norm = ubicacion
+                    if clave_norm in cache_geocoding:
+                        entrada["latitud"] = cache_geocoding[clave_norm]["lat"]
+                        entrada["longitud"] = cache_geocoding[clave_norm]["lon"]
+                    
+                    # --- LOGICA DE CLASIFICACIÓN AUTOMÁTICA ---
+                    if ciudad == 'Sin_GPS':
+                        # Mover a pendientes.
+                        if entrada in self.historial:
+                            self.historial.remove(entrada)
+                        if entrada not in self.pendientes:
+                            self.pendientes.append(entrada)
+                    else:
+                        # Mover a clasificados.
+                        if entrada in self.pendientes:
+                            self.pendientes.remove(entrada)
+                        if entrada not in self.historial:
+                            self.historial.append(entrada)
 
-        # Actualizar estadísticas.
-        actualizar_stats(self.data)
+                except Exception as e:
+                    errores.append((archivo, str(e)))
+                    print(f'Error al mover {archivo}: {e}')
 
-        # Guardar JSON unificado
-        guardar_json_unico(ruta_json_unico(), self.data)
+                finally:
+                    dlg.close()
 
-        # Emitir actualización de pendientes.
-        self.actualizar_contador_pendientes()
 
-        if self.directorio_vacio(origen):
-            self.limpiar_tabla(origen)
+                # Actualizar estadísticas.
+                actualizar_stats(self.data)
+
+                # Guardar JSON unificado
+                guardar_json_unico(ruta_json_unico(), self.data)
+
+                # Emitir actualización de pendientes.
+                self.actualizar_contador_pendientes()
+
+                if self.directorio_vacio(origen):
+                    self.limpiar_tabla(origen)
+
+        except Exception as e:
+            print(f"Error al mover: {e}")
+
+        finally:
+            dlg.close()                    
 
         # Mensaje final
         if errores:
@@ -646,8 +726,9 @@ class Bridge(QObject):
             config_manager.settings.setValue("Estado/mapa_generado", "False")
             config_manager.settings.sync()            
 
-            self.actualizar_tabla()
-            self.cargar_galeria(self.actual_ruta, True)
+            # Actualizamos la tabla o la galería según la vista.
+            if self.vista_actual == 0: self.actualizar_tabla()
+            else: self.cargar_galeria(self.actual_ruta, True)
             return
 
         # Generar el mapa
@@ -665,8 +746,9 @@ class Bridge(QObject):
         self.worker_mover.terminado.connect(self.mapa_generado)
         self.worker_mover.start()
 
-        self.actualizar_tabla()
-        self.cargar_galeria(self.actual_ruta, True)
+        # Comprobamos la vista para actualizar la tabla o la galeria
+        if self.vista_actual == 0: self.actualizar_tabla() 
+        else: self.cargar_galeria(self.actual_ruta, True)
 
     def compartir(self, row=None, col=None):
         if not ARCHIVOS_SEL:
@@ -706,41 +788,55 @@ class Bridge(QObject):
             QMessageBox.information(None, "Borrado de archivos", "Borrado cancelado por el usuario.")
             return
         
-        # Procesar borrado
-        for archivo, hash in ARCHIVOS_SEL.items():
-            try:
-                os.remove(archivo) # Borramos el archivo físico.
+        try:
+            dlg = DialogoCargando("Borrando archivos...", self.tabla)
+            dlg.show()
+            QApplication.processEvents()
 
-                # Añadir a eliminados si no estaba ya.
-                if not any(e["hash"] == hash for e in self.eliminado):
-                    self.eliminado.append({"hash": hash})
+            # Procesar borrado
+            for archivo, hash in ARCHIVOS_SEL.items():
+                try:
+                    os.remove(archivo) # Borramos el archivo físico.
 
-                # Eliminar de clasificados.
-                self.historial[:] = [e for e in self.historial if e["hash"] != hash]
+                    # Añadir a eliminados si no estaba ya.
+                    if not any(e["hash"] == hash for e in self.eliminado):
+                        self.eliminado.append({"hash": hash})
 
-                # Eliminar de pendientes.
-                self.pendientes[:] = [e for e in self.pendientes if e["hash"] != hash]
+                    # Eliminar de clasificados.
+                    self.historial[:] = [e for e in self.historial if e["hash"] != hash]
 
-            except Exception as e:
-                print(f'Error al borrar {archivo}: {e}')
+                    # Eliminar de pendientes.
+                    self.pendientes[:] = [e for e in self.pendientes if e["hash"] != hash]
 
-        QMessageBox.information(None, "Borrado de archivos", "Borrado Completado con éxito.")
+                except Exception as e:
+                    print(f'Error al borrar {archivo}: {e}')
 
-        # Actualizar estadístitcas.
-        self.data["stats"]["total_clasificados"] = len(self.historial)
-        self.data["stats"]["total_pendientes"] = len(self.pendientes)
-        self.data["stats"]["total_eliminados"] = len(self.eliminado)
+                finally:
+                    dlg.close()
 
-        # Guardar JSON unificado.
-        guardar_json_unico(ruta_json_unico(), self.data)
+            QMessageBox.information(None, "Borrado de archivos", "Borrado Completado con éxito.")
 
-        # Emitir actualización de pendientes.
-        self.actualizar_contador_pendientes()
+            # Actualizar estadístitcas.
+            self.data["stats"]["total_clasificados"] = len(self.historial)
+            self.data["stats"]["total_pendientes"] = len(self.pendientes)
+            self.data["stats"]["total_eliminados"] = len(self.eliminado)
 
-        # Comprobamos si existe el directorio para actualizar la
-        #   tabla o no.
-        if self.directorio_vacio(origen):
-            self.limpiar_tabla(origen)            
+            # Guardar JSON unificado.
+            guardar_json_unico(ruta_json_unico(), self.data)
+
+            # Emitir actualización de pendientes.
+            self.actualizar_contador_pendientes()
+
+            # Comprobamos si existe el directorio para actualizar la
+            #   tabla o no.
+            if self.directorio_vacio(origen):
+                self.limpiar_tabla(origen)
+
+        except Exception as e:
+            print(f"Error al borrar: {e}")
+
+        finally:
+            dlg.close()                
 
         respuesta = self.pregunta_generar_mapa()
 
@@ -751,8 +847,9 @@ class Bridge(QObject):
             config_manager.settings.setValue("Estado/mapa_generado", "False")
             config_manager.settings.sync()
 
-            self.actualizar_tabla()
-            self.cargar_galeria(self.actual_ruta, True)
+            # Actualizamos la tabla o la galería según la vista.
+            if self.vista_actual == 0: self.actualizar_tabla()
+            else: self.cargar_galeria(self.actual_ruta, True)
             return
 
         # Generar el mapa
@@ -770,8 +867,9 @@ class Bridge(QObject):
         self.worker_borrar.terminado.connect(self.mapa_generado)
         self.worker_borrar.start()
 
-        self.actualizar_tabla()
-        self.cargar_galeria(self.actual_ruta, True)
+        # Actualizamos la tabla o la galería según la vista.
+        if self.vista_actual == 0: self.actualizar_tabla()
+        else: self.cargar_galeria(self.actual_ruta, True)
 
     def obtener_seleccion(self):
         tabla = self.tablaClasificacion
@@ -844,6 +942,12 @@ class Bridge(QObject):
     # ============================================================
     def cargar_galeria_desde_lista(self, lista_rutas, miniatura, tamano=100):
         try:
+            self.tablaClasificacion.clearContents()
+            
+            dlg = DialogoCargando("Cargando archivos...", self.tabla)
+            dlg.show()
+            QApplication.processEvents()
+
             ARCHIVOS_SEL.clear()
             self.numArcSel = 0
             self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
@@ -856,8 +960,6 @@ class Bridge(QObject):
             grupos = defaultdict(list)
 
             for ruta_completa in lista_rutas:
-                #ruta_completa = os.path.join(ruta, archivo)
-
                 # Obtener fecha completa para agrupar
                 fecha_completa = self.obtener_fecha_json(ruta_completa, self.data)
                 grupos[fecha_completa].append(ruta_completa)
@@ -866,7 +968,6 @@ class Bridge(QObject):
             grupos = dict(sorted(grupos.items()))
 
             # 2️⃣ Preparar la tabla
-            self.tablaClasificacion.clearContents()
             self.tablaClasificacion.setColumnCount(NUM_COLS)
 
             # Mapa fecha > fila del header (para búsqueda rápida)
@@ -879,9 +980,6 @@ class Bridge(QObject):
 
                 # ---- Encabezado de fecha ----
                 self.tablaClasificacion.insertRow(fila_actual)
-
-                # Si la ruta contiene 'Sin_GPS' -> dibujar encabezado
-                #if 'Sin_GPS' in ruta:
 
                 # Widget con checkbox + fecha
                 header_widget = HeaderWidget(fecha)
@@ -918,16 +1016,14 @@ class Bridge(QObject):
 
                     # Miniatura si es video
                     ruta_thumb = None
-                    nombre_archivo = os.path.basename(ruta_completa)
-                    if nombre_archivo.lower().endswith(extensiones_validas("video")):
-                        ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
-                        # Usar miniatura
-                        mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
-                        ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
+
+                    ruta_thumb = obtener_o_crear_miniaturas(ruta_completa, hash_archivo)
+                    # Usar miniatura
+                    mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
+                    ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
 
                     # Crear Widget
                     widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
-                    #widget.filepath = ruta_completa
                     widget.seleccionado.connect(self._galeria_checkbox_cambiado)
 
                     self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
@@ -958,8 +1054,29 @@ class Bridge(QObject):
             self.tablaClasificacion.clear()
             print(f'Error al cargar galeria: {e}')
 
+        finally:
+            dlg.close()
+
     def cargar_galeria(self, ruta, miniatura, tamano=100):
+
+        t_hash = 0
+        t_thumb = 0
+        t_widget = 0
+        t_setcell = 0
+        t_bloque = 0
+        t_ajustes = 0
+
+        t1 = time.perf_counter()
+        print("Inicio vista clasificación...")
         try:
+            self.tablaClasificacion.setUpdatesEnabled(False)
+            self.tablaClasificacion.clearContents()
+            self.tablaClasificacion.setRowCount(0)
+
+            dlg = DialogoCargando("Cargando archivos...", self.tabla)
+            dlg.show()
+            QApplication.processEvents()
+
             ARCHIVOS_SEL.clear()
             self.numArcSel = 0
             self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
@@ -982,7 +1099,6 @@ class Bridge(QObject):
             grupos = dict(sorted(grupos.items()))
 
             # 2️⃣ Preparar la tabla
-            self.tablaClasificacion.clearContents()
             self.tablaClasificacion.setColumnCount(NUM_COLS)
 
             # Mapa fecha > fila del header (para búsqueda rápida)
@@ -991,7 +1107,7 @@ class Bridge(QObject):
             fila_actual = 0
 
             # 3️⃣ Dibujar encabezados + miniaturas
-
+            t_bloque = time.perf_counter()
             for fecha, lista_archivos in grupos.items():
 
                 # ---- Encabezado de fecha ----
@@ -1031,22 +1147,29 @@ class Bridge(QObject):
                     ruta_completa = os.path.join(ruta, archivo)
 
                     # Obtener hash
+                    t0 = time.perf_counter()
                     hash_archivo = calcular_hash_md5(ruta_completa)
+                    t_hash += time.perf_counter() - t0
 
                     # Miniatura si es video
                     ruta_thumb = None
-                    if archivo.lower().endswith(extensiones_validas("video")):
-                        ruta_thumb = self.obtener_ruta_miniatura(hash_archivo)
-                        # Usar miniatura
-                        mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
-                        ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
+                    t0 = time.perf_counter()
+                    ruta_thumb = obtener_o_crear_miniaturas(ruta_completa, hash_archivo) if miniatura else None #(hash_archivo)
+                    t_thumb += time.perf_counter() - t0
+
+                    # Usar miniatura
+                    mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
+                    ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
 
                     # Crear Widget
+                    t0 = time.perf_counter()
                     widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
-                    #widget.filepath = ruta_completa
                     widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+                    t_widget += time.perf_counter() - t0
 
+                    t0 = time.perf_counter()
                     self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
+                    t_setcell += time.perf_counter() - t0
 
                     col += 1
                     if col == NUM_COLS:
@@ -1057,7 +1180,10 @@ class Bridge(QObject):
                 if col != 0:
                     fila_actual += 1
 
+            print("Construcción tabla: ", time.perf_counter() - t_bloque)
+
             # Ajustes visuales
+            t_ajustes = time.perf_counter()
             valor = tamano if miniatura else 50
 
             for r in range(self.tablaClasificacion.rowCount()):
@@ -1070,9 +1196,28 @@ class Bridge(QObject):
             for c in range(NUM_COLS):
                 self.tablaClasificacion.setColumnWidth(c, tamano)
 
+            print("Ajustes finales: ", time.perf_counter() - t_ajustes)
+
         except Exception as e:
             self.tablaClasificacion.clear()
             print(f'Error al cargar galeria: {e}')
+
+        finally:
+            t0 = time.perf_counter()
+            self.tablaClasificacion.setUpdatesEnabled(True)
+            print("REPAINT: ", time.perf_counter() - t0)
+
+            t0 = time.perf_counter()
+            dlg.close()
+            print("CERRAR DIALOGO: ", time.perf_counter() - t0)
+            QApplication.processEvents()
+            print("POST EVENTS: ", time.perf_counter() - t0)
+
+            print("Fin carga de galeria:", time.perf_counter() - t1)
+            print("HASH:", t_hash)
+            print("THUMB:", t_thumb)
+            print("WIDGET:", t_widget)
+            print("SETCELL:", t_setcell)
 
     def _seleccionar_grupo(self, fecha, estado):
         tabla = self.tablaClasificacion

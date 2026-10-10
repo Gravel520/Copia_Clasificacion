@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QWidget, QPushButton, QCheckBox, QMenu,
                              QTextEdit, QLabel, QApplication, QListWidget)
 from PyQt5.QtGui import QIcon, QCursor, QMovie, QColor
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
-from PyQt5.QtCore import Qt, QRect
+from PyQt5.QtCore import Qt, QRect, QTimer
 from config_paths import get_ruta_principal, get_spinner
 
 assets = 'PyQt/assets/'
@@ -310,3 +310,19 @@ class HeaderWidget(QWidget):
 
     def _emitir(self, estado):
         self.toggled.emit(self.fecha, estado)
+
+class DialogoCargando(QDialog):
+    def __init__(self, texto, parent = None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Espere...")
+        self.setModal(True)
+        self.setFixedSize(260, 50)
+        self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
+
+        layout = QHBoxLayout(self)
+
+        # Etiqueta del texto
+        label = QLabel(texto)
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)

@@ -10,7 +10,7 @@ import hashlib # Calcula hashes MD5 para detectar duplicados o eliminados.
 import json # Carga y guarda datos en formato JSON.
 import unicodedata
 import time
-from PIL import Image # Abre imágenes y extrae metadatos EXIF.
+from PIL import Image, ImageOps # Abre imágenes y extrae metadatos EXIF.
 from datetime import datetime # Maneja fechas.
 from geopy.distance import geodesic # Calcula la distancia.
 from config_paths import (
@@ -29,7 +29,7 @@ from utils.utils_exif import (
     obtener_archivos_movil, comprobar_movil_conectado
 )
 from utils.utils_provincias import (
-    extraer_provincia_geocode_ciudad
+    extraer_provincia_geocode_ciudad, capitalizar_lugar
 )
 
 # Inicializamos el servicio de Geolocalizador para convertir coordenadas
@@ -340,8 +340,8 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
     # Clasificación final
     # Caso A -> sin GPS -> va a pendientes
     if ubicacion == "(Sin_GPS)":
-        if archivo.lower().endswith(extensiones_validas("video")):
-            obtener_miniaturas(ruta_local, hash_archivo)
+        #if archivo.lower().endswith(extensiones_validas("video")):
+        obtener_o_crear_miniaturas(ruta_local, hash_archivo)
 
         shutil.copy2(ruta_local, ruta_destino)
 
@@ -360,8 +360,8 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
         return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
     
     # Caso B -> con GPS -> va a clasificados
-    if archivo.lower().endswith(extensiones_validas("video")):
-        obtener_miniaturas(ruta_local, hash_archivo)
+    #if archivo.lower().endswith(extensiones_validas("video")):
+    obtener_o_crear_miniaturas(ruta_local, hash_archivo)
 
     shutil.copy2(ruta_local, ruta_destino)
 
@@ -399,75 +399,104 @@ descarga desde esta página "https://www.gyan.dev/ffmpeg/builds/".
 Hay que seleccionar la descarga "ffmpeg-xxxx-full_build/", extraerlo 
 en c:\ffmpeg\ y colocarlo en el PATH del ordenador.
 '''
-def obtener_miniaturas(ruta_origen, hash):
+def obtener_o_crear_miniaturas(ruta_origen, hash_archivo):
+    '''
+    Devuelve la ruta de la miniatura.
+    Si no existe, la genera.
+    '''
+
     FFMPEG = r"C:\ffmpeg\bin\ffmpeg.exe" # Extraer fotograma
     FFPROBE = r"C:\ffmpeg\bin\ffprobe.exe" # Obtener duración del video
 
+    ruta_origen = Path(ruta_origen)
+
+    # Crear carpeta miniaturas si no existe
+    ruta_miniaturas = get_ruta_miniaturas()
+    ruta_miniaturas.mkdir(parents=True, exist_ok=True)
+
+    # Rutas de salida
+    ruta_thumb = ruta_miniaturas / f"{hash_archivo}.jpg"
+
+    # Ya existe.
+    if ruta_thumb.exists():
+        return str(ruta_thumb)
+    
     try:
-        # Crear carpeta miniaturas si no existe
-        ruta_miniaturas = get_ruta_miniaturas()
-        ruta_miniaturas.mkdir(parents=True, exist_ok=True)
+        # ---------------------------
+        # VÍDEOS
+        # ---------------------------
+        if ruta_origen.suffix.lower() in extensiones_validas("video"):
+            ruta_temp = ruta_miniaturas / f"{hash_archivo}_temp.png"
+                
+            # Obtener duración del video con ffprobe
+            resultado = subprocess.run([
+                FFPROBE, "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(ruta_origen)
+            ], capture_output=True, text=True, check=True)
 
-        # Rutas de salida
-        ruta_salida = ruta_miniaturas / f"{hash}.jpg"
-        ruta_temp = ruta_miniaturas / f"{hash}_temp.jpg"
+            duracion = float(resultado.stdout.strip())
 
-        # Obtener duración del video con ffprobe
-        resultado = subprocess.run([
-            FFPROBE, "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(ruta_origen)
-        ], capture_output=True, text=True, check=True)
+            # Decidir el segundo
+            tiempo_miniatura = "00:00:05" if duracion >= 5 else "00:00:01"
 
-        duracion = float(resultado.stdout.strip())
+            # Extraer fotograma
+            subprocess.run([
+                FFMPEG, "-y",
+                "-ss", tiempo_miniatura,
+                "-i", str(ruta_origen),
+                "-vframes", "1",
+                "-vf", "format=yuv420p",
+                str(ruta_temp)
+            ], check=True)
 
-        # Decidir el segundo
-        tiempo_miniatura = "00:00:05" if duracion >= 5 else "00:00:01"
+            marca = Path(__file__).parent / "assets" / "marca_video.png"
 
-        # Extraer fotograma
-        subprocess.run([
-            FFMPEG, "-y",
-            "-ss", tiempo_miniatura,
-            "-i", str(ruta_origen),
-            "-vframes", "1",
-            "-vf", "format=yuv420p",
-            str(ruta_temp)
-        ], check=True)
+            # Añadir marca de agua con imagen PNG
+            subprocess.run([
+                FFMPEG, "-y",
+                "-i", str(ruta_temp),
+                "-i", str(marca),
+                "-filter_complex",
+                # Escalar marca al 40% del ancho de la imagen
+                "[1:v]scale=iw*0.4:-1[wm];"
+                # Colocar marca en el centro
+                "[0:v][wm]overlay=(W-w)/2:(H-h)/2",
+                str(ruta_thumb)
+            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        marca = Path(__file__).parent / "assets" / "marca_video.png"
+            # Borrar temporal
+            ruta_temp.unlink(missing_ok=True)
 
-        # Añadir marca de agua con imagen PNG
-        subprocess.run([
-            FFMPEG, "-y",
-            "-i", str(ruta_temp),
-            "-i", str(marca),
-            "-filter_complex",
-            # Escalar marca al 40% del ancho de la imagen
-            "[1:v]scale=iw*0.4:-1[wm];"
-            # Colocar marca en el centro
-            "[0:v][wm]overlay=(W-w)/2:(H-h)/2",
-            str(ruta_salida)
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            # ---------------------------
+            # IMÁGENES
+            # ---------------------------
+            img = Image.open(ruta_origen)
 
-        # Borrar temporal
-        ruta_temp.unlink(missing_ok=True)
+            # Respeta orientación EXIF
+            img = ImageOps.exif_transpose(img)
 
-        # Registrar en JSON
-        data = cargar_json_miniaturas(ruta_json_miniaturas())
-        if hash not in data["miniaturas"]:
-            data["miniaturas"].append(hash)
-            guardar_json_miniaturas(ruta_json_miniaturas(), data)
+            # Miniatura
+            img.thumbnail((200, 200))
 
-        return True
+            img.save(
+                ruta_thumb,
+                "JPEG",
+                quality=85,
+                optimize=True
+            )
+
+        return str(ruta_thumb)
 
     except Exception as e:
         print(f"Error generando miniatura: {e}")
         return False
-    
+'''    
 def normalizar_texto(t):
     if not t or not isinstance(t, str):
         return ""
@@ -477,7 +506,7 @@ def normalizar_texto(t):
     # Quedarnos solamente con números, letras y espacios.
     t = re.sub(r'[^a-zA-Z0-9 ]', '', t)
     return t
-
+'''
 def buscar_ubicacion_cache(lat_foto, lon_foto):
     '''
     Busca en el JSON si ya existe una ubicación guardada muy carca
@@ -503,8 +532,8 @@ def actualizar_cache_geocoding(info):
     if not info:
         return
     
-    ciudad = info["ciudad"]
-    pais = info["pais"]
+    ciudad = capitalizar_lugar(info["ciudad"])
+    pais = capitalizar_lugar(info["pais"])
 
     clave = f"({ciudad})({pais})"
 

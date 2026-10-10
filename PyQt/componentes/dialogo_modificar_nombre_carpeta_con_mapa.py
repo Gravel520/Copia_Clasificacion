@@ -15,6 +15,7 @@ from copia_clasificador_fotos import cargar_json_unico, guardar_json_unico
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
 from config_paths import ruta_json_unico
 from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
+from utils.utils_provincias import capitalizar_lugar
 
 # ---------------------------------------------------------
 # Puente Python ↔ JavaScript
@@ -424,8 +425,8 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
     # Validar y devolver datos
     # ---------------------------------------------------------
     def _validar(self):
-        ciudad = normalizar_texto(self.input_ciudad.text().strip())
-        pais = normalizar_texto(self.input_pais.text().strip())
+        ciudad = capitalizar_lugar(normalizar_texto(self.input_ciudad.text().strip()))
+        pais = capitalizar_lugar(normalizar_texto(self.input_pais.text().strip()))
 
         if not ciudad or not pais:
             QMessageBox.warning(self, "Error", "Todos los campos son obligatorios.")

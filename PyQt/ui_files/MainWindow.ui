@@ -542,21 +542,22 @@ border-radius: 0px;</string>
    </widget>
    <widget class="QMenu" name="menuAgrupar">
     <property name="title">
-     <string>Grupos</string>
+     <string>Gestor de</string>
     </property>
+    <widget class="QMenu" name="menuUbicaci_n_2">
+     <property name="title">
+      <string>Ubicación</string>
+     </property>
+     <addaction name="actionCrear_Ubicacion"/>
+     <addaction name="actionModificar_Ubicacion"/>
+    </widget>
     <addaction name="actionGestion_Grupo"/>
-   </widget>
-   <widget class="QMenu" name="menuUbicaci_n">
-    <property name="title">
-     <string>Ubicación</string>
-    </property>
-    <addaction name="actionCrear_Ubicacion"/>
-    <addaction name="actionModificar_Ubicacion"/>
+    <addaction name="menuUbicaci_n_2"/>
+    <addaction name="actionProvincias"/>
    </widget>
    <addaction name="menuClasificar"/>
    <addaction name="menuMapa"/>
    <addaction name="menuAgrupar"/>
-   <addaction name="menuUbicaci_n"/>
    <addaction name="menuVista"/>
   </widget>
   <action name="actionMapa_Fotos">
@@ -681,7 +682,7 @@ border-radius: 0px;</string>
   </action>
   <action name="actionGestion_Grupo">
    <property name="text">
-    <string>Gestor de Grupos</string>
+    <string>Grupos</string>
    </property>
    <property name="toolTip">
     <string>Creamos un grupo nuevo</string>
@@ -741,6 +742,11 @@ border-radius: 0px;</string>
   <action name="actionMapa_de_Provincias">
    <property name="text">
     <string>Mapa de Provincias</string>
+   </property>
+  </action>
+  <action name="actionProvincias">
+   <property name="text">
+    <string>Provincias</string>
    </property>
   </action>
  </widget>

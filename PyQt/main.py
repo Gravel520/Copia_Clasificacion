@@ -25,6 +25,7 @@ from PIL import Image
 
 from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
+from componentes.dialogo_provincias import DialogoProvincias
 from componentes.video_player_vlc import VideoPlayer
 
 from config_paths import (
@@ -120,6 +121,9 @@ class MapaWindow(QMainWindow):
         self.bridge.enviarListaArchivos.connect(self.recibir_archivos_para_clasificacion)
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
+
+        # No poder modificar el contenido de una celda de la tabla
+        self.ui.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Inicializar el config.ini.
         self.iniciar_config_ini()
@@ -815,6 +819,13 @@ class MapaWindow(QMainWindow):
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     # ============================================================
+    # Abrir cuadro de diálogo de gestor de provincias
+    # ============================================================
+    def abrir_provincias(self):
+        dlg = DialogoProvincias(ruta_cache_json_geocoding())
+        dlg.exec_()
+
+    # ============================================================
     # UTILIDADES
     # ============================================================
     @staticmethod
@@ -879,6 +890,8 @@ class MapaWindow(QMainWindow):
 
         self.ui.actionModificar_Ubicacion.triggered.connect(self.modificar_ubicacion)
         self.ui.actionCrear_Ubicacion.triggered.connect(self.crear_ubicacion)
+
+        self.ui.actionProvincias.triggered.connect(self.abrir_provincias)
 
         self.ui.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
         self.ui.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))

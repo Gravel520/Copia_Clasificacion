@@ -29,6 +29,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QUrl
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
 from config_paths import geocodificador
 from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
+from utils.utils_provincias import capitalizar_lugar
 import datetime
 
 # ---------------------------------------------------------
@@ -98,19 +99,13 @@ class DialogoCrearCarpetaConMapa(QDialog):
         # Bloque ubicación
         bloque_ubicacion = QVBoxLayout()
         bloque_ubicacion.setSpacing(5)
-        '''
-        # Obtener paises.
-        paises = obtener_paises_es()
-        completer_paises = QCompleter(paises)
-        completer_paises.setCaseSensitivity(Qt.CaseInsensitive)
-        '''
+
         # País
         lbl_pais = QLabel("País:")
         lbl_pais.setStyleSheet("font-weight: bold;")
         bloque_ubicacion.addWidget(lbl_pais)
         self.input_pais = QLineEdit()
-        #self.input_pais.setCompleter(completer_paises)
-        #self.input_pais.textChanged.connect(self.actualizar_ciudades)
+
         bloque_ubicacion.addWidget(self.input_pais)
 
         # Ciudad
@@ -289,8 +284,8 @@ class DialogoCrearCarpetaConMapa(QDialog):
     # Validar y devolver datos
     # ---------------------------------------------------------
     def _validar(self):
-        ciudad = normalizar_texto(self.input_ciudad.text().strip())
-        pais = normalizar_texto(self.input_pais.text().strip())
+        ciudad = capitalizar_lugar(normalizar_texto(self.input_ciudad.text().strip()))
+        pais = capitalizar_lugar(normalizar_texto(self.input_pais.text().strip()))
         fecha = self.input_fecha.text().strip()
 
         if not ciudad or not pais or not fecha:
