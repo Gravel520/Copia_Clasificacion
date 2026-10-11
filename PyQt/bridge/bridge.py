@@ -131,7 +131,8 @@ class LoadingOverlay(QWidget):
 class Bridge(QObject):
     actualizarFoto = pyqtSignal(str)
     pendientes_actualizados = pyqtSignal(int)
-    enviarListaArchivos = pyqtSignal(str)
+    enviarRuta = pyqtSignal(str)
+    enviarListaArchivos = pyqtSignal(list)
 
     def __init__(self, tableWidget, tableClasificacion, labelFechaListado, labelArchivosSeleccionadosClasificacion,
                  labelMapaActualizado, button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
@@ -158,6 +159,8 @@ class Bridge(QObject):
         # Definir vista de la aplicación 'Principal', 'Clasificación'
         self.vista_actual = 0
 
+        self.data = cargar_json_unico(ruta_json_unico())
+
     # ============================================================
     # RECEPCIÓN DE RUTA DESDE JS
     # ============================================================
@@ -165,7 +168,8 @@ class Bridge(QObject):
     def recibirRuta(self, ruta):
         # Normalizar ruta para las barras invertidas (\\)
         self.actual_ruta = os.path.normpath(ruta)
-        self.enviarListaArchivos.emit(self.actual_ruta)
+        self.lista_archivos = None
+        self.enviarRuta.emit(self.actual_ruta)
         self.actualizar_tabla()
         # Cargamos la galería de clasificación si esta en esa vista.
         if self.vista_actual == 1: self.cargar_galeria(self.actual_ruta, True)
@@ -183,10 +187,8 @@ class Bridge(QObject):
 
         # Mostrar tabla con todos los archivos seguidos
         self.actualizar_tabla_desde_lista()
+        self.enviarListaArchivos.emit(self.lista_archivos)
 
-        # Si estás en la vista de clasificación -> mostrar galería unificada
-        if self.vista_actual == 1:
-            self.cargar_galeria_desde_lista(self.lista_archivos, True)
 
     def set_vista(self, indice):
         self.vista_actual = indice
@@ -214,10 +216,7 @@ class Bridge(QObject):
 
         ARCHIVOS_SEL.clear()
 
-        self.data = cargar_json_unico(ruta_json_unico())
-        self.historial = self.data["clasificados"]["items"]
-        self.eliminado = self.data["eliminados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
+        self.recargar_datos()
 
         archivos = self.lista_archivos
         self.numero_archivos = len(archivos)
@@ -257,14 +256,7 @@ class Bridge(QObject):
             nombre = os.path.basename(ruta_completa)
             ruta_conver = os.path.normpath(ruta_completa)
 
-            busqueda_hash = (
-                self.pendientes if '(Sin_GPS)' in ruta_conver else self.historial
-            )
-
-            coincidencia = next(
-                (r for r in busqueda_hash if os.path.normpath(r['ruta']) == ruta_conver),
-                None
-            )
+            coincidencia = self.indice_ruta.get(ruta_conver)
 
             hash_val = coincidencia['hash'] if coincidencia else ""
             fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
@@ -295,10 +287,7 @@ class Bridge(QObject):
 
         ARCHIVOS_SEL.clear()
 
-        self.data = cargar_json_unico(ruta_json_unico())
-        self.historial = self.data["clasificados"]["items"]
-        self.eliminado = self.data["eliminados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
+        self.recargar_datos()
 
         if not self.actual_ruta:
             dlg.close()
@@ -351,14 +340,7 @@ class Bridge(QObject):
             ruta_completa = os.path.join(self.actual_ruta, nombre)
             ruta_conver = os.path.normpath(ruta_completa)
 
-            busqueda_hash = (
-                self.pendientes if '(Sin_GPS)' in ruta_conver else self.historial
-            )
-
-            coincidencia = next(
-                (r for r in busqueda_hash if os.path.normpath(r['ruta']) == ruta_conver),
-                None
-            )
+            coincidencia = self.indice_ruta.get(ruta_conver)
 
             hash_val = coincidencia['hash'] if coincidencia else ""
             fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
@@ -464,7 +446,9 @@ class Bridge(QObject):
             for _, _, filepath in selecciones:
                 if filepath:
                     # Calcular hash si lo necesitas
-                    hash_archivo = calcular_hash_md5(filepath)
+                    item = self.indice_ruta.get(os.path.normpath(filepath))
+                    hash_archivo = item["hash"] if item else None
+                    #hash_archivo = calcular_hash_md5(filepath)
                     ARCHIVOS_SEL[filepath] = hash_archivo
 
             funcion()
@@ -616,10 +600,7 @@ class Bridge(QObject):
             dlg.show()
             QApplication.processEvents()
 
-            # Cargar JSON unificado
-            self.data = cargar_json_unico(ruta_json_unico())
-            self.historial = self.data["clasificados"]["items"]
-            self.pendientes = self.data["pendientes"]["items"]
+            self.recargar_datos()
 
             # Obtenemos la lista de los archivos o el archivo a mover.
             if not ARCHIVOS_SEL:            
@@ -640,13 +621,8 @@ class Bridge(QObject):
                     # Normalizar ruta para JSON
                     destino_norm = destino.replace('/', '//')
 
-                    # Buscar en clasificados
-                    entrada = next((e for e in self.historial if e["hash"] == hash), None)
+                    entrada = self.indice_hash.get(hash)
 
-                    # Si no está en clasificados, buscar en pendientes
-                    if entrada is None:
-                        entrada = next((e for e in self.pendientes if e["hash"] == hash), None)
-                    
                     if entrada is None:
                         print(f'No se encontró el hash {hash} en el JSON.')
 
@@ -696,6 +672,8 @@ class Bridge(QObject):
 
                 # Guardar JSON unificado
                 guardar_json_unico(ruta_json_unico(), self.data)
+
+                self.recargar_datos()
 
                 # Emitir actualización de pendientes.
                 self.actualizar_contador_pendientes()
@@ -761,11 +739,7 @@ class Bridge(QObject):
     def borrar(self, row=None, col=None):
         mensaje = 'Archivo(s):\n'
 
-        # Cargar JSON unificado.
-        self.data = cargar_json_unico(ruta_json_unico())
-        self.historial = self.data["clasificados"]["items"]
-        self.pendientes = self.data["pendientes"]["items"]
-        self.eliminado = self.data["eliminados"]["items"]
+        self.recargar_datos()
 
         # Obtenemos la lista de los archivos o el archivo a borrar.
         if not ARCHIVOS_SEL:
@@ -799,8 +773,9 @@ class Bridge(QObject):
                     os.remove(archivo) # Borramos el archivo físico.
 
                     # Añadir a eliminados si no estaba ya.
-                    if not any(e["hash"] == hash for e in self.eliminado):
+                    if hash not in self.hashes_eliminados:
                         self.eliminado.append({"hash": hash})
+                        self.hashes_eliminados.add(hash)
 
                     # Eliminar de clasificados.
                     self.historial[:] = [e for e in self.historial if e["hash"] != hash]
@@ -823,6 +798,8 @@ class Bridge(QObject):
 
             # Guardar JSON unificado.
             guardar_json_unico(ruta_json_unico(), self.data)
+
+            self.recargar_datos()
 
             # Emitir actualización de pendientes.
             self.actualizar_contador_pendientes()
@@ -942,7 +919,9 @@ class Bridge(QObject):
     # ============================================================
     def cargar_galeria_desde_lista(self, lista_rutas, miniatura, tamano=100):
         try:
+            self.tablaClasificacion.setUpdatesEnabled(False)
             self.tablaClasificacion.clearContents()
+            self.tablaClasificacion.setRowCount(0)
             
             dlg = DialogoCargando("Cargando archivos...", self.tabla)
             dlg.show()
@@ -961,7 +940,7 @@ class Bridge(QObject):
 
             for ruta_completa in lista_rutas:
                 # Obtener fecha completa para agrupar
-                fecha_completa = self.obtener_fecha_json(ruta_completa, self.data)
+                fecha_completa = self.obtener_fecha_json(ruta_completa)
                 grupos[fecha_completa].append(ruta_completa)
 
             # Ordenar por fecha
@@ -1012,12 +991,13 @@ class Bridge(QObject):
                     #ruta_completa = os.path.join(ruta, archivo)
 
                     # Obtener hash
-                    hash_archivo = calcular_hash_md5(ruta_completa)
+                    item = self.indice_ruta.get(os.path.normpath(ruta_completa))
+                    hash_archivo = item["hash"] if item else calcular_hash_md5(ruta_completa)
 
-                    # Miniatura si es video
+                    # Miniatura
                     ruta_thumb = None
-
                     ruta_thumb = obtener_o_crear_miniaturas(ruta_completa, hash_archivo)
+
                     # Usar miniatura
                     mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
                     ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
@@ -1055,19 +1035,10 @@ class Bridge(QObject):
             print(f'Error al cargar galeria: {e}')
 
         finally:
+            self.tablaClasificacion.setUpdatesEnabled(True)
             dlg.close()
 
     def cargar_galeria(self, ruta, miniatura, tamano=100):
-
-        t_hash = 0
-        t_thumb = 0
-        t_widget = 0
-        t_setcell = 0
-        t_bloque = 0
-        t_ajustes = 0
-
-        t1 = time.perf_counter()
-        print("Inicio vista clasificación...")
         try:
             self.tablaClasificacion.setUpdatesEnabled(False)
             self.tablaClasificacion.clearContents()
@@ -1092,7 +1063,7 @@ class Bridge(QObject):
                 ruta_completa = os.path.join(ruta, archivo)
 
                 # Obtener fecha completa para agrupar
-                fecha_completa = self.obtener_fecha_json(ruta_completa, self.data)
+                fecha_completa = self.obtener_fecha_json(ruta_completa)
                 grupos[fecha_completa].append(ruta_completa)
 
             # Ordenar por fecha
@@ -1107,7 +1078,6 @@ class Bridge(QObject):
             fila_actual = 0
 
             # 3️⃣ Dibujar encabezados + miniaturas
-            t_bloque = time.perf_counter()
             for fecha, lista_archivos in grupos.items():
 
                 # ---- Encabezado de fecha ----
@@ -1147,29 +1117,22 @@ class Bridge(QObject):
                     ruta_completa = os.path.join(ruta, archivo)
 
                     # Obtener hash
-                    t0 = time.perf_counter()
-                    hash_archivo = calcular_hash_md5(ruta_completa)
-                    t_hash += time.perf_counter() - t0
+                    item = self.indice_ruta.get(os.path.normpath(ruta_completa))
+                    hash_archivo = item["hash"] if item else calcular_hash_md5(ruta_completa)                    
 
-                    # Miniatura si es video
+                    # Miniatura 
                     ruta_thumb = None
-                    t0 = time.perf_counter()
                     ruta_thumb = obtener_o_crear_miniaturas(ruta_completa, hash_archivo) if miniatura else None #(hash_archivo)
-                    t_thumb += time.perf_counter() - t0
 
                     # Usar miniatura
                     mini = Path(__file__).parent.parent / "assets" / "marca_video.png"
                     ruta_thumb = str(ruta_thumb) if ruta_thumb else str(mini)
 
                     # Crear Widget
-                    t0 = time.perf_counter()
                     widget = WidgetGaleria(ruta_completa, hash_archivo, miniatura, tamano, ruta_thumb)
                     widget.seleccionado.connect(self._galeria_checkbox_cambiado)
-                    t_widget += time.perf_counter() - t0
 
-                    t0 = time.perf_counter()
                     self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
-                    t_setcell += time.perf_counter() - t0
 
                     col += 1
                     if col == NUM_COLS:
@@ -1180,10 +1143,7 @@ class Bridge(QObject):
                 if col != 0:
                     fila_actual += 1
 
-            print("Construcción tabla: ", time.perf_counter() - t_bloque)
-
             # Ajustes visuales
-            t_ajustes = time.perf_counter()
             valor = tamano if miniatura else 50
 
             for r in range(self.tablaClasificacion.rowCount()):
@@ -1196,28 +1156,13 @@ class Bridge(QObject):
             for c in range(NUM_COLS):
                 self.tablaClasificacion.setColumnWidth(c, tamano)
 
-            print("Ajustes finales: ", time.perf_counter() - t_ajustes)
-
         except Exception as e:
             self.tablaClasificacion.clear()
             print(f'Error al cargar galeria: {e}')
 
         finally:
-            t0 = time.perf_counter()
             self.tablaClasificacion.setUpdatesEnabled(True)
-            print("REPAINT: ", time.perf_counter() - t0)
-
-            t0 = time.perf_counter()
             dlg.close()
-            print("CERRAR DIALOGO: ", time.perf_counter() - t0)
-            QApplication.processEvents()
-            print("POST EVENTS: ", time.perf_counter() - t0)
-
-            print("Fin carga de galeria:", time.perf_counter() - t1)
-            print("HASH:", t_hash)
-            print("THUMB:", t_thumb)
-            print("WIDGET:", t_widget)
-            print("SETCELL:", t_setcell)
 
     def _seleccionar_grupo(self, fecha, estado):
         tabla = self.tablaClasificacion
@@ -1260,13 +1205,14 @@ class Bridge(QObject):
 
             r += 1
 
-    def obtener_fecha_json(self, ruta_archivo, data):
-        hash_archivo = calcular_hash_md5(ruta_archivo)
+    def obtener_fecha_json(self, ruta_archivo):
+        item = self.indice_ruta.get(os.path.normpath(ruta_archivo))
 
-        for item in data["pendientes"]["items"]:
-            if item["hash"] == hash_archivo:
-                return item.get("fecha_completa", "0000-00-00")
+        if item:
+            return item.get("fecha_completa", "0000-00-00")
 
+        return "0000-00-00"
+    
     def obtener_ruta_miniatura(self, hash):
         ruta = get_ruta_miniaturas() / f"{hash}.jpg"
         return ruta if ruta.exists() else None
@@ -1335,8 +1281,9 @@ class Bridge(QObject):
         return True
 
     def cargar_pendientes(self):
-        data = cargar_json_unico(self.ruta_json)
-        total = len(data["pendientes"]["items"])
+        self.recargar_datos()
+
+        total = len(self.data["pendientes"]["items"])
         self.pendientes_actualizados.emit(total)
 
     def actualizar_contador_pendientes(self):
@@ -1369,3 +1316,30 @@ class Bridge(QObject):
         )
         return respuesta
     
+    def crear_indices(self):
+        """
+        Crea índices en memoria para búsquedas rápidas.
+        """
+        self.indice_ruta = {}
+        self.indice_hash = {}
+        self.hashes_eliminados = set()
+
+        for seccion in ("clasificados", "pendientes"):
+            for item in self.data[seccion]["items"]:
+                ruta = os.path.normpath(item["ruta"])
+                hash_archivo = item["hash"]
+
+                self.indice_ruta[ruta] = item
+                self.indice_hash[hash_archivo] = item
+
+        for item in self.data["eliminados"]["items"]:
+            self.hashes_eliminados.add(item["hash"])
+
+    def recargar_datos(self):
+        self.data = cargar_json_unico(ruta_json_unico())
+
+        self.crear_indices()
+
+        self.historial = self.data["clasificados"]["items"]
+        self.eliminado = self.data["eliminados"]["items"]
+        self.pendientes = self.data["pendientes"]["items"]

@@ -340,7 +340,6 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
     # Clasificación final
     # Caso A -> sin GPS -> va a pendientes
     if ubicacion == "(Sin_GPS)":
-        #if archivo.lower().endswith(extensiones_validas("video")):
         obtener_o_crear_miniaturas(ruta_local, hash_archivo)
 
         shutil.copy2(ruta_local, ruta_destino)
@@ -360,7 +359,6 @@ def clasificar_archivo(archivo, ruta_archivos, data, usar_movil):
         return ("pendiente", f'❓ {archivo} - Pendiente de clasificar\n')
     
     # Caso B -> con GPS -> va a clasificados
-    #if archivo.lower().endswith(extensiones_validas("video")):
     obtener_o_crear_miniaturas(ruta_local, hash_archivo)
 
     shutil.copy2(ruta_local, ruta_destino)
@@ -496,17 +494,7 @@ def obtener_o_crear_miniaturas(ruta_origen, hash_archivo):
     except Exception as e:
         print(f"Error generando miniatura: {e}")
         return False
-'''    
-def normalizar_texto(t):
-    if not t or not isinstance(t, str):
-        return ""
-    
-    t = unicodedata.normalize("NFKD", t)
-    t = "".join(c for c in t if not unicodedata.combining(c))
-    # Quedarnos solamente con números, letras y espacios.
-    t = re.sub(r'[^a-zA-Z0-9 ]', '', t)
-    return t
-'''
+
 def buscar_ubicacion_cache(lat_foto, lon_foto):
     '''
     Busca en el JSON si ya existe una ubicación guardada muy carca

@@ -72,6 +72,7 @@ class MapaWindow(QMainWindow):
         self.vp = None
 
         self.ruta_clasificacion = None
+        self.lista_archivos = None
         self.miniaturas = True
 
         # VLC Player
@@ -118,7 +119,8 @@ class MapaWindow(QMainWindow):
             self.set_mapa_habilitado,
             self.contar_pendientes,
         )
-        self.bridge.enviarListaArchivos.connect(self.recibir_archivos_para_clasificacion)
+        self.bridge.enviarRuta.connect(self.recibir_archivos_para_mostrar)
+        self.bridge.enviarListaArchivos.connect(self.recibir_lista_archivos_para_mostrar)
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 
@@ -210,7 +212,7 @@ class MapaWindow(QMainWindow):
         self.ui.show()
 
     def cambiar_vista(self, indice):
-        if self.ruta_clasificacion == None and indice == 1: indice = 0
+        if self.ruta_clasificacion == None and self.lista_archivos == None: indice = 0
         self.chk_value = False
 
         self.stacked.setCurrentIndex(indice)
@@ -227,20 +229,35 @@ class MapaWindow(QMainWindow):
             self.ui.actionDesde_Movil.setEnabled(False)
             self.ui.actionClasificar.setEnabled(False)
             self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
-            self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
+            
+            if self.lista_archivos:
+                self.bridge.cargar_galeria_desde_lista(self.lista_archivos, self.miniaturas, 100)
+
+            elif self.ruta_clasificacion:
+                self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
 
         elif indice == 2:
             self.ui.actionDesde_Movil.setEnabled(False)
             self.ui.actionClasificar.setEnabled(False)
 
-    def recibir_archivos_para_clasificacion(self, ruta):
+    def recibir_archivos_para_mostrar(self, ruta):
         if not ruta:
             return
         self.ruta_clasificacion = ruta
+        self.lista_archivos = None
+
+    def recibir_lista_archivos_para_mostrar(self, lista):
+        if not lista:
+            return
+        self.lista_archivos = lista
+        self.ruta_clasificacion = None
 
     def setMiniatura(self, valor, tamano=100):
         self.miniaturas = valor
-        self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, tamano)
+        if self.lista_archivos:
+            self.bridge.cargar_galeria_desde_lista(self.lista_archivos, self.miniaturas, tamano)
+        else:
+            self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, tamano)
 
     def seleccion_multiple_clasificacion(self):
         nueva_visibilidad = False
