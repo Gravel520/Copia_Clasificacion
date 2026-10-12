@@ -5,6 +5,10 @@ Script en PYthon.
 import requests
 import time
 
+from config_paths import PROVINCIAS_ES, PROVINCIAS_FR, PROVINCIAS_PT
+
+from utils.utils_cache import normalizar_texto
+
 # ============================================================
 #  NORMALIZACIÓN DE NOMBRES
 # ============================================================
@@ -145,6 +149,86 @@ def extraer_provincia_geocode_ciudad(ciudad, pais):
         return None
     
     return normalizar_provincia(provincia)
+
+# ============================================================
+#  FUNCION GLOBAL DE AUTOCOMPLETADO
+# ============================================================
+def completar_datos_registro(info):
+    pais = info.get("pais", "")
+
+    if pais == "Espana":
+        mapa_provincias = PROVINCIAS_ES
+    elif pais == "Francia":
+        mapa_provincias = PROVINCIAS_FR
+    elif pais == "Portugal":
+        mapa_provincias = PROVINCIAS_PT
+    else:
+        return False
+    
+    extractor = NominatimExtractor(mapa_provincias)
+
+    ciudad = info.get("ciudad", "")
+    provincia = info.get("provincia", "")
+    postal = info.get("postal", "")
+
+    cambios = False
+
+    # ----------------------------
+    # Completar ciudad/provincia
+    # ----------------------------
+    if not ciudad or not provincia:
+        lat = info.get["lat"]
+        lon = info.get["lon"]
+
+        if lat is not None and lon is not None:
+
+            try:
+                url = f"https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&addressdetails=1"
+                r = requests.get(url, headers={"User-Agent": "Copia_Clasificacion"})
+                datos = r.json()
+                # Ciudad: intentar varios campos habituales
+                address = datos.get("address", {}) if isinstance(info, dict) else {}
+                ciudad = address.get("city") or address.get("town") or address.get("village") or address.get("municipality") or ""
+
+                _, provincia_geo = extractor.extract(datos)
+
+                if not provincia:
+                    provincia = provincia_geo
+
+            except Exception as e:
+                print(f"[ERROR] Nominatim: {e}")
+
+    ciudad = normalizar_texto(ciudad)
+    provincia = normalizar_texto(provincia)
+
+    # ----------------------------
+    # Código postal
+    # ----------------------------
+    if (not postal and ciudad and provincia):
+        try:
+            cp = DistritoPostal.buscar_cp_directo(ciudad, provincia, pais)
+            if cp:
+                postal = cp
+
+        except Exception as e:
+            print(f"[ERROR] DistritoPostal: {e}")
+
+    # ----------------------------
+    # Guardar
+    # ----------------------------
+    if ciudad and ciudad != info.get("ciudad", ""):
+        info["ciudad"] = ciudad
+        cambios = True
+
+    if provincia and provincia != info.get("provincia", ""):
+        info["provincia"] = provincia
+        cambios = True
+
+    if postal and postal != info.get("postal", ""):
+        info["postal"] = postal
+        cambios = True
+
+    return cambios
 
 import re
 import difflib

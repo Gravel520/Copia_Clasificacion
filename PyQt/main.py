@@ -212,7 +212,7 @@ class MapaWindow(QMainWindow):
         self.ui.show()
 
     def cambiar_vista(self, indice):
-        if self.ruta_clasificacion == None and self.lista_archivos == None: indice = 0
+        if self.ruta_clasificacion == None and self.lista_archivos == None and indice == 1: indice = 0
         self.chk_value = False
 
         self.stacked.setCurrentIndex(indice)

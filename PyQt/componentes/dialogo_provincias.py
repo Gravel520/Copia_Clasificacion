@@ -2,22 +2,22 @@
 Script en Python.
 '''
 
-import json
 import requests
 import re
 
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
     QTableWidgetItem, QMessageBox, QLabel, QLineEdit, QAbstractItemView,
-    QApplication
+    QApplication, QProgressDialog
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 
-from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
-from utils.utils_provincias import NominatimExtractor, DistritoPostal
+from utils.utils_cache import cargar_cache, guardar_cache
+from utils.utils_provincias import NominatimExtractor, completar_datos_registro
 from config_paths import PROVINCIAS_ES, PROVINCIAS_FR, PROVINCIAS_PT
 from componentes.controles import DialogoCargando
+from worker.autocompletar_worker import AutocompletarWorker
 
 COLOR_FALTA = QColor(255, 200, 200)
 
@@ -60,7 +60,7 @@ class DialogoEditar(QDialog):
         # Botones
         btn_layout = QHBoxLayout()
 
-        btn_auto = QPushButton("Autocompletar (nominatim)")
+        btn_auto = QPushButton("Autocompletar")
         btn_auto.clicked.connect(self.obtener_postal_nominatim)
         btn_layout.addWidget(btn_auto)
 
@@ -93,7 +93,6 @@ class DialogoEditar(QDialog):
             address = info.get("address", {}) if isinstance(info, dict) else {}
             ciudad = address.get("city") or address.get("town") or address.get("village") or address.get("municipality") or ""
 
-            
             # usar extractor para postal y provincia
             postal, provincia = self.extractor.extract(info)
 
@@ -107,25 +106,12 @@ class DialogoEditar(QDialog):
         dlg = DialogoCargando("Completando información...", self)
         dlg.show()
         QApplication.processEvents()
+
+        completar_datos_registro(self.datos)
+
+        self.input_postal.setText(self.datos.get("postal", ""))
+        self.input_provincia.setText(self.datos.get("provincia", ""))
        
-        ciudad = self.datos.get("ciudad", "")
-        provincia = self.datos.get("provincia", "")
-
-        if ciudad == "" or provincia == "":
-            ciudad, provincia =self.extraer_ciudad_provincia()        
-
-        ciudad = normalizar_texto(ciudad)
-        provincia = normalizar_texto(provincia)
-        postal = DistritoPostal.buscar_cp_directo(ciudad, provincia, self.pais)
-
-        if postal:
-            self.input_postal.setText(postal)
-            self.datos["postal"] = postal
-
-        if provincia:
-            self.input_provincia.setText(normalizar_texto(provincia))
-            self.datos["provincia"] = provincia
-
         dlg.close()
 
     def extraer_postal_display_name(self, display_name):
@@ -157,10 +143,14 @@ class DialogoEditar(QDialog):
 # ---------------------------------------------------------
 # Diálogo principal: lista y estado
 # ---------------------------------------------------------
+
+from componentes.dialogo_provincias import DialogoEditar
+
 class DialogoProvincias(QDialog):
     def __init__(self, ruta_json, parent=None):
         super().__init__(parent)
         self.ruta_json = ruta_json
+        self.worker = None
 
         self.setWindowTitle("Comprobación de Provincias")
         self.setMinimumWidth(400)
@@ -187,6 +177,8 @@ class DialogoProvincias(QDialog):
         # Doble click -> editar
         self.tabla.itemDoubleClicked.connect(self.editar_registro)
 
+        self.tabla.setSortingEnabled(True)
+
         layout.addWidget(self.tabla)
 
         # Botón refrescar
@@ -202,7 +194,34 @@ class DialogoProvincias(QDialog):
     # ---------------------------------------------------------
     def cargar_datos(self):
         data = cargar_cache()
+        total = len(data)
 
+        self.progress = QProgressDialog(
+            "Comprobando registros...",
+            "Cancelar",
+            0,
+            total,
+            self
+        )
+
+        self.progress.setWindowTitle("Autocompletado")
+        self.progress.setMinimumDuration(0)
+        self.progress.setWindowModality(Qt.WindowModal)
+
+        self.worker = AutocompletarWorker()
+        self.worker.progreso.connect(self.progress.setValue)
+        self.worker.mensaje.connect(self.progress.setLabelText)
+        self.worker.terminado.connect(self.autocompletado_finalizado)
+        self.progress.canceled.connect(self.worker.cancelar)
+
+        self.worker.start()
+
+    def autocompletado_finalizado(self, data):
+        self.progress.close()
+        self.rellenar_tabla(data)
+
+    def rellenar_tabla(self, data):
+        self.tabla.clearContents()
         self.tabla.setRowCount(len(data))
 
         for fila, (clave, info) in enumerate(data.items()):
@@ -224,7 +243,7 @@ class DialogoProvincias(QDialog):
             self.tabla.setItem(fila, 5, QTableWidgetItem(estado))
 
             # Cambiar el color según el estado
-            if estado == "Falta información":                
+            if estado == "Falta información":
                 for col in range(self.tabla.columnCount()):
                     self.tabla.item(fila, col).setBackground(COLOR_FALTA)
 
