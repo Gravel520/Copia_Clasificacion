@@ -19,7 +19,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QUrl, QSize, Qt, QThread
 from PyQt5 import uic
-from PyQt5.QtGui import QPixmap, QTransform
+from PyQt5.QtGui import QPixmap, QTransform, QIcon
 
 from PIL import Image
 
@@ -74,6 +74,7 @@ class MapaWindow(QMainWindow):
         self.ruta_clasificacion = None
         self.lista_archivos = None
         self.miniaturas = True
+        self.tamano_grande = False
 
         # VLC Player
         self.vlc_instance = vlc.Instance()
@@ -252,12 +253,30 @@ class MapaWindow(QMainWindow):
         self.lista_archivos = lista
         self.ruta_clasificacion = None
 
-    def setMiniatura(self, valor, tamano=100):
-        self.miniaturas = valor
+    def cambiarTamañoMiniaturas(self):
+        self.tamano_grande = not self.tamano_grande
+
+        tamano = 180 if self.tamano_grande else 100
+
+        self.btnMiniaturas.setIcon(
+            QIcon("./PyQt/assets/vista_grande.png")
+            if self.tamano_grande
+            else QIcon("./PyQt/assets/vista_pequena.png")
+        )
+        self.btnMiniaturas.setToolTip(
+            "Vista Grande" if self.tamano_grande else "Vista Pequena"
+        )
+
         if self.lista_archivos:
-            self.bridge.cargar_galeria_desde_lista(self.lista_archivos, self.miniaturas, tamano)
+            self.bridge.cargar_galeria_desde_lista(self.lista_archivos, True, tamano)
         else:
-            self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, tamano)
+            self.bridge.cargar_galeria(self.ruta_clasificacion, True, tamano)
+
+    def setLista(self):
+        if self.lista_archivos:
+            self.bridge.cargar_galeria_desde_lista(self.lista_archivos, False, 180)
+        else:
+            self.bridge.cargar_galeria(self.ruta_clasificacion, False, 180)
 
     def seleccion_multiple_clasificacion(self):
         nueva_visibilidad = False
@@ -930,8 +949,8 @@ class MapaWindow(QMainWindow):
         # ------------------------------
         # SEÑALES DE VISTA CLASIFICACION
         # ------------------------------
-        self.btnMiniaturas.clicked.connect(lambda: self.setMiniatura(True))
-        self.btnLista.clicked.connect(lambda: self.setMiniatura(False, 180))
+        self.btnMiniaturas.clicked.connect(lambda: self.cambiarTamañoMiniaturas())
+        self.btnLista.clicked.connect(lambda: self.setLista())
 
         self.tableClasificacion.cellDoubleClicked.connect(self.ver_video)
 
@@ -942,7 +961,7 @@ class MapaWindow(QMainWindow):
         
         self.btnSeleccionarClasificacion.clicked.connect(self.seleccion_multiple_clasificacion)
 
-        self.btnMiniaturas.min_grande.connect(lambda: self.setMiniatura(True, 180))
+        #self.btnMiniaturas.min_grande.connect(lambda: self.setMiniatura(True, 180))
 
 
 def main():

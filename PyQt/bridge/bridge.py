@@ -51,7 +51,6 @@ class WidgetGaleria(QWidget):
 
         self.ruta = ruta
         self.hash = hash_archivo
-        self.miniatura = miniatura
         self.nombre = os.path.basename(ruta)
 
         layout = QVBoxLayout(self) if miniatura else QHBoxLayout(self)
@@ -64,24 +63,25 @@ class WidgetGaleria(QWidget):
         layout.addWidget(self.chk, alignment=Qt.AlignRight)
 
         # === Miniatura ===
-        lbl_thumb = QLabel()
-        lbl_thumb.setAlignment(Qt.AlignCenter)
+        if miniatura:
+            lbl_thumb = QLabel()
+            lbl_thumb.setAlignment(Qt.AlignCenter)
 
-        fichero = ruta_thumb if ruta_thumb else ruta
+            fichero = ruta_thumb if ruta_thumb else ruta
 
-        reader = QImageReader(fichero)
+            reader = QImageReader(fichero)
 
-        # Aplica automáticamente la orientación EXIF
-        reader.setAutoTransform(True)
+            # Aplica automáticamente la orientación EXIF
+            reader.setAutoTransform(True)
 
-        # Carga ya escalada
-        reader.setScaledSize(QSize(tamano, tamano))
-        pix = QPixmap.fromImage(reader.read())
+            # Carga ya escalada
+            reader.setScaledSize(QSize(tamano, tamano))
+            pix = QPixmap.fromImage(reader.read())
 
-        lbl_thumb.setPixmap(pix)
-        lbl_thumb.setAlignment(Qt.AlignCenter)
+            lbl_thumb.setPixmap(pix)
+            lbl_thumb.setAlignment(Qt.AlignCenter)
 
-        layout.addWidget(lbl_thumb)
+            layout.addWidget(lbl_thumb)
 
         # === Nombre ===
         lbl_nombre = QLabel(self.nombre)

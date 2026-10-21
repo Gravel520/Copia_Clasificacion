@@ -24,7 +24,7 @@
     <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="pagePrincipal">
        <widget class="QWidget" name="QWidget_foto" native="true">
@@ -256,7 +256,7 @@ border-radius: 0px;</string>
         </property>
         <property name="icon">
          <iconset>
-          <normaloff>assets/miniaturas.png</normaloff>assets/miniaturas.png</iconset>
+          <normaloff>../assets/vista_pequena.png</normaloff>../assets/vista_pequena.png</iconset>
         </property>
         <property name="iconSize">
          <size>
