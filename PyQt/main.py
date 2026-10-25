@@ -65,7 +65,7 @@ class MapaWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.ui = uic.loadUi(get_ruta_ui(), self)
+        self = uic.loadUi(get_ruta_ui(), self)
         self.showMaximized()
 
         # --- 1. CONFIGURACIÓN DE TAMAÑOS BASE PARA EL ESCALADO ---
@@ -228,12 +228,12 @@ class MapaWindow(QMainWindow):
         scale_x = current_width / self.base_width
         scale_y = current_height / self.base_height
 
-        # Verificamos si self.ui ya fue cargado para evitar errores al iniciar
+        # Verificamos si self ya fue cargado para evitar errores al iniciar
         if not hasattr(self, "ui"):
             return
 
         # --- PÁGINA PRINCIPAL ---
-        if hasattr(self.ui, "QWidget_foto"):
+        if hasattr(self, "QWidget_foto"):
             self.QWidget_foto.setGeometry(
                 int(0 * scale_x),
                 int(21 * scale_y),
@@ -241,14 +241,14 @@ class MapaWindow(QMainWindow):
                 int(631 * scale_y),
             )
 
-        if hasattr(self.ui, "QWidget_visor_foto"):
+        if hasattr(self, "QWidget_visor_foto"):
             self.QWidget_visor_foto.setGeometry(
                 int(990 * scale_x),
                 int(331 * scale_y),
                 int(350 * scale_x),
                 int(321 * scale_y),
             )
-        if hasattr(self.ui, "labelVisor"):
+        if hasattr(self, "labelVisor"):
             self.labelVisor.setGeometry(
                 int(5 * scale_x),
                 int(5 * scale_y),
@@ -259,7 +259,7 @@ class MapaWindow(QMainWindow):
             if hasattr(self, "mpv_container"):
                 self.mpv_container.setGeometry(self.labelVisor.rect())
 
-        if hasattr(self.ui, "button_generar_mapa"):
+        if hasattr(self, "button_generar_mapa"):
             self.button_generar_mapa.setGeometry(
                 int(1040 * scale_x),
                 int(-1 * scale_y),
@@ -267,23 +267,23 @@ class MapaWindow(QMainWindow):
                 int(20 * scale_y),
             )
 
-        if hasattr(self.ui, "QWidget_listado"):
+        if hasattr(self, "QWidget_listado"):
             self.QWidget_listado.setGeometry(
                 int(990 * scale_x),
                 int(21 * scale_y),
                 int(351 * scale_x),
                 int(300 * scale_y),
             )
-        if hasattr(self.ui, "tableWidget"):
+        if hasattr(self, "tableWidget"):
             self.tableWidget.setGeometry(
                 int(0 * scale_x),
                 int(49 * scale_y),
                 int(351 * scale_x),
                 int(251 * scale_y),
             )
-        if hasattr(self.ui, "labelFechaListado"):  # por seguridad
+        if hasattr(self, "labelFechaListado"):  # por seguridad
             pass
-        if hasattr(self.ui, "labelFechaListado"):
+        if hasattr(self, "labelFechaListado"):
             self.labelFechaListado.setGeometry(
                 int(0 * scale_x),
                 int(0 * scale_y),
@@ -292,14 +292,14 @@ class MapaWindow(QMainWindow):
             )
 
         # --- PÁGINA DE CLASIFICACIÓN ---
-        if hasattr(self.ui, "tableClasificacion"):
+        if hasattr(self, "tableClasificacion"):
             self.tableClasificacion.setGeometry(
                 int(0 * scale_x),
                 int(50 * scale_y),
                 int(1341 * scale_x),
                 int(581 * scale_y),
             )
-        if hasattr(self.ui, "labelFechaListadoClasificacion"):
+        if hasattr(self, "labelFechaListadoClasificacion"):
             self.labelFechaListadoClasificacion.setGeometry(
                 int(0 * scale_x),
                 int(0 * scale_y),
@@ -576,7 +576,7 @@ class MapaWindow(QMainWindow):
         super().resizeEvent(a0)
 
         # 2. Actualizar el contenedor MPV solo si ya existe
-        if hasattr(self, "mpv_container") and hasattr(self.ui, "labelVisor"):
+        if hasattr(self, "mpv_container") and hasattr(self, "labelVisor"):
             self.mpv_container.setGeometry(self.labelVisor.rect())
 
     # ============================================================
