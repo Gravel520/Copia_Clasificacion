@@ -215,98 +215,6 @@ class MapaWindow(QMainWindow):
         self.signs_controls()
         self.iniciar_autodiagnostico_programado()
 
-    # --- 2. AÑADIR EL MÉTODO RESIZEEVENT PARA ESCALAR LOS ELEMENTOS ---
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-
-        current_width = self.width()
-        current_height = self.height()
-
-        if self.base_width == 0 or self.base_height == 0:
-            return
-
-        scale_x = current_width / self.base_width
-        scale_y = current_height / self.base_height
-
-        # Verificamos si self ya fue cargado para evitar errores al iniciar
-        if not hasattr(self, "ui"):
-            return
-
-        # --- PÁGINA PRINCIPAL ---
-        if hasattr(self, "QWidget_foto"):
-            self.QWidget_foto.setGeometry(
-                int(0 * scale_x),
-                int(21 * scale_y),
-                int(980 * scale_x),
-                int(631 * scale_y),
-            )
-
-        if hasattr(self, "QWidget_visor_foto"):
-            self.QWidget_visor_foto.setGeometry(
-                int(990 * scale_x),
-                int(331 * scale_y),
-                int(350 * scale_x),
-                int(321 * scale_y),
-            )
-        if hasattr(self, "labelVisor"):
-            self.labelVisor.setGeometry(
-                int(5 * scale_x),
-                int(5 * scale_y),
-                int(340 * scale_x),
-                int(311 * scale_y),
-            )
-            # Actualizamos también el contenedor MPV si existe
-            if hasattr(self, "mpv_container"):
-                self.mpv_container.setGeometry(self.labelVisor.rect())
-
-        if hasattr(self, "button_generar_mapa"):
-            self.button_generar_mapa.setGeometry(
-                int(1040 * scale_x),
-                int(-1 * scale_y),
-                int(101 * scale_x),
-                int(20 * scale_y),
-            )
-
-        if hasattr(self, "QWidget_listado"):
-            self.QWidget_listado.setGeometry(
-                int(990 * scale_x),
-                int(21 * scale_y),
-                int(351 * scale_x),
-                int(300 * scale_y),
-            )
-        if hasattr(self, "tableWidget"):
-            self.tableWidget.setGeometry(
-                int(0 * scale_x),
-                int(49 * scale_y),
-                int(351 * scale_x),
-                int(251 * scale_y),
-            )
-        if hasattr(self, "labelFechaListado"):  # por seguridad
-            pass
-        if hasattr(self, "labelFechaListado"):
-            self.labelFechaListado.setGeometry(
-                int(0 * scale_x),
-                int(0 * scale_y),
-                int(351 * scale_x),
-                int(51 * scale_y),
-            )
-
-        # --- PÁGINA DE CLASIFICACIÓN ---
-        if hasattr(self, "tableClasificacion"):
-            self.tableClasificacion.setGeometry(
-                int(0 * scale_x),
-                int(50 * scale_y),
-                int(1341 * scale_x),
-                int(581 * scale_y),
-            )
-        if hasattr(self, "labelFechaListadoClasificacion"):
-            self.labelFechaListadoClasificacion.setGeometry(
-                int(0 * scale_x),
-                int(0 * scale_y),
-                int(1341 * scale_x),
-                int(51 * scale_y),
-            )
-
 
     def cambiar_vista(self, indice):
         if self.ruta_clasificacion == None and self.lista_archivos == None and indice == 1: indice = 0
@@ -563,21 +471,102 @@ class MapaWindow(QMainWindow):
         self.vp.show()
 
     def resizeEvent(self, a0):
-        # 1. Ajustar columnas de la tabla solo si ya está inicializada
+        super().resizeEvent(a0)
+
+        # Asegurarnos de que los tamaños base existan
+        if not hasattr(self, "base_width") or not hasattr(self, "base_height"):
+            return
+
+        current_width = self.width()
+        current_height = self.height()
+
+        if self.base_width == 0 or self.base_height == 0:
+            return
+
+        # Factores de escala respecto a tu diseño original (1382x700)
+        scale_x = current_width / self.base_width
+        scale_y = current_height / self.base_height
+
+        # --- 1. PÁGINA PRINCIPAL ---
+        if hasattr(self, "QWidget_foto"):
+            self.QWidget_foto.setGeometry(
+                int(0 * scale_x),
+                int(21 * scale_y),
+                int(980 * scale_x),
+                int(631 * scale_y),
+            )
+
+        if hasattr(self, "QWidget_visor_foto"):
+            self.QWidget_visor_foto.setGeometry(
+                int(990 * scale_x),
+                int(331 * scale_y),
+                int(350 * scale_x),
+                int(321 * scale_y),
+            )
+            if hasattr(self, "labelVisor"):
+                self.labelVisor.setGeometry(
+                    int(5 * scale_x),
+                    int(5 * scale_y),
+                    int(340 * scale_x),
+                    int(311 * scale_y),
+                )
+            if hasattr(self, "mpv_container"):
+                self.mpv_container.setGeometry(self.labelVisor.rect())
+
+        if hasattr(self, "button_generar_mapa"):
+            self.button_generar_mapa.setGeometry(
+                int(1040 * scale_x),
+                int(-1 * scale_y),
+                int(101 * scale_x),
+                int(20 * scale_y),
+            )
+
+        if hasattr(self, "QWidget_listado"):
+            self.QWidget_listado.setGeometry(
+                int(990 * scale_x),
+                int(21 * scale_y),
+                int(351 * scale_x),
+                int(300 * scale_y),
+            )
+            if hasattr(self, "tableWidget"):
+                self.tableWidget.setGeometry(
+                    int(0 * scale_x),
+                    int(49 * scale_y),
+                    int(351 * scale_x),
+                    int(251 * scale_y),
+                )
+            if hasattr(self, "labelFechaListado"):
+                self.labelFechaListado.setGeometry(
+                    int(0 * scale_x),
+                    int(0 * scale_y),
+                    int(351 * scale_x),
+                    int(51 * scale_y),
+                )
+
+        # --- 2. PÁGINA DE CLASIFICACIÓN Y TABLA DINÁMICA ---
         if hasattr(self, "tableClasificacion"):
+            self.tableClasificacion.setGeometry(
+                int(0 * scale_x),
+                int(50 * scale_y),
+                int(1341 * scale_x),
+                int(581 * scale_y),
+            )
+
+            # Ajuste dinámico de columnas según el ancho actual de la tabla
             ancho = self.tableClasificacion.width()
             col_width = 180
             num_cols = max(1, ancho // col_width)
-
             self.tableClasificacion.setColumnCount(num_cols)
             for c in range(num_cols):
                 self.tableClasificacion.setColumnWidth(c, col_width)
 
-        super().resizeEvent(a0)
-
-        # 2. Actualizar el contenedor MPV solo si ya existe
-        if hasattr(self, "mpv_container") and hasattr(self, "labelVisor"):
-            self.mpv_container.setGeometry(self.labelVisor.rect())
+        if hasattr(self, "labelFechaListadoClasificacion"):
+            self.labelFechaListadoClasificacion.setGeometry(
+                int(0 * scale_x),
+                int(0 * scale_y),
+                int(1341 * scale_x),
+                int(51 * scale_y),
+            )
 
     # ============================================================
     # COLUMNA SELECCIÓN
