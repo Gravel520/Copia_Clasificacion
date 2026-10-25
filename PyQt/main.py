@@ -65,8 +65,14 @@ class MapaWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.ui = uic.loadUi(get_ruta_ui())
-        self.ui.showMaximized()
+        self.ui = uic.loadUi(get_ruta_ui(), self)
+        self.showMaximized()
+
+        # --- 1. CONFIGURACIÓN DE TAMAÑOS BASE PARA EL ESCALADO ---
+        self.base_width = 1382
+        self.base_height = 700
+        self.setMinimumSize(800, 600)
+        self.setMaximumSize(16777215, 16777215)
 
         # Referenciar al VideoPlayer abierto
         self.vp = None
@@ -81,8 +87,8 @@ class MapaWindow(QMainWindow):
         self.vlc_player = self.vlc_instance.media_player_new()
 
         # Crear un contenedor para el widget de MPV
-        self.mpv_container = QWidget(self.ui.labelVisor)
-        self.mpv_container.setGeometry(self.ui.labelVisor.rect())
+        self.mpv_container = QWidget(self.labelVisor)
+        self.mpv_container.setGeometry(self.labelVisor.rect())
         self.mpv_container.hide()
 
         # Crear instancia MPV embebida en el labelVisor
@@ -107,15 +113,15 @@ class MapaWindow(QMainWindow):
         # Canal web
         self.channel = QWebChannel()
         self.bridge = Bridge(
-            self.ui.tableWidget,
-            self.ui.tableClasificacion,
-            self.ui.labelFechaListado,
-            self.ui.labelArchivosSeleccionadosClasificacion,
-            self.ui.labelMapaActualizado,
-            self.ui.button_generar_mapa,
-            self.ui.button_sel_multiple,
+            self.tableWidget,
+            self.tableClasificacion,
+            self.labelFechaListado,
+            self.labelArchivosSeleccionadosClasificacion,
+            self.labelMapaActualizado,
+            self.button_generar_mapa,
+            self.button_sel_multiple,
             self.view,
-            self.ui.labelVisor,
+            self.labelVisor,
             ruta_json_unico(),
             self.set_mapa_habilitado,
             self.contar_pendientes,
@@ -126,7 +132,7 @@ class MapaWindow(QMainWindow):
         self.view.page().setWebChannel(self.channel)
 
         # No poder modificar el contenido de una celda de la tabla
-        self.ui.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tableWidget.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         # Inicializar el config.ini.
         self.iniciar_config_ini()
@@ -141,12 +147,12 @@ class MapaWindow(QMainWindow):
         self.bridge.pendientes_actualizados.connect(self.actualizar_menu_pendientes)
 
         # Insertar visor web en el layout
-        layout = QVBoxLayout(self.ui.QWidget_foto)
+        layout = QVBoxLayout(self.QWidget_foto)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.addWidget(self.view)
 
         # Inicializar tabla de clasificación.
-        self.tableClasificacion = self.ui.tableClasificacion
+        self.tableClasificacion = self.tableClasificacion
         
         self.tableClasificacion.setIconSize(QSize(150, 150))
         self.tableClasificacion.setShowGrid(False)
@@ -176,16 +182,16 @@ class MapaWindow(QMainWindow):
         # ----------------------------------------
         # CONECTAR WIDGET A LA VISTA CLASIFICACION
         # ----------------------------------------       
-        self.btnMiniaturas = self.ui.button_miniaturas_clasificacion
-        self.btnLista = self.ui.button_lista_clasificacion
+        self.btnMiniaturas = self.button_miniaturas_clasificacion
+        self.btnLista = self.button_lista_clasificacion
 
-        self.btnMoverClasificacion = self.ui.button_mover_clasificacion
-        self.btnCopiarClasificacion = self.ui.button_copiar_clasificacion
-        self.btnCompartirClasificacion = self.ui.button_compartir_clasificacion
-        self.btnBorrarClasificacion = self.ui.button_eliminar_clasificacion
-        self.btnSeleccionarClasificacion = self.ui.button_seleccionar_todos_clasificacion
-        self.labelCarpetaOrigen = self.ui.labelFechaListadoClasificacion
-        self.labelArSelClasificacion = self.ui.labelArchivosSeleccionadosClasificacion
+        self.btnMoverClasificacion = self.button_mover_clasificacion
+        self.btnCopiarClasificacion = self.button_copiar_clasificacion
+        self.btnCompartirClasificacion = self.button_compartir_clasificacion
+        self.btnBorrarClasificacion = self.button_eliminar_clasificacion
+        self.btnSeleccionarClasificacion = self.button_seleccionar_todos_clasificacion
+        self.labelCarpetaOrigen = self.labelFechaListadoClasificacion
+        self.labelArSelClasificacion = self.labelArchivosSeleccionadosClasificacion
 
         self.tableClasificacion.setColumnCount(NUM_COLS)
 
@@ -193,9 +199,9 @@ class MapaWindow(QMainWindow):
             self.tableClasificacion.setColumnWidth(c, 180)
 
         # Acceder al stacked.
-        self.stacked = self.ui.stackedWidget
+        self.stacked = self.stackedWidget
         self.pagina_estadistica = PaginaEstadisticas()
-        layout = QVBoxLayout(self.ui.pageEstadistica)
+        layout = QVBoxLayout(self.pageEstadistica)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.pagina_estadistica)
 
@@ -209,8 +215,98 @@ class MapaWindow(QMainWindow):
         self.signs_controls()
         self.iniciar_autodiagnostico_programado()
 
-    def show(self):
-        self.ui.show()
+    # --- 2. AÑADIR EL MÉTODO RESIZEEVENT PARA ESCALAR LOS ELEMENTOS ---
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+
+        current_width = self.width()
+        current_height = self.height()
+
+        if self.base_width == 0 or self.base_height == 0:
+            return
+
+        scale_x = current_width / self.base_width
+        scale_y = current_height / self.base_height
+
+        # Verificamos si self.ui ya fue cargado para evitar errores al iniciar
+        if not hasattr(self, "ui"):
+            return
+
+        # --- PÁGINA PRINCIPAL ---
+        if hasattr(self.ui, "QWidget_foto"):
+            self.QWidget_foto.setGeometry(
+                int(0 * scale_x),
+                int(21 * scale_y),
+                int(980 * scale_x),
+                int(631 * scale_y),
+            )
+
+        if hasattr(self.ui, "QWidget_visor_foto"):
+            self.QWidget_visor_foto.setGeometry(
+                int(990 * scale_x),
+                int(331 * scale_y),
+                int(350 * scale_x),
+                int(321 * scale_y),
+            )
+        if hasattr(self.ui, "labelVisor"):
+            self.labelVisor.setGeometry(
+                int(5 * scale_x),
+                int(5 * scale_y),
+                int(340 * scale_x),
+                int(311 * scale_y),
+            )
+            # Actualizamos también el contenedor MPV si existe
+            if hasattr(self, "mpv_container"):
+                self.mpv_container.setGeometry(self.labelVisor.rect())
+
+        if hasattr(self.ui, "button_generar_mapa"):
+            self.button_generar_mapa.setGeometry(
+                int(1040 * scale_x),
+                int(-1 * scale_y),
+                int(101 * scale_x),
+                int(20 * scale_y),
+            )
+
+        if hasattr(self.ui, "QWidget_listado"):
+            self.QWidget_listado.setGeometry(
+                int(990 * scale_x),
+                int(21 * scale_y),
+                int(351 * scale_x),
+                int(300 * scale_y),
+            )
+        if hasattr(self.ui, "tableWidget"):
+            self.tableWidget.setGeometry(
+                int(0 * scale_x),
+                int(49 * scale_y),
+                int(351 * scale_x),
+                int(251 * scale_y),
+            )
+        if hasattr(self.ui, "labelFechaListado"):  # por seguridad
+            pass
+        if hasattr(self.ui, "labelFechaListado"):
+            self.labelFechaListado.setGeometry(
+                int(0 * scale_x),
+                int(0 * scale_y),
+                int(351 * scale_x),
+                int(51 * scale_y),
+            )
+
+        # --- PÁGINA DE CLASIFICACIÓN ---
+        if hasattr(self.ui, "tableClasificacion"):
+            self.tableClasificacion.setGeometry(
+                int(0 * scale_x),
+                int(50 * scale_y),
+                int(1341 * scale_x),
+                int(581 * scale_y),
+            )
+        if hasattr(self.ui, "labelFechaListadoClasificacion"):
+            self.labelFechaListadoClasificacion.setGeometry(
+                int(0 * scale_x),
+                int(0 * scale_y),
+                int(1341 * scale_x),
+                int(51 * scale_y),
+            )
+
 
     def cambiar_vista(self, indice):
         if self.ruta_clasificacion == None and self.lista_archivos == None and indice == 1: indice = 0
@@ -227,9 +323,9 @@ class MapaWindow(QMainWindow):
             self.set_mapa_habilitado(mapa_ok)
 
         elif indice == 1:
-            self.ui.actionDesde_Movil.setEnabled(False)
-            self.ui.actionClasificar.setEnabled(False)
-            self.labelCarpetaOrigen.setText(self.ui.labelFechaListado.text())
+            self.actionDesde_Movil.setEnabled(False)
+            self.actionClasificar.setEnabled(False)
+            self.labelCarpetaOrigen.setText(self.labelFechaListado.text())
             
             if self.lista_archivos:
                 self.bridge.cargar_galeria_desde_lista(self.lista_archivos, self.miniaturas, 100)
@@ -238,8 +334,8 @@ class MapaWindow(QMainWindow):
                 self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
 
         elif indice == 2:
-            self.ui.actionDesde_Movil.setEnabled(False)
-            self.ui.actionClasificar.setEnabled(False)
+            self.actionDesde_Movil.setEnabled(False)
+            self.actionClasificar.setEnabled(False)
 
     def recibir_archivos_para_mostrar(self, ruta):
         if not ruta:
@@ -299,23 +395,23 @@ class MapaWindow(QMainWindow):
         self.view.setEnabled(habilitado)
 
         # Deshabilitar acciones del menú.
-        self.ui.actionDesde_Movil.setEnabled(habilitado)
-        self.ui.actionClasificar.setEnabled(habilitado)
+        self.actionDesde_Movil.setEnabled(habilitado)
+        self.actionClasificar.setEnabled(habilitado)
         # Actualizamos el habilitado de 'Pendientes' por separado.
         self.bridge.cargar_pendientes()
-        self.ui.actionPendientes.setEnabled(habilitado)
+        self.actionPendientes.setEnabled(habilitado)
 
-        self.ui.menuMapa.setEnabled(habilitado)
+        self.menuMapa.setEnabled(habilitado)
 
         if habilitado:
-            self.ui.labelMapaActualizado.setText("Mapa actualizado")
-            self.ui.labelMapaActualizado.setStyleSheet("color: green; font-weight: bold;")        
-            self.ui.button_generar_mapa.setVisible(False)
+            self.labelMapaActualizado.setText("Mapa actualizado")
+            self.labelMapaActualizado.setStyleSheet("color: green; font-weight: bold;")        
+            self.button_generar_mapa.setVisible(False)
             self.mapa_actualizado = True
         else:
-            self.ui.labelMapaActualizado.setText("Mapa desactualizado")
-            self.ui.labelMapaActualizado.setStyleSheet("color: red; font-weight: bold;")        
-            self.ui.button_generar_mapa.setVisible(True)
+            self.labelMapaActualizado.setText("Mapa desactualizado")
+            self.labelMapaActualizado.setStyleSheet("color: red; font-weight: bold;")        
+            self.button_generar_mapa.setVisible(True)
             self.mapa_actualizado = False
 
     # ============================================================
@@ -324,10 +420,10 @@ class MapaWindow(QMainWindow):
     def generar_mapa_manual(self):
         self.mapa_actualizado = True
 
-        self.ui.labelMapaActualizado.setText("Generando mapa...")
-        self.ui.labelMapaActualizado.setStyleSheet("color: orange; font-weight: bold;")
+        self.labelMapaActualizado.setText("Generando mapa...")
+        self.labelMapaActualizado.setStyleSheet("color: orange; font-weight: bold;")
 
-        self.ui.button_generar_mapa.setVisible(False)
+        self.button_generar_mapa.setVisible(False)
 
         self.spinner_fotos = SpinnerOverlay(self.view, "Generando mapa...")
         self.spinner_fotos.show()
@@ -347,15 +443,15 @@ class MapaWindow(QMainWindow):
     def mostrar_foto(self, item=None):
         if isinstance(item, QTableWidgetItem):
             row = item.row()
-            ruta_archivo = self.ui.tableWidget.item(row, 2).text()
+            ruta_archivo = self.tableWidget.item(row, 2).text()
         else:
             if isinstance(item, str):
                 ruta_archivo = item
             else:
-                row = self.ui.tableWidget.currentRow()
+                row = self.tableWidget.currentRow()
                 if row < 0:
                     return
-                ruta_archivo = self.ui.tableWidget.item(row, 2).text()
+                ruta_archivo = self.tableWidget.item(row, 2).text()
 
         if not ruta_archivo:
             return
@@ -402,14 +498,14 @@ class MapaWindow(QMainWindow):
             pixmap = pixmap.transformed(transform)
             
             if not pixmap.isNull():
-                self.ui.labelVisor.setPixmap(pixmap)
-                self.ui.labelVisor.setScaledContents(True)
+                self.labelVisor.setPixmap(pixmap)
+                self.labelVisor.setScaledContents(True)
         except:
             pass
 
     def mostrar_video(self, ruta_archivo):
         # Limpiar imagen previa.
-        self.ui.labelVisor.clear()
+        self.labelVisor.clear()
         self.mpv_container.show()
 
         @self.mpv_player.property_observer('time-pos')
@@ -423,8 +519,8 @@ class MapaWindow(QMainWindow):
 
     def ver_video(self, row, column):
         if self.bridge.vista_actual == 0: # Tabla Principal
-            ruta_archivo = self.ui.tableWidget.item(row, 2).text()
-            datos = self.ui.labelFechaListado.text()
+            ruta_archivo = self.tableWidget.item(row, 2).text()
+            datos = self.labelFechaListado.text()
 
         elif self.bridge.vista_actual == 1: # Tabla Clasificación
             widget = self.tableClasificacion.cellWidget(row, column)
@@ -467,23 +563,28 @@ class MapaWindow(QMainWindow):
         self.vp.show()
 
     def resizeEvent(self, a0):
-        ancho = self.tableClasificacion.width()
-        col_width = 180
-        num_cols = max(1, ancho // col_width)
+        # 1. Ajustar columnas de la tabla solo si ya está inicializada
+        if hasattr(self, "tableClasificacion"):
+            ancho = self.tableClasificacion.width()
+            col_width = 180
+            num_cols = max(1, ancho // col_width)
 
-        self.tableClasificacion.setColumnCount(num_cols)
-        for c in range(num_cols):
-            self.tableClasificacion.setColumnWidth(c, col_width)
+            self.tableClasificacion.setColumnCount(num_cols)
+            for c in range(num_cols):
+                self.tableClasificacion.setColumnWidth(c, col_width)
 
         super().resizeEvent(a0)
-        self.mpv_container.setGeometry(self.ui.labelVisor.rect())
+
+        # 2. Actualizar el contenedor MPV solo si ya existe
+        if hasattr(self, "mpv_container") and hasattr(self.ui, "labelVisor"):
+            self.mpv_container.setGeometry(self.labelVisor.rect())
 
     # ============================================================
     # COLUMNA SELECCIÓN
     # ============================================================
     def columna_seleccion(self):
         ARCHIVOS_SEL.clear()
-        table = self.ui.tableWidget
+        table = self.tableWidget
         columna = 0
         columna_oculta = table.isColumnHidden(columna)
         num_filas = table.rowCount()
@@ -614,10 +715,10 @@ class MapaWindow(QMainWindow):
         # Limpiamos los datos de la etiqueta de de los datos del listado,
         #   la tabla, y el archivo que se ve en el visor de archivos, antes
         #   de cambiar de mapa.
-        self.ui.labelFechaListado.setText("")
-        self.ui.tableWidget.setRowCount(0)
+        self.labelFechaListado.setText("")
+        self.tableWidget.setRowCount(0)
         # Limpiar imagen previa.
-        self.ui.labelVisor.clear()
+        self.labelVisor.clear()
         self.mpv_container.show()
 
     def modificar_ubicacion(self):
@@ -772,8 +873,8 @@ class MapaWindow(QMainWindow):
     # MENÚ PENDIENTES
     # ============================================================
     def actualizar_menu_pendientes(self, total):
-        self.ui.actionPendientes.setText(f'Pendientes ({total})')
-        self.ui.actionPendientes.setEnabled(total > 0)
+        self.actionPendientes.setText(f'Pendientes ({total})')
+        self.actionPendientes.setEnabled(total > 0)
 
     # ============================================================
     # CONFIGURACIÓN
@@ -897,52 +998,52 @@ class MapaWindow(QMainWindow):
     # CONEXIONES DE SEÑALES
     # ============================================================
     def signs_controls(self):
-        self.ui.tableWidget.itemClicked.connect(self.mostrar_foto)
-        self.ui.tableWidget.currentItemChanged.connect(self.mostrar_foto)
-        self.ui.tableWidget.cellDoubleClicked.connect(self.ver_video)
+        self.tableWidget.itemClicked.connect(self.mostrar_foto)
+        self.tableWidget.currentItemChanged.connect(self.mostrar_foto)
+        self.tableWidget.cellDoubleClicked.connect(self.ver_video)
 
-        self.ui.button_sel_multiple.clicked.connect(self.columna_seleccion)
+        self.button_sel_multiple.clicked.connect(self.columna_seleccion)
 
-        self.ui.actionDesde_Movil.triggered.connect(self.select_movil)
+        self.actionDesde_Movil.triggered.connect(self.select_movil)
 
-        self.ui.actionClasificar.triggered.connect(self.clasificar_archivos)
+        self.actionClasificar.triggered.connect(self.clasificar_archivos)
 
-        self.ui.actionPendientes.triggered.connect(self.clasificar_pendientes)
+        self.actionPendientes.triggered.connect(self.clasificar_pendientes)
 
-        self.ui.actionConfiguracion.triggered.connect(self.settings_form)
-        self.ui.actionAutodiagnostico.triggered.connect(self.abrir_autodiagnostico)
+        self.actionConfiguracion.triggered.connect(self.settings_form)
+        self.actionAutodiagnostico.triggered.connect(self.abrir_autodiagnostico)
 
-        self.ui.actionBackup.triggered.connect(self.abrir_backup_dialog)
+        self.actionBackup.triggered.connect(self.abrir_backup_dialog)
 
-        self.ui.actionSalir_3.triggered.connect(self.close)
+        self.actionSalir_3.triggered.connect(self.close)
 
-        self.ui.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
-        self.ui.actionMapa_de_Provincias.triggered.connect(self.mostrar_mapa_provincias)
-        self.ui.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
-        self.ui.actionGenerar_Mapa_de_Grupos.triggered.connect(self.iniciar_generacion_mapa_grupos)
-        self.ui.actionGenera_Mapa_de_Fotos.triggered.connect(self.generar_mapa_manual)
+        self.actionMapa_Fotos.triggered.connect(self.mostrar_mapa_normal)
+        self.actionMapa_de_Provincias.triggered.connect(self.mostrar_mapa_provincias)
+        self.actionMapa_Grupo.triggered.connect(self.mostrar_mapa_grupo)
+        self.actionGenerar_Mapa_de_Grupos.triggered.connect(self.iniciar_generacion_mapa_grupos)
+        self.actionGenera_Mapa_de_Fotos.triggered.connect(self.generar_mapa_manual)
 
-        self.ui.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
+        self.actionGestion_Grupo.triggered.connect(self.gestor_de_grupos)
 
-        self.ui.actionModificar_Ubicacion.triggered.connect(self.modificar_ubicacion)
-        self.ui.actionCrear_Ubicacion.triggered.connect(self.crear_ubicacion)
+        self.actionModificar_Ubicacion.triggered.connect(self.modificar_ubicacion)
+        self.actionCrear_Ubicacion.triggered.connect(self.crear_ubicacion)
 
-        self.ui.actionProvincias.triggered.connect(self.abrir_provincias)
+        self.actionProvincias.triggered.connect(self.abrir_provincias)
 
-        self.ui.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
-        self.ui.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
-        self.ui.actionEstadistica.triggered.connect(lambda: self.cambiar_vista(2))
+        self.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
+        self.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
+        self.actionEstadistica.triggered.connect(lambda: self.cambiar_vista(2))
 
-        self.ui.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
+        self.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 
-        self.ui.button_sel_multiple.marcarTodos.connect(
+        self.button_sel_multiple.marcarTodos.connect(
             lambda: self.checked_unchecked_all_checkbox(
-                False, self.ui.tableWidget, 0, self.ui.tableWidget.rowCount(), True
+                False, self.tableWidget, 0, self.tableWidget.rowCount(), True
             )
         )
-        self.ui.button_sel_multiple.desmarcarTodos.connect(
+        self.button_sel_multiple.desmarcarTodos.connect(
             lambda: self.checked_unchecked_all_checkbox(
-                False, self.ui.tableWidget, 0, self.ui.tableWidget.rowCount(), False
+                False, self.tableWidget, 0, self.tableWidget.rowCount(), False
             )
         )
 
