@@ -177,8 +177,8 @@ def completar_datos_registro(info):
     # Completar ciudad/provincia
     # ----------------------------
     if not ciudad or not provincia:
-        lat = info.get["lat"]
-        lon = info.get["lon"]
+        lat = info.get("lat")
+        lon = info.get("lon")
 
         if lat is not None and lon is not None:
 
