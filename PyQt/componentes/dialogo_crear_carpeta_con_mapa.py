@@ -29,7 +29,8 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QUrl
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
 from config_paths import geocodificador
 from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
-from utils.utils_provincias import capitalizar_lugar
+from utils.utils_provincias import capitalizar_lugar, extraer_provincia_geocode_ciudad
+from utils.utils_provincias import DistritoPostal
 import datetime
 
 # ---------------------------------------------------------
@@ -312,8 +313,8 @@ class DialogoCrearCarpetaConMapa(QDialog):
             provincia = cache[clave].get("provincia", "")
             postal = cache[clave].get("postal", "")
         else:
-            provincia = ""
-            postal = ""
+            provincia = extraer_provincia_geocode_ciudad(ciudad, pais)
+            postal = DistritoPostal.buscar_cp_directo(ciudad, provincia, pais)
 
         # Guardar en formato nuevo
         cache[clave] = {
@@ -321,7 +322,7 @@ class DialogoCrearCarpetaConMapa(QDialog):
             "lon": float(self.lon),
             "ciudad": ciudad,
             "pais": pais,
-            "provincia": provincia,
+            "provincia": normalizar_texto(provincia),
             "postal": postal,
             "fuente": "manual"
         }

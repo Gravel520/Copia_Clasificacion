@@ -338,15 +338,12 @@ class MapaWindow(QMainWindow):
             self.set_mapa_habilitado(mapa_ok)
 
         elif indice == 1:
+            self.tamano_grande = True
             self.actionDesde_Movil.setEnabled(False)
             self.actionClasificar.setEnabled(False)
             self.labelCarpetaOrigen.setText(self.labelFechaListado.text())
             
-            if self.lista_archivos:
-                self.bridge.cargar_galeria_desde_lista(self.lista_archivos, self.miniaturas, 100)
-
-            elif self.ruta_clasificacion:
-                self.bridge.cargar_galeria(self.ruta_clasificacion, self.miniaturas, 100)
+            self.cambiarTamañoMiniaturas()
 
         elif indice == 2:
             self.actionDesde_Movil.setEnabled(False)
@@ -370,12 +367,12 @@ class MapaWindow(QMainWindow):
         tamano = 180 if self.tamano_grande else 100
 
         self.btnMiniaturas.setIcon(
-            QIcon("./PyQt/assets/vista_grande.png")
+            QIcon("./PyQt/assets/vista_pequena.png")
             if self.tamano_grande
-            else QIcon("./PyQt/assets/vista_pequena.png")
+            else QIcon("./PyQt/assets/vista_grande.png")
         )
         self.btnMiniaturas.setToolTip(
-            "Vista Grande" if self.tamano_grande else "Vista Pequena"
+            "Vista Pequeña" if self.tamano_grande else "Vista Grande"
         )
 
         if self.lista_archivos:

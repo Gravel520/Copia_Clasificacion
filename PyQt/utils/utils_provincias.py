@@ -71,6 +71,7 @@ def extraer_provincia_geocode_ciudad(ciudad, pais):
     country_map = {
         "es": "es",
         "españa": "es",
+        "espana": "es",
         "spain": "es",
         "pt": "pt",
         "portugal": "pt",
@@ -120,7 +121,7 @@ def extraer_provincia_geocode_ciudad(ciudad, pais):
         )
 
     # España
-    elif pais.lower() == "españa":
+    elif pais.lower() == "espana" or pais.lower() == "españa":
         # Muchos pueblos devuelven sólo city/town
         provincia = (
             addr.get("province")
@@ -378,8 +379,8 @@ class DistritoPostal():
 
     def buscar_cp_directo(municipio, provincia, pais="Espana"):
         # Codificamos los datos para usarlos en la url.
-        municipio = municipio.replace(" ", "-").lower()
-        provincia = provincia.replace(" ", "-").lower()
+        municipio = normalizar_texto(municipio.replace(" ", "-").lower())
+        provincia = normalizar_texto(provincia.replace(" ", "-").lower())
 
         if pais == "Espana":
             # Usamos esta página para buscar los códigos postales        
