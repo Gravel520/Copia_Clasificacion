@@ -9,6 +9,7 @@ import shutil
 import config_manager
 
 from pathlib import Path
+from collections import defaultdict
 from PyQt5.QtWidgets import (
     QHBoxLayout, QWidget, QMessageBox, QFileDialog, QDialog,
     QVBoxLayout, QCheckBox, QLabel, QApplication, QProgressDialog
@@ -136,7 +137,7 @@ class Bridge(QObject):
 
     def __init__(self, tableWidget, tableClasificacion, labelFechaListado, labelArchivosSeleccionadosClasificacion,
                  labelMapaActualizado, button_generar_mapa, button_sel_multiple, view, labelFoto, ruta_json,
-                 set_mapa_habilitado_callback, contar_pendientes):
+                 set_mapa_habilitado_callback, contar_pendientes, contar_clasificados):
         super().__init__()
         self.tabla = tableWidget
         self.tablaClasificacion = tableClasificacion
@@ -152,12 +153,19 @@ class Bridge(QObject):
         self.actual_ruta = None
         self.set_mapa_habilitado = set_mapa_habilitado_callback
         self.contar_pendientes = contar_pendientes
+        self.contar_clasificados = contar_clasificados
 
         self.overlayClasificacion = LoadingOverlay(self.tablaClasificacion, "Cargando archivos...")
         self.overlayClasificacion.hide()
 
         # Definir vista de la aplicación 'Principal', 'Clasificación'
         self.vista_actual = 0
+
+        # Definir el tipo de galeria actual (normal, lista o clasificados)
+        self.modo_galeria = "normal"
+
+        # Archivos visibles actualmente en la galeria
+        self.lista_galeria_actual = []
 
         self.data = cargar_json_unico(ruta_json_unico())
 
@@ -172,7 +180,7 @@ class Bridge(QObject):
         self.enviarRuta.emit(self.actual_ruta)
         self.actualizar_tabla()
         # Cargamos la galería de clasificación si esta en esa vista.
-        if self.vista_actual == 1: self.cargar_galeria(self.actual_ruta, True)
+        if self.vista_actual == 1: self.refrescar_galeria()
 
     @pyqtSlot('QVariantMap')
     def recibirListaArchivos(self, datos):
@@ -706,7 +714,7 @@ class Bridge(QObject):
 
             # Actualizamos la tabla o la galería según la vista.
             if self.vista_actual == 0: self.actualizar_tabla()
-            else: self.cargar_galeria(self.actual_ruta, True)
+            else: self.refrescar_galeria()
             return
 
         # Generar el mapa
@@ -726,7 +734,7 @@ class Bridge(QObject):
 
         # Comprobamos la vista para actualizar la tabla o la galeria
         if self.vista_actual == 0: self.actualizar_tabla() 
-        else: self.cargar_galeria(self.actual_ruta, True)
+        else: self.refrescar_galeria()
 
     def compartir(self, row=None, col=None):
         if not ARCHIVOS_SEL:
@@ -826,7 +834,7 @@ class Bridge(QObject):
 
             # Actualizamos la tabla o la galería según la vista.
             if self.vista_actual == 0: self.actualizar_tabla()
-            else: self.cargar_galeria(self.actual_ruta, True)
+            else: self.refrescar_galeria()
             return
 
         # Generar el mapa
@@ -846,7 +854,7 @@ class Bridge(QObject):
 
         # Actualizamos la tabla o la galería según la vista.
         if self.vista_actual == 0: self.actualizar_tabla()
-        else: self.cargar_galeria(self.actual_ruta, True)
+        else: self.refrescar_galeria()
 
     def obtener_seleccion(self):
         tabla = self.tablaClasificacion
@@ -913,12 +921,16 @@ class Bridge(QObject):
         else:
             ruta_archivo, _ = self.obtener_archivo(row, col)
             return os.path.dirname(os.path.abspath(ruta_archivo))
-        
+
     # ============================================================
     # VISTA CLASIFICACIÓN
     # ============================================================
     def cargar_galeria_desde_lista(self, lista_rutas, miniatura, tamano=100):
         try:
+            self.modo_galeria = "lista"
+
+            self.lista_galeria_actual = lista_rutas.copy()
+
             self.tablaClasificacion.setUpdatesEnabled(False)
             self.tablaClasificacion.clearContents()
             self.tablaClasificacion.setRowCount(0)
@@ -1032,7 +1044,7 @@ class Bridge(QObject):
 
         except Exception as e:
             self.tablaClasificacion.clear()
-            print(f'Error al cargar galeria: {e}')
+            print(f'Error al cargar galeria por lista: {e}')
 
         finally:
             self.tablaClasificacion.setUpdatesEnabled(True)
@@ -1040,6 +1052,13 @@ class Bridge(QObject):
 
     def cargar_galeria(self, ruta, miniatura, tamano=100):
         try:
+            self.modo_galeria = "normal"
+
+            self.lista_galeria_actual = [
+                os.path.join(ruta, archivo)
+                for archivo in os.listdir(ruta)
+            ]
+
             self.tablaClasificacion.setUpdatesEnabled(False)
             self.tablaClasificacion.clearContents()
             self.tablaClasificacion.setRowCount(0)
@@ -1163,6 +1182,135 @@ class Bridge(QObject):
         finally:
             self.tablaClasificacion.setUpdatesEnabled(True)
             dlg.close()
+
+    def cargar_galeria_clasificados(self, miniatura=True, tamano=100):
+        try:
+            self.modo_galeria = "clasificados"
+
+            self.lista_galeria_actual = [
+                item["ruta"]
+                for item in self.data["clasificados"]["items"]
+                if os.path.exists(item["ruta"])
+            ]
+
+            self.tablaClasificacion.setUpdatesEnabled(False)
+            self.tablaClasificacion.clearContents()
+            self.tablaClasificacion.setRowCount(0)
+
+            dlg = DialogoCargando("Cargando clasificados...", self.tabla)
+            dlg.show()
+            QApplication.processEvents()
+
+            ARCHIVOS_SEL.clear()
+
+            self.numArcSel = 0
+
+            self.labelArcSelCla.setText(f"{self.numArcSel} archivo/s seleccionados.")
+
+            NUM_COLS = 7 if tamano == 180 else 13
+
+            self.tablaClasificacion.setColumnCount(NUM_COLS)
+
+            self._fila_por_fecha = {}
+
+            fila_actual = 0
+
+            grupos = dict(sorted(self.indice_ubicacion.items()))
+
+            for ubicacion, items in grupos.items():
+                self.tablaClasificacion.insertRow(fila_actual)
+                header_text = (f"{ubicacion}"
+                               f" ({len(items)} fotos)")
+                header_widget = HeaderWidget(header_text)
+                header_widget.toggled.connect(self._seleccionar_grupo)
+
+                self.tablaClasificacion.setCellWidget(fila_actual, 0, header_widget)
+                self.tablaClasificacion.setSpan(fila_actual, 0, 1, NUM_COLS)
+
+                for col in range(NUM_COLS):
+                    item_header = QTableWidgetItem()
+
+                    item_header.setData(Qt.UserRole, "header")
+                    item_header.setFlags(Qt.ItemIsEnabled)
+
+                    self.tablaClasificacion.setItem(fila_actual, col, item_header)
+
+                self._fila_por_fecha[header_text] = fila_actual
+
+                fila_actual += 1
+
+                col = 0
+
+                for item in items:
+                    if col == 0:
+                        self.tablaClasificacion.insertRow(fila_actual)
+
+                    ruta_completa = item["ruta"]
+                    hash_archivo = item["hash"]
+                    ruta_thumb = (self.obtener_ruta_miniatura(hash_archivo))
+
+                    if not ruta_thumb:
+                        ruta_thumb = obtener_o_crear_miniaturas(ruta_completa, hash_archivo)
+
+                    mini = (Path(__file__).parent.parent / "assets" / "marca_video.png")
+                    ruta_thumb = (str(ruta_thumb) if ruta_thumb else str(mini))
+
+                    widget = WidgetGaleria(
+                        ruta_completa,
+                        hash_archivo,
+                        miniatura,
+                        tamano,
+                        ruta_thumb
+                    )
+
+                    widget.seleccionado.connect(self._galeria_checkbox_cambiado)
+
+                    self.tablaClasificacion.setCellWidget(fila_actual, col, widget)
+
+                    col += 1
+
+                    if col == NUM_COLS:
+                        col = 0
+                        fila_actual += 1
+
+                if col != 0:
+                    fila_actual += 1
+
+            valor = tamano if miniatura else 50
+
+            for r in range(self.tablaClasificacion.rowCount()):
+                item = self.tablaClasificacion.item(r, 0)
+
+                if (item and item.data(Qt.UserRole) == "header"):
+                    self.tablaClasificacion.setRowHeight(r, 28)
+                else:
+                    self.tablaClasificacion.setRowHeight(r, valor)
+
+            for c in range(NUM_COLS):
+                self.tablaClasificacion.setColumnWidth(c, tamano)
+
+        except Exception as e:
+            print(f"Error cargando clasificados: {e}")
+
+        finally:
+            self.tablaClasificacion.setUpdatesEnabled(True)
+            dlg.close()
+
+    def refrescar_galeria(self):
+        if self.modo_galeria == "clasificados":
+            self.cargar_galeria_clasificados()
+
+        elif self.modo_galeria == "lista":
+            self.cargar_galeria_desde_lista(
+                self.lista_archivos,
+                True
+            )
+            
+        elif self.actual_ruta:
+            self.cargar_galeria(
+                self.actual_ruta,
+                True
+            )
 
     def _seleccionar_grupo(self, fecha, estado):
         tabla = self.tablaClasificacion
@@ -1301,6 +1449,7 @@ class Bridge(QObject):
 
         self.set_mapa_habilitado(True)
         self.contar_pendientes()
+        self.contar_clasificados()
 
         config_manager.settings.setValue("Estado/mapa_generado", "True")
         config_manager.settings.sync()
@@ -1322,6 +1471,7 @@ class Bridge(QObject):
         """
         self.indice_ruta = {}
         self.indice_hash = {}
+        self.indice_ubicacion = defaultdict(list)
         self.hashes_eliminados = set()
 
         for seccion in ("clasificados", "pendientes"):
@@ -1331,6 +1481,10 @@ class Bridge(QObject):
 
                 self.indice_ruta[ruta] = item
                 self.indice_hash[hash_archivo] = item
+
+                if seccion == "clasificados":
+                    ubicacion = item["ubicacion"]
+                    self.indice_ubicacion[ubicacion].append(item)
 
         for item in self.data["eliminados"]["items"]:
             self.hashes_eliminados.add(item["hash"])

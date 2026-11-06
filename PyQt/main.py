@@ -81,6 +81,7 @@ class MapaWindow(QMainWindow):
         self.lista_archivos = None
         self.miniaturas = True
         self.tamano_grande = False
+        self.todos_clasificados = False
 
         # VLC Player
         self.vlc_instance = vlc.Instance()
@@ -125,6 +126,7 @@ class MapaWindow(QMainWindow):
             ruta_json_unico(),
             self.set_mapa_habilitado,
             self.contar_pendientes,
+            self.contar_clasificados,
         )
         self.bridge.enviarRuta.connect(self.recibir_archivos_para_mostrar)
         self.bridge.enviarListaArchivos.connect(self.recibir_lista_archivos_para_mostrar)
@@ -178,6 +180,7 @@ class MapaWindow(QMainWindow):
         """)
 
         self.contar_pendientes()
+        self.contar_clasificados()
 
         # ----------------------------------------
         # CONECTAR WIDGET A LA VISTA CLASIFICACION
@@ -212,6 +215,7 @@ class MapaWindow(QMainWindow):
         self.cambiar_vista(indice)
 
         self.contar_pendientes()
+        self.contar_clasificados()
         self.signs_controls()
         self.iniciar_autodiagnostico_programado()
 
@@ -327,6 +331,14 @@ class MapaWindow(QMainWindow):
         if self.ruta_clasificacion == None and self.lista_archivos == None and indice == 1: indice = 0
         self.chk_value = False
 
+        acciones = [
+            self.actionPrincipal,
+            self.actionClasificacion,
+            self.actionEstadistica
+        ]
+        for i, accion in enumerate(acciones):
+            accion.setEnabled(i != indice)        
+
         self.stacked.setCurrentIndex(indice)
         self.bridge.set_vista(indice)
         
@@ -334,6 +346,7 @@ class MapaWindow(QMainWindow):
         config_manager.settings.sync()
 
         if indice == 0:
+            self.bridge.modo_galeria = "normal"
             mapa_ok = settings.value("Estado/mapa_generado") == "True"
             self.set_mapa_habilitado(mapa_ok)
 
@@ -350,12 +363,16 @@ class MapaWindow(QMainWindow):
             self.actionClasificar.setEnabled(False)
 
     def recibir_archivos_para_mostrar(self, ruta):
+        self.todos_clasificados = False
+
         if not ruta:
             return
         self.ruta_clasificacion = ruta
         self.lista_archivos = None
 
     def recibir_lista_archivos_para_mostrar(self, lista):
+        self.todos_clasificados = False
+
         if not lista:
             return
         self.lista_archivos = lista
@@ -377,6 +394,10 @@ class MapaWindow(QMainWindow):
 
         if self.lista_archivos:
             self.bridge.cargar_galeria_desde_lista(self.lista_archivos, True, tamano)
+
+        elif self.todos_clasificados:
+            self.bridge.cargar_galeria_clasificados(True, tamano)
+
         else:
             self.bridge.cargar_galeria(self.ruta_clasificacion, True, tamano)
 
@@ -555,21 +576,20 @@ class MapaWindow(QMainWindow):
         # Carpeta real del archivo SIEMPRE
         carpeta_real = os.path.dirname(ruta_archivo)
 
-        # Creamos uno nuevo.
-        if self.bridge.actual_ruta is None and self.bridge.lista_archivos:
-            # Modo lista unificada
-            self.vp = VideoPlayer(
-                None,
-                ruta_archivo,
-                datos,
-                lista_archivos=self.bridge.lista_archivos
-            )
-        else:
-            # Modo carpeta
+        if self.bridge.vista_actual == 0:
             self.vp = VideoPlayer(
                 carpeta_real,
                 ruta_archivo,
                 datos
+            )
+
+        else:
+            # Creamos uno nuevo.
+            self.vp = VideoPlayer(
+                None,
+                ruta_archivo,
+                datos,
+                lista_archivos=self.bridge.lista_galeria_actual
             )
 
         self.vp.show()
@@ -697,6 +717,7 @@ class MapaWindow(QMainWindow):
         self.set_mapa_habilitado(True)
 
         self.contar_pendientes()
+        self.contar_clasificados()
 
     def mostrar_mapa_normal(self):
         self.limpiar_datos()
@@ -842,6 +863,8 @@ class MapaWindow(QMainWindow):
     # CLASIFICAR PENDIENTES
     # ============================================================
     def clasificar_pendientes(self):
+        self.todos_clasificados = False
+
         # 1️⃣ Actualizar contador de pendientes
         self.bridge.cargar_pendientes()
 
@@ -860,16 +883,37 @@ class MapaWindow(QMainWindow):
         total_pendientes = data["stats"]["total_pendientes"]
         self.actualizar_menu_pendientes(total_pendientes)
 
+    def cargar_clasificados(self):
+        self.actionPrincipal.setEnabled(True)
+        self.actionClasificacion.setEnabled(False)
+        self.actionEstadistica.setEnabled(True)
+        
+        self.todos_clasificados = True
+        self.tamano_grande = True
+        self.labelCarpetaOrigen.setText("Todos los clasificados")
+
+        # Cambiar al tab de clasificación
+        self.stackedWidget.setCurrentIndex(1)
+
+        self.bridge.set_vista(1)
+
+        self.cambiarTamañoMiniaturas()
+
     def contar_clasificados(self):
         data = cargar_json_unico(ruta_json_unico())
-        return data["stats"]["total_clasificados"]    
+        total_clasificados = data["stats"]["total_clasificados"]
+        self.actualizar_menu_clasificados(total_clasificados)
 
     # ============================================================
-    # MENÚ PENDIENTES
+    # MENÚ CONTEO CLASIFICADOS Y PENDIENTES
     # ============================================================
     def actualizar_menu_pendientes(self, total):
         self.actionPendientes.setText(f'Pendientes ({total})')
         self.actionPendientes.setEnabled(total > 0)
+
+    def actualizar_menu_clasificados(self, total):
+        self.actionClasificados.setText(f'Clasificados ({total})')
+        self.actionClasificados.setEnabled(total > 0)
 
     # ============================================================
     # CONFIGURACIÓN
@@ -1004,6 +1048,7 @@ class MapaWindow(QMainWindow):
         self.actionClasificar.triggered.connect(self.clasificar_archivos)
 
         self.actionPendientes.triggered.connect(self.clasificar_pendientes)
+        self.actionClasificados.triggered.connect(self.cargar_clasificados)
 
         self.actionConfiguracion.triggered.connect(self.settings_form)
         self.actionAutodiagnostico.triggered.connect(self.abrir_autodiagnostico)
@@ -1056,9 +1101,6 @@ class MapaWindow(QMainWindow):
         self.btnCompartirClasificacion.clicked.connect(lambda: self.bridge.accion("compartir", None, None))
         
         self.btnSeleccionarClasificacion.clicked.connect(self.seleccion_multiple_clasificacion)
-
-        #self.btnMiniaturas.min_grande.connect(lambda: self.setMiniatura(True, 180))
-
 
 def main():
     app = QApplication(sys.argv)

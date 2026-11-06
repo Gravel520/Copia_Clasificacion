@@ -42,11 +42,31 @@ class VideoPlayer(QWidget):
         # --------------------------
         if lista_archivos is not None:
             # MODO LISTA UNIFICADA: lista_archivos son rutas completas
-            self.lista_archivos = [os.path.normpath(r) for r in lista_archivos]
+            self.lista_archivos = [
+                os.path.normcase(
+                    os.path.normpath(r)
+                )
+                for r in lista_archivos
+            ]
             self.ruta_carpeta = None
-            # El archivo inicial también es ruta completa
-            self.indice = self.lista_archivos.index(archivo)
+            archivo = os.path.normcase(
+                os.path.normpath(archivo)
+            )
+
+            if self.lista_archivos:
+                try:
+                    # El archivo inicial también es ruta completa
+                    self.indice = self.lista_archivos.index(archivo)
+
+                except ValueError:
+                    self.indice = 0
+                    print(f"Archivo no encontrado "
+                        f"en lista_archivo:\n{archivo}")
+            else:
+                self.indice = 0
+                
             self.archivo_actual = archivo
+
         else:
             # MODO CARPETA: usamos os.listdir sobre ruta_visualizado
             ext = extensiones_validas("video") if solo_videos else (

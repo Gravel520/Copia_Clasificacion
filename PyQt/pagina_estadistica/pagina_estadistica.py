@@ -30,6 +30,8 @@ class PaginaEstadisticas(QWidget):
         self.main_layout.setSpacing(20)
         self.main_layout.setContentsMargins(15, 0, 15, 30)
 
+        self._datos_cargados = False
+
         # ---------------------------------------------------------
         # COLUMNA 1: GRÁFICA
         # ---------------------------------------------------------
@@ -86,11 +88,12 @@ class PaginaEstadisticas(QWidget):
         # Tamaño total de la página
         self.setMinimumSize(1100, 550)
 
-        self.actualizar_datos()
-
     def showEvent(self, a0):
         super().showEvent(a0)
-        self.actualizar_datos()
+
+        if not self._datos_cargados:
+            self.actualizar_datos()
+            self._datos_cargados = True
 
     def actualizar_datos(self):
         # Refresca todos los componentes con datos nuevos
@@ -259,7 +262,8 @@ class PaginaEstadisticas(QWidget):
             <meta charset="utf-8" />
             <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
             <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-            <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
             <style>
                 html, body, #map {{ height: 100%; margin: 0; padding: 0; }}
             </style>

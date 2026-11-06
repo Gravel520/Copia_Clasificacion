@@ -501,6 +501,7 @@ border-radius: 0px;</string>
     <addaction name="actionDesde_Movil"/>
     <addaction name="actionClasificar"/>
     <addaction name="actionPendientes"/>
+    <addaction name="actionClasificados"/>
     <addaction name="separator"/>
     <addaction name="actionConfiguracion"/>
     <addaction name="actionAutodiagnostico"/>
@@ -741,6 +742,11 @@ border-radius: 0px;</string>
   <action name="actionProvincias">
    <property name="text">
     <string>Provincias</string>
+   </property>
+  </action>
+  <action name="actionClasificados">
+   <property name="text">
+    <string>Clasificados</string>
    </property>
   </action>
  </widget>
