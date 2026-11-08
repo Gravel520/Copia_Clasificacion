@@ -607,7 +607,7 @@ class MapaWindow(QMainWindow):
 
         if not columna_oculta:
             nueva_visibilidad = True
-            ancho_columna_1 = 205
+            ancho_columna_1 = 200
         elif num_filas > 8:
             nueva_visibilidad = False
             ancho_columna_1 = 135
