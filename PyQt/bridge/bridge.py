@@ -197,6 +197,14 @@ class Bridge(QObject):
         self.actualizar_tabla_desde_lista()
         self.enviarListaArchivos.emit(self.lista_archivos)
 
+    @property
+    def numArcSel(self):
+        return self._numArcSel
+    
+    @numArcSel.setter
+    def numArcSel(self, value):
+        self._numArcSel = value
+        self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
     def set_vista(self, indice):
         self.vista_actual = indice
@@ -298,6 +306,7 @@ class Bridge(QObject):
         self.recargar_datos()
 
         if not self.actual_ruta:
+            self.label.setText("Fecha Listado")
             dlg.close()
             return
 
@@ -328,7 +337,7 @@ class Bridge(QObject):
             ['Sel', 'Nombre de Archivo', 'Ruta', 'Acción', 'Hash']
         )
 
-        tamaño = 185 if self.numero_archivos > 8 else 205
+        tamaño = 185 if self.numero_archivos > 8 else 200
         self.tabla.setColumnWidth(0, 40)
         self.tabla.setColumnWidth(1, tamaño)
         self.tabla.setColumnWidth(3, 140)
@@ -341,6 +350,7 @@ class Bridge(QObject):
         self.tabla.horizontalHeader().setSectionsClickable(False)
 
         mes, ano, lugar = self.obtener_fecha_lugar(self.actual_ruta)
+
         texto = 'Pendientes' if ano == '0000' else f'{lugar}\n{mes} de {ano}'
         self.label.setText(texto)
 
@@ -904,9 +914,12 @@ class Bridge(QObject):
     def limpiar_tabla(self, origen):
         os.rmdir(origen)
         self.tabla.clearContents()
-        self.tabla.setVisible(False)
+        self.tablaClasificacion.clearContents()
         self.labelFoto.setPixmap(QPixmap())
+        self.numArcSel = 0
         self.actual_ruta = None
+        self.lista_archivos = None
+        self.lista_galeria_actual = None
 
     def origen_de_seleccion(self, row, col=None):
         '''
@@ -941,7 +954,6 @@ class Bridge(QObject):
 
             ARCHIVOS_SEL.clear()
             self.numArcSel = 0
-            self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
             #archivos = os.listdir(ruta)
             NUM_COLS = 7 if tamano == 180 else 13
@@ -1051,6 +1063,8 @@ class Bridge(QObject):
             dlg.close()
 
     def cargar_galeria(self, ruta, miniatura, tamano=100):
+        dlg = None
+
         try:
             self.modo_galeria = "normal"
 
@@ -1069,7 +1083,6 @@ class Bridge(QObject):
 
             ARCHIVOS_SEL.clear()
             self.numArcSel = 0
-            self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
             archivos = os.listdir(ruta)
             NUM_COLS = 7 if tamano == 180 else 13
@@ -1181,7 +1194,8 @@ class Bridge(QObject):
 
         finally:
             self.tablaClasificacion.setUpdatesEnabled(True)
-            dlg.close()
+            if dlg is not None:
+                dlg.close()
 
     def cargar_galeria_clasificados(self, miniatura=True, tamano=100):
         try:
@@ -1204,8 +1218,6 @@ class Bridge(QObject):
             ARCHIVOS_SEL.clear()
 
             self.numArcSel = 0
-
-            self.labelArcSelCla.setText(f"{self.numArcSel} archivo/s seleccionados.")
 
             NUM_COLS = 7 if tamano == 180 else 13
 
@@ -1346,7 +1358,6 @@ class Bridge(QObject):
                     else:
                         pass
                     self.numArcSel = self.contar_seleccionados()
-                    self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
                 finally:
                     widget.blockSignals(False)
@@ -1371,8 +1382,6 @@ class Bridge(QObject):
             ARCHIVOS_SEL[widget.ruta] = widget.hash
         else:
             ARCHIVOS_SEL.pop(widget.ruta, None)
-
-        self.labelArcSelCla.setText(f'{self.numArcSel} archivo/s seleccionados.')
 
     def contar_seleccionados(self):
         tabla = self.tablaClasificacion

@@ -8,9 +8,12 @@ Button: QPushButton que forman cada uno de los dos botones que aparecen
 '''
 
 import os
+from pathlib import Path
+
 from PyQt5.QtWidgets import (QWidget, QPushButton, QCheckBox, QMenu,
                              QAction, QDialog, QVBoxLayout, QHBoxLayout, 
-                             QTextEdit, QLabel, QApplication, QListWidget)
+                             QTextEdit, QLabel, QMessageBox, QListWidget,
+                             QListWidgetItem)
 from PyQt5.QtGui import QIcon, QCursor, QMovie, QColor
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtCore import Qt, QRect, QTimer
@@ -201,14 +204,27 @@ class SelectorCarpeta(QDialog):
         daría error, y donde están los archivos que no han sido clasificados
         y están pendiente de ellos (Sin_GPS).
         '''
+        # Convertimos las rutas principales y actuales en objetos Path estables.
+        ruta_principal = Path(get_ruta_principal())
+        ruta_actual_obj = Path(ruta_actual)
+
         self.list = QListWidget()
         mensaje = ''
-        for f in os.scandir(get_ruta_principal()):
+        for f in os.scandir(ruta_principal):
             if f.is_dir():
-                if ruta_actual == f"{get_ruta_principal()}\\{f.name}" or f.name == '(Sin_GPS)': # Comprobar ruta actual.
-                    continue
-                self.list.addItem(f.name)
-                mensaje += f'{f.name}\n' # str con todas las carpetas.
+                # f.path ya contiene la ruta completa unida correctamente.
+                ruta_carpeta_escaneada = Path(f.path)
+
+                # Creamos el item de forma normal.
+                item = QListWidgetItem(f.name)
+
+                self.list.addItem(item)                
+
+                if ruta_actual_obj == ruta_carpeta_escaneada or f.name == '(Sin_GPS)': # Comprobar ruta actual.
+                    item.setHidden(True)
+
+                if not item.isHidden():
+                    mensaje += f'{f.name}\n' # str con todas las carpetas.
 
         # Ajustamos el tamaño del QDialog a los datos obtenidos.
         ancho, alto = MapaWindow.analizar_mensaje(mensaje)
@@ -264,6 +280,12 @@ class SelectorCarpeta(QDialog):
 
         ciudad, pais, fecha = dlg.resultado
         nombre_carpeta = f"({ciudad})({pais})({fecha})"
+
+        # Comprobamos que no exista el nombre de la carpeta.
+        if any(self.list.item(i).text() == nombre_carpeta for i in range(self.list.count())):
+            QMessageBox.critical(self, "Error", f"Ya existe el destino\n {ciudad}, {pais} - {fecha}.")
+            return
+        
         ruta = os.path.join(get_ruta_principal(), nombre_carpeta)
 
         # Crear carpeta si no existe.

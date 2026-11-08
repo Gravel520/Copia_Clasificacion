@@ -347,6 +347,7 @@ class MapaWindow(QMainWindow):
 
         if indice == 0:
             self.bridge.modo_galeria = "normal"
+            self.bridge.actualizar_tabla()
             mapa_ok = settings.value("Estado/mapa_generado") == "True"
             self.set_mapa_habilitado(mapa_ok)
 

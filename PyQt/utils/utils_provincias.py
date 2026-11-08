@@ -126,7 +126,7 @@ def extraer_provincia_geocode_ciudad(ciudad, pais):
         provincia = (
             addr.get("province")
             or addr.get("county")
-            or addr.get("state_district")
+            or addr.get("state")
             or addr.get("municipality")
             or addr.get("city")
             or addr.get("town")
@@ -379,10 +379,12 @@ class DistritoPostal():
 
     def buscar_cp_directo(municipio, provincia, pais="Espana"):
         # Codificamos los datos para usarlos en la url.
-        municipio = normalizar_texto(municipio.replace(" ", "-").lower())
-        provincia = normalizar_texto(provincia.replace(" ", "-").lower())
+        municipio = normalizar_texto(municipio).lower()
+        provincia = normalizar_texto(provincia).lower() if provincia else ""
 
+        # Bloque de configuración por País.
         if pais == "Espana":
+            municipio = municipio.replace(" ", "-")
             # Usamos esta página para buscar los códigos postales        
             url = f"https://distritopostal.es/{provincia}/{municipio}"
             re_findall = r"\b\d{5}\b"
@@ -411,13 +413,31 @@ class DistritoPostal():
                 # Buscamos todos los números de 5 dígitos en el texto de la página
                 codigos_encontrados = re.findall(re_findall, texto_completo_web)
 
+                # Extracción y filtrado inteligente
                 if codigos_encontrados:
-                    return codigos_encontrados[0]
+                    if pais == "Espana":
+                        # Entre (01000 a 52999)
+                        cp = next((c for c in codigos_encontrados if 1000 <= int(c) <= 52999), "")
+
+                    elif pais == "Francia":
+                        # Entre (01000 a 99999)
+                        cp = next((c for c in codigos_encontrados if 1000 <= int(c) <= 99999), "")
+
+                    elif pais == "Portugal":
+                        # Es tan específico que el primero es el válido
+                        cp = codigos_encontrados[0]
+
+                if cp:
+                    return cp
+                
                 else:
-                    return "No se localizó ningún patrón de cp."
+                    # No se encontraron códigos postales
+                    return ""
                 
             else:
-                return f"Error al buscar el código postal: {respuesta.status_code}"
+                print(f"Error al buscar el código postal: {respuesta.status_code}")
+                return ""
             
         except Exception as e:
-                return f"Error al buscar el código postal: {e}"
+                print(f"Error al buscar el código postal: {e}")
+                return ""

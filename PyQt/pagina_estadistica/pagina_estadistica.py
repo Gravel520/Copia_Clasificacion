@@ -4,6 +4,8 @@
 import os
 import json
 import re
+
+from pathlib import Path
 from collections import defaultdict
 from PIL import Image
 from PIL.ExifTags import TAGS
@@ -13,6 +15,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import Qt, QUrl, QRect
+
 from componentes.dialogo_crear_carpeta_con_mapa import DialogoCrearCarpetaConMapa
 from utils.utils_cache import cargar_cache
 from config_paths import (
@@ -110,7 +113,11 @@ class PaginaEstadisticas(QWidget):
         self.vista_grafica.setHtml(self._obtener_html_grafica(), QUrl("https://cdn.jsdelivr.net"))
 
         # 3. Refrescar Mapa
-        self.vista_mapa.setHtml(self._obtener_html_mapa(), QUrl("https://cdn.jsdelivr.net"))
+        base = QUrl.fromLocalFile(
+            str((Path(__file__).parent.parent / "assets").resolve()) + "/"
+        )
+
+        self.vista_mapa.setHtml(self._obtener_html_mapa(), base)
 
     def _limpiar_layout(self, layout):
         # Elimina los widget existentes para no duplicarlos al refrescar
@@ -256,13 +263,20 @@ class PaginaEstadisticas(QWidget):
         coords = self.generar_coords_mapa_calor_desde_json()
         coords_js = json.dumps(coords)  # lista Python → array JS
 
+        assets = Path(__file__).parent.parent / "assets"
+
+        # Construir las rutas de los archivos y convertirlas a URL.
+        leaflet_js = assets / "leaflet.js"
+        leaflet_css = assets / "leaflet.css"
+        leaflet_heat = assets / "leaflet-heat.js"
+
         return f"""
         <html>
         <head>
             <meta charset="utf-8" />
-            <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-            <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+            <link rel="stylesheet" href="{leaflet_css}"/>
+            <script src="{leaflet_js}"></script>
+            <script src="{leaflet_heat}"></script>
 
             <style>
                 html, body, #map {{ height: 100%; margin: 0; padding: 0; }}
