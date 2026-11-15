@@ -31,7 +31,7 @@ from copia_clasificador_fotos import (
 from mapa_generator import extraer_ciudad
 from config_paths import (
     ruta_json_unico, meses, get_ruta_mapa_fotos_html, extensiones_validas,
-    get_ruta_miniaturas
+    get_ruta_miniaturas, get_ruta_absoluta
     )
 from utils.utils_cache import cargar_cache
 from utils.thread_manager import thread_manager
@@ -187,7 +187,7 @@ class Bridge(QObject):
         lista_rutas = datos.get("rutas", [])
         titulo = datos.get("titulo", "Grupo")
 
-        self.lista_archivos = [os.path.normpath(r) for r in lista_rutas]
+        self.lista_archivos = [os.path.normpath(get_ruta_absoluta(r)) for r in lista_rutas]
         self.actual_ruta = None
 
         # Mostrar el nombre del grupo
@@ -273,8 +273,11 @@ class Bridge(QObject):
         for i, ruta_completa in enumerate(archivos):
             nombre = os.path.basename(ruta_completa)
             ruta_conver = os.path.normpath(ruta_completa)
+            print("RUTA TABLA:", ruta_conver)
 
             coincidencia = self.indice_ruta.get(ruta_conver)
+
+            print("COINCIDENCIA:", coincidencia is not None)
 
             hash_val = coincidencia['hash'] if coincidencia else ""
             fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
@@ -295,8 +298,13 @@ class Bridge(QObject):
 
         if self.tabla.rowCount() > 0:
             self.tabla.setCurrentCell(0, 1)
+            self.tabla.setFocus()
+            
             ruta_archivo = self.tabla.item(0, 2).text()
             self.actualizarFoto.emit(ruta_archivo)
+
+        # Reactivar actualizaciones visuales (dibuja todo de un solo golpe)
+        self.tabla.setUpdatesEnabled(True)
 
         dlg.close()
 
@@ -1209,9 +1217,9 @@ class Bridge(QObject):
             self.modo_galeria = "clasificados"
 
             self.lista_galeria_actual = [
-                item["ruta"]
+                get_ruta_absoluta(item["ruta"])
                 for item in self.data["clasificados"]["items"]
-                if os.path.exists(item["ruta"])
+                if os.path.exists(get_ruta_absoluta(item["ruta"]))
             ]
 
             self.tablaClasificacion.setUpdatesEnabled(False)
@@ -1264,7 +1272,7 @@ class Bridge(QObject):
                     if col == 0:
                         self.tablaClasificacion.insertRow(fila_actual)
 
-                    ruta_completa = item["ruta"]
+                    ruta_completa = get_ruta_absoluta(item["ruta"])
                     hash_archivo = item["hash"]
                     ruta_thumb = (self.obtener_ruta_miniatura(hash_archivo))
 
@@ -1492,7 +1500,7 @@ class Bridge(QObject):
 
         for seccion in ("clasificados", "pendientes"):
             for item in self.data[seccion]["items"]:
-                ruta = os.path.normpath(item["ruta"])
+                ruta = os.path.normpath(get_ruta_absoluta(item["ruta"]))
                 hash_archivo = item["hash"]
 
                 self.indice_ruta[ruta] = item

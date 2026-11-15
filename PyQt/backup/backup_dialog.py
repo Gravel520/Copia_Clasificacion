@@ -27,6 +27,8 @@ from backup.backup_incremental import generar_backup_incremental, guardar_diff
 from backup.backup_audit import nueva_auditoria, registrar_evento, crear_evento
 from backup.backup_simulation import simular_restauracion
 
+from config_paths import get_ruta_absoluta
+
 PASO_CREAR_INDICE = 2
 PASO_RESTAURAR = 3
 PASO_BACKUP = 4
@@ -296,7 +298,7 @@ class BackupDialog(QDialog):
 
     def simular_restauracion_item(self, item):
         hash_archivo = item["hash"]
-        ruta_destino = item["ruta"]
+        ruta_destino = get_ruta_absoluta(item["ruta"])
 
         resultado = {
             "faltantes": [],

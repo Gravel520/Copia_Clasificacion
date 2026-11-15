@@ -10,7 +10,10 @@ Devuelve:
 '''
 
 import os
+
 from typing import Dict, List, Any
+
+from config_paths import get_ruta_absoluta
 
 def simular_restauracion(data_json: Dict[str, Any],
                          indice_hashes: Dict[str, List[str]]) -> Dict[str, List[Any]]:
@@ -26,7 +29,7 @@ def simular_restauracion(data_json: Dict[str, Any],
 
     for item in items:
         hash_archivo = item["hash"]
-        ruta_destino = item["ruta"]
+        ruta_destino = get_ruta_absoluta(item["ruta"])
 
         # 1. ¿El archivo existe en el PC?
         if not os.path.exists(ruta_destino):

@@ -8,7 +8,10 @@ reconstruye exactamente en la ruta que aparece en el .json.
 
 import os
 import shutil
+
 from typing import Dict, List, Any
+
+from config_paths import get_ruta_absoluta
 
 def asegurar_carpeta(ruta_archivo: str):
     # Crea la carpeta destino si no existe.
@@ -69,7 +72,7 @@ def restaurar_desde_json(data_json: Dict[str, Any],
 
     for item in items:
         hash_archivo = item["hash"]
-        ruta_destino = item["ruta"]
+        ruta_destino = get_ruta_absoluta(item["ruta"])
 
         # Intentar restaurar
         ok = restaurar_archivo(hash_archivo, ruta_destino, indice_hashes, resultado)
