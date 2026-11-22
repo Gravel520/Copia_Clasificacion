@@ -3,6 +3,7 @@ Script en Python.
 '''
 
 import json, re, os, shutil
+
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QCompleter, QFrame
@@ -11,10 +12,15 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QUrl
+
 from copia_clasificador_fotos import cargar_json_unico, guardar_json_unico
+
 from componentes.geodatos_api import obtener_paises_es, obtener_ciudades
-from config_paths import ruta_json_unico
+
+from config_paths import ruta_json_unico, get_ruta_absoluta, get_ruta_principal
+
 from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
+
 from utils.utils_provincias import capitalizar_lugar
 
 # ---------------------------------------------------------
@@ -384,7 +390,7 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
     # --------------------------------------------------------------
     # Actualizar el archivo unificado en los campos ruta y ubicación
     # --------------------------------------------------------------
-    def _actualizar_archivo_unificado(self, ciudad_nueva, pais_nuevo):
+    def _actualizar_archivo_unificado(self):
         data = cargar_json_unico(ruta_json_unico())
 
         items = data["clasificados"]["items"]
@@ -393,31 +399,56 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
         clave_antigua = self.clave_original
         clave_nueva = self.clave_actual
 
+        carpetas_renombradas = set()
+
         for item in items:
             if item["ubicacion"] == clave_antigua:
 
-                # 1. Actualizar ubicacion
-                item["ubicacion"] = clave_nueva
-
-                # 2. Actualizar ruta (y renombrar carpeta)
-                ruta_antigua = item["ruta"]
-
-                # 3. Extraer carpeta
-                carpeta_antigua = os.path.dirname(ruta_antigua)
-
-                # Construir carpeta nueva
                 fecha = item["fecha"]
-                carpeta_nueva = os.path.join(
-                    os.path.dirname(carpeta_antigua),
+
+                carpeta_relativa_antigua = (
+                    f"{clave_antigua}{fecha}"
+                )
+
+                carpeta_relativa_nueva = (
                     f"{clave_nueva}{fecha}"
                 )
 
-                # Renombrar carpeta física si existe
-                if os.path.exists(carpeta_antigua):
-                    shutil.move(carpeta_antigua, carpeta_nueva)
+                if carpeta_relativa_antigua not in carpetas_renombradas:
 
-                # Actualizar ruta del archivo
-                item["ruta"] = os.path.join(carpeta_nueva, os.path.basename(ruta_antigua))
+                    carpeta_antigua_abs = os.path.join(
+                        get_ruta_principal(),
+                        carpeta_relativa_antigua
+                    )
+
+                    carpeta_nueva_abs = os.path.join(
+                        get_ruta_principal(),
+                        carpeta_relativa_nueva
+                    )
+
+                    if os.path.exists(carpeta_antigua_abs):
+                        if not os.path.exists(carpeta_nueva_abs):
+                            shutil.move(
+                                carpeta_antigua_abs,
+                                carpeta_nueva_abs
+                            )
+                        else:
+                            QMessageBox.warning(
+                                self,
+                                "Error",
+                                f"La carpeta {carpeta_nueva_abs} ya existe."
+                            )
+
+                    carpetas_renombradas.add(carpeta_relativa_antigua)
+
+                item["ubicacion"] = clave_nueva
+
+                nombre_archivo = os.path.basename(item["ruta"])
+
+                item["ruta"] = os.path.join(
+                    carpeta_relativa_nueva,
+                    nombre_archivo
+                )
 
         guardar_json_unico(ruta_json_unico(), data)
 
@@ -445,7 +476,7 @@ class DialogoModificarNombreCarpetaMapa(QDialog):
         self.clave_actual = nueva_clave
 
         # Actualizar archivo unificado (ubicación + rutas + carpetas)
-        self._actualizar_archivo_unificado(ciudad, pais)
+        self._actualizar_archivo_unificado()
 
         # Generar mapa de fotos.
         self.generarMapaManual.emit()

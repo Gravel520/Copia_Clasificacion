@@ -8,6 +8,8 @@ Validamos que:
 
 import os
 
+from config_paths import get_ruta_absoluta
+
 def extraer_carpeta_de_ruta(ruta):
     carpeta = os.path.dirname(ruta)
     return os.path.basename(carpeta)
@@ -90,7 +92,7 @@ def check_json_vs_carpetas(data_json, raiz_backup):
 
         for h, items in hashes.items():
             if len(items) > 1:
-                ruta = [i["ruta"] for i in items]
+                ruta = [get_ruta_absoluta(i["ruta"]) for i in items]
                 ubic = [i["ubicacion"] + i["fecha"] for i in items]
                 problemas.append({
                     "tipo": "hash_duplicado",

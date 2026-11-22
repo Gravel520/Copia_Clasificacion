@@ -550,10 +550,17 @@ border-radius: 0px;</string>
     <addaction name="menuUbicaci_n_2"/>
     <addaction name="actionProvincias"/>
    </widget>
+   <widget class="QMenu" name="menuHerramientas">
+    <property name="title">
+     <string>Herramientas</string>
+    </property>
+    <addaction name="actionBiblioteca"/>
+   </widget>
    <addaction name="menuClasificar"/>
    <addaction name="menuMapa"/>
    <addaction name="menuAgrupar"/>
    <addaction name="menuVista"/>
+   <addaction name="menuHerramientas"/>
   </widget>
   <action name="actionMapa_Fotos">
    <property name="text">
@@ -747,6 +754,16 @@ border-radius: 0px;</string>
   <action name="actionClasificados">
    <property name="text">
     <string>Clasificados</string>
+   </property>
+  </action>
+  <action name="actionBiblioteca">
+   <property name="text">
+    <string>Importar/Exportar</string>
+   </property>
+  </action>
+  <action name="actionImportar_Biblioteca">
+   <property name="text">
+    <string>Importar Biblioteca</string>
    </property>
   </action>
  </widget>

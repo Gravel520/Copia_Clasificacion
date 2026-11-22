@@ -31,7 +31,7 @@ from copia_clasificador_fotos import (
 from mapa_generator import extraer_ciudad
 from config_paths import (
     ruta_json_unico, meses, get_ruta_mapa_fotos_html, extensiones_validas,
-    get_ruta_miniaturas
+    get_ruta_miniaturas, get_ruta_absoluta
     )
 from utils.utils_cache import cargar_cache
 from utils.thread_manager import thread_manager
@@ -187,7 +187,7 @@ class Bridge(QObject):
         lista_rutas = datos.get("rutas", [])
         titulo = datos.get("titulo", "Grupo")
 
-        self.lista_archivos = [os.path.normpath(r) for r in lista_rutas]
+        self.lista_archivos = [os.path.normpath(get_ruta_absoluta(r)) for r in lista_rutas]
         self.actual_ruta = None
 
         # Mostrar el nombre del grupo
@@ -234,6 +234,8 @@ class Bridge(QObject):
 
         self.recargar_datos()
 
+        self.tabla.setUpdatesEnabled(False)
+
         archivos = self.lista_archivos
         self.numero_archivos = len(archivos)
 
@@ -252,11 +254,13 @@ class Bridge(QObject):
             }
         """)
 
+        self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.tabla.horizontalHeader().setSectionsClickable(False)
         self.tabla.setHorizontalHeaderLabels(
             ['Sel', 'Nombre de Archivo', 'Ruta', 'Acción', 'Hash']
         )
 
-        tamaño = 185 if self.numero_archivos > 8 else 205
+        tamaño = 185 if self.numero_archivos > 8 else 200
         self.tabla.setColumnWidth(0, 40)
         self.tabla.setColumnWidth(1, tamaño)
         self.tabla.setColumnWidth(3, 140)
@@ -265,8 +269,6 @@ class Bridge(QObject):
         self.tabla.setColumnHidden(2, True)
         self.tabla.setColumnHidden(4, True)
 
-        self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.tabla.horizontalHeader().setSectionsClickable(False)
 
         for i, ruta_completa in enumerate(archivos):
             nombre = os.path.basename(ruta_completa)
@@ -282,17 +284,24 @@ class Bridge(QObject):
             if fecha_val:
                 item_nombre.setToolTip(fecha_val)
 
-            self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
             self.tabla.setItem(i, 1, item_nombre)
             self.tabla.setItem(i, 2, QTableWidgetItem(ruta_completa))
-            self.tabla.setCellWidget(i, 3, self.botones_accion(i))
             self.tabla.setItem(i, 4, QTableWidgetItem(hash_val))
+
+            self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
+            self.tabla.setCellWidget(i, 3, self.botones_accion(i))            
+
             self.tabla.setRowHeight(i, 30)
 
         if self.tabla.rowCount() > 0:
             self.tabla.setCurrentCell(0, 1)
+            self.tabla.setFocus()
+            
             ruta_archivo = self.tabla.item(0, 2).text()
             self.actualizarFoto.emit(ruta_archivo)
+
+        # Reactivar actualizaciones visuales (dibuja todo de un solo golpe)
+        self.tabla.setUpdatesEnabled(True)
 
         dlg.close()
 
@@ -315,6 +324,9 @@ class Bridge(QObject):
             QMessageBox.warning(None, "Error", f"No se encontró el directorio:\n{self.actual_ruta}")
             return
 
+        # Bloquear actualizaciones visuales temporalmente (super ráido)
+        self.tabla.setUpdatesEnabled(False)
+
         archivos = os.listdir(self.actual_ruta)
         self.numero_archivos = len(archivos)
 
@@ -333,6 +345,8 @@ class Bridge(QObject):
             }
         """)
 
+        self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.tabla.horizontalHeader().setSectionsClickable(False)
         self.tabla.setHorizontalHeaderLabels(
             ['Sel', 'Nombre de Archivo', 'Ruta', 'Acción', 'Hash']
         )
@@ -346,20 +360,19 @@ class Bridge(QObject):
         self.tabla.setColumnHidden(2, True)
         self.tabla.setColumnHidden(4, True)
 
-        self.tabla.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.tabla.horizontalHeader().setSectionsClickable(False)
-
         mes, ano, lugar = self.obtener_fecha_lugar(self.actual_ruta)
 
         texto = 'Pendientes' if ano == '0000' else f'{lugar}\n{mes} de {ano}'
         self.label.setText(texto)
 
+        # Cacheamos el diccionario para evitar búsquedas internas repetitivas
+        indice_ruta = self.indice_ruta
+
         for i, nombre in enumerate(archivos):
             ruta_completa = os.path.join(self.actual_ruta, nombre)
             ruta_conver = os.path.normpath(ruta_completa)
 
-            coincidencia = self.indice_ruta.get(ruta_conver)
-
+            coincidencia = indice_ruta.get(ruta_conver)
             hash_val = coincidencia['hash'] if coincidencia else ""
             fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
 
@@ -368,18 +381,24 @@ class Bridge(QObject):
             if fecha_val:
                 item_nombre.setToolTip(fecha_val)
 
-            self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
+            # Inserción directa de elementos de texto
             self.tabla.setItem(i, 1, item_nombre)
             self.tabla.setItem(i, 2, QTableWidgetItem(ruta_completa))
-            self.tabla.setCellWidget(i, 3, self.botones_accion(i))
             self.tabla.setItem(i, 4, QTableWidgetItem(hash_val))
+
+            # Widgets complejos
+            self.tabla.setCellWidget(i, 0, self.boton_checkbox(i))
+            self.tabla.setCellWidget(i, 3, self.botones_accion(i))
+
             self.tabla.setRowHeight(i, 30)
-            QApplication.processEvents()
 
         if self.tabla.rowCount() > 0:
             self.tabla.setCurrentCell(0, 1)
             ruta_archivo = self.tabla.item(0, 2).text()
             self.actualizarFoto.emit(ruta_archivo)
+
+        # Reactivar actualizaciones visuales (dibuja todo de un solo golpe)
+        self.tabla.setUpdatesEnabled(True)
 
         dlg.close()
 
@@ -681,10 +700,6 @@ class Bridge(QObject):
                     errores.append((archivo, str(e)))
                     print(f'Error al mover {archivo}: {e}')
 
-                finally:
-                    dlg.close()
-
-
                 # Actualizar estadísticas.
                 actualizar_stats(self.data)
 
@@ -803,9 +818,6 @@ class Bridge(QObject):
 
                 except Exception as e:
                     print(f'Error al borrar {archivo}: {e}')
-
-                finally:
-                    dlg.close()
 
             QMessageBox.information(None, "Borrado de archivos", "Borrado Completado con éxito.")
 
@@ -1202,9 +1214,9 @@ class Bridge(QObject):
             self.modo_galeria = "clasificados"
 
             self.lista_galeria_actual = [
-                item["ruta"]
+                get_ruta_absoluta(item["ruta"])
                 for item in self.data["clasificados"]["items"]
-                if os.path.exists(item["ruta"])
+                if os.path.exists(get_ruta_absoluta(item["ruta"]))
             ]
 
             self.tablaClasificacion.setUpdatesEnabled(False)
@@ -1257,7 +1269,7 @@ class Bridge(QObject):
                     if col == 0:
                         self.tablaClasificacion.insertRow(fila_actual)
 
-                    ruta_completa = item["ruta"]
+                    ruta_completa = get_ruta_absoluta(item["ruta"])
                     hash_archivo = item["hash"]
                     ruta_thumb = (self.obtener_ruta_miniatura(hash_archivo))
 
@@ -1485,7 +1497,7 @@ class Bridge(QObject):
 
         for seccion in ("clasificados", "pendientes"):
             for item in self.data[seccion]["items"]:
-                ruta = os.path.normpath(item["ruta"])
+                ruta = os.path.normpath(get_ruta_absoluta(item["ruta"]))
                 hash_archivo = item["hash"]
 
                 self.indice_ruta[ruta] = item

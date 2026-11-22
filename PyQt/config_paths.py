@@ -13,10 +13,19 @@ def get_unidad():
 
 def get_ruta_principal():
     destino = settings.value("Paths/destino", "")
+
     if not destino:
+        return None
+
+    return Path(destino) / "BackupFotos"
+
+def get_ruta_absoluta(ruta_relativa):
+    raiz = get_ruta_principal()
+
+    if raiz is None:
         return ""
-    destino = destino.replace("/", "\\\\")
-    return os.path.join(destino, "BackupFotos")
+    
+    return raiz / ruta_relativa
 
 def get_ruta_backup():
     return "./PyQt/"

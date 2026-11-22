@@ -27,12 +27,13 @@ from componentes.controles import ScrollableMessageBox, SpinnerOverlay
 from componentes.dialogo_cantidad import DialogoSeleccionCantidad
 from componentes.dialogo_provincias import DialogoProvincias
 from componentes.video_player_vlc import VideoPlayer
+from componentes.dialogo_backup_completo import DialogoTransferencia
 
 from config_paths import (
     get_ruta_mapa_fotos_html, get_ruta_ui, ruta_json_unico, 
     get_ruta_principal, get_ruta_mapa_grupos_html,
     get_ruta_logo, get_ruta_backup, ruta_cache_json_geocoding,
-    ruta_json_grupos, get_ruta_mapa_provincias_html
+    ruta_json_grupos, get_ruta_mapa_provincias_html, get_ruta_miniaturas
     )
 
 from worker.mapa_worker import MapaWorker
@@ -54,6 +55,8 @@ from autodiagnostico.dialogo.dialogo_autodiagnostico import DialogoAutodiagnosti
 from autodiagnostico.programador_autodiagnostico import toca_ejecutar
 
 from backup.backup_dialog import BackupDialog
+from backup_completo.exportador_biblioteca import ExportadorBiblioteca
+from backup_completo.importador_biblioteca import ImportadorBiblioteca
 
 from utils.utils_cache import cargar_cache, guardar_cache, normalizar_texto
 from utils.thread_manager import thread_manager
@@ -82,6 +85,15 @@ class MapaWindow(QMainWindow):
         self.miniaturas = True
         self.tamano_grande = False
         self.todos_clasificados = False
+
+        # Inicializar exportación - importación.
+        self.hilo_exportacion = None
+        self.worker_exportacion = None
+
+        self.hilo_importacion = None
+        self.worker_importacion = None
+
+        self.worker_actual = None
 
         # VLC Player
         self.vlc_instance = vlc.Instance()
@@ -607,7 +619,7 @@ class MapaWindow(QMainWindow):
 
         if not columna_oculta:
             nueva_visibilidad = True
-            ancho_columna_1 = 205
+            ancho_columna_1 = 200
         elif num_filas > 8:
             nueva_visibilidad = False
             ancho_columna_1 = 135
@@ -996,6 +1008,124 @@ class MapaWindow(QMainWindow):
             json.dump(data, f, indent=4, ensure_ascii=False)
 
     # ============================================================
+    # Backup completo: Exportación - Importación
+    # ============================================================
+    def iniciar_backup_completo(self):
+        self.dialogo_transferencia = DialogoTransferencia(self)
+        self.dialogo_transferencia.btn_exportar.setEnabled(True)
+        self.dialogo_transferencia.btn_importar.setEnabled(True)
+        
+        self.dialogo_transferencia.exportarSolicitado.connect(self.iniciar_exportacion)
+        self.dialogo_transferencia.importarSolicitado.connect(self.iniciar_importacion)
+        self.dialogo_transferencia.cancelarSolicitado.connect(self.cancelar_transferencia)
+        self.dialogo_transferencia.show()
+
+    def iniciar_exportacion(self, archivo_destino):
+        self.hilo_exportacion = QThread()
+
+        self.worker_exportacion = ExportadorBiblioteca(
+            get_ruta_principal(),
+            ruta_json_unico(),
+            ruta_cache_json_geocoding(),
+            ruta_json_grupos(),
+            get_ruta_miniaturas(),
+            archivo_destino
+        )
+
+        self.worker_actual = self.worker_exportacion
+
+        self.worker_exportacion.moveToThread(self.hilo_exportacion)
+        
+        self.hilo_exportacion.started.connect(self.worker_exportacion.run)
+        
+        self.worker_exportacion.progreso.connect(self.dialogo_transferencia.actualizar_progreso)
+        self.worker_exportacion.estado.connect(self.dialogo_transferencia.actualizar_estado)
+        
+        self.worker_exportacion.finalizado.connect(self.exportacion_finalizada)
+        self.worker_exportacion.finalizado.connect(self.worker_exportacion.deleteLater)
+        self.worker_exportacion.finalizado.connect(self._limpiar_exportacion)
+        self.hilo_exportacion.finished.connect(self.hilo_exportacion.deleteLater)
+
+        self.hilo_exportacion.start()
+
+    def iniciar_importacion(self, archivo_fbk):
+        self.hilo_importacion = QThread()
+
+        self.worker_importacion = ImportadorBiblioteca(
+            get_ruta_principal(),
+            ruta_json_unico(),
+            ruta_cache_json_geocoding(),
+            ruta_json_grupos(),
+            get_ruta_miniaturas(),
+            archivo_fbk
+        )
+
+        self.worker_actual = self.worker_importacion
+
+        self.worker_importacion.moveToThread(self.hilo_importacion)
+
+        self.hilo_importacion.started.connect(self.worker_importacion.run)
+
+        self.worker_importacion.progreso.connect(self.dialogo_transferencia.actualizar_progreso)
+        self.worker_importacion.estado.connect(self.dialogo_transferencia.actualizar_estado)
+
+        self.worker_importacion.finalizado.connect(self.importacion_finalizada)
+        self.worker_importacion.finalizado.connect(self.worker_importacion.deleteLater)
+        self.worker_importacion.finalizado.connect(self._limpiar_importacion)
+        self.hilo_importacion.finished.connect(self.hilo_importacion.deleteLater)
+
+        self.hilo_importacion.start()
+
+    def exportacion_finalizada(self, ok, mensaje):
+        if mensaje == "CANCELADO":
+            QMessageBox.information(self, "Exportación", "Operación cancelada por el usuario.")
+            return
+        
+        if ok:
+            QMessageBox.information(self, "Exportación", "Biblioteca exportada correctamente.")
+
+        else:
+            QMessageBox.critical(self, "Error", mensaje)
+
+    def importacion_finalizada(self, ok, mensaje):
+        if ok:
+            self.bridge.recargar_datos()
+
+            self.generar_mapa_manual()
+
+            QMessageBox.information(self, "Importación", "Biblioteca importada correctamente.")
+
+        else:
+            QMessageBox.critical(self, "Error", mensaje)
+
+    def _limpiar_exportacion(self, *args):
+        if self.hilo_exportacion:
+            self.hilo_exportacion.quit()
+            self.hilo_exportacion.wait()
+
+        self.worker_actual = None
+        self.worker_exportacion = None
+        self.hilo_exportacion = None
+
+    def _limpiar_importacion(self, *args):
+        if self.hilo_importacion:
+            self.hilo_importacion.quit()
+            self.hilo_importacion.wait()
+
+        self.worker_actual = None
+        self.worker_importacion = None
+        self.hilo_importacion = None
+
+    def cancelar_transferencia(self):
+        if not self.worker_actual:
+            return
+        
+        self.worker_actual.cancelar()
+
+        self.dialogo_transferencia.actualizar_estado("Cancelando...")
+        self.dialogo_transferencia.close()
+
+    # ============================================================
     # Abrir cuadro de diálogo de gestor de provincias
     # ============================================================
     def abrir_provincias(self):
@@ -1013,6 +1143,15 @@ class MapaWindow(QMainWindow):
         return longitud_maxima, num_lineas
 
     def closeEvent(self, e):
+        exportando = (self.hilo_exportacion is not None and self.hilo_exportacion.isRunning())
+        importando = (self.hilo_importacion is not None and self.hilo_importacion.isRunning())
+
+        if exportando or importando:
+            QMessageBox.warning(self, "Operación activa", "Debes cancelar o esperar a que termine.")
+
+            e.ignore()
+            return
+        
         reply = QMessageBox.question(
             self, "Confirmar salida",
             "¿Estás seguro de salir de la app?",
@@ -1074,6 +1213,8 @@ class MapaWindow(QMainWindow):
         self.actionPrincipal.triggered.connect(lambda: self.cambiar_vista(0))
         self.actionClasificacion.triggered.connect(lambda: self.cambiar_vista(1))
         self.actionEstadistica.triggered.connect(lambda: self.cambiar_vista(2))
+
+        self.actionBiblioteca.triggered.connect(self.iniciar_backup_completo)
 
         self.button_generar_mapa.clicked.connect(self.generar_mapa_manual)
 

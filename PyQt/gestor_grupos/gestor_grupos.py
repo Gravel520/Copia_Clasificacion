@@ -118,8 +118,11 @@ class GestorGrupos():
             for foto in fotos_json["clasificados"]["items"]:
                 if foto.get("latitud") is None or foto.get("longitud") is None:
                     continue
-                ruta_normalizada = os.path.normpath(foto["ruta"]).lower()
-                if any(carpeta in ruta_normalizada for carpeta in carpetas_busqueda):
+                ruta_relativa = os.path.normpath(foto["ruta"]).lower()
+
+                carpeta_foto = os.path.dirname(ruta_relativa)
+
+                if carpeta_foto in carpetas_busqueda:
                     fotos_grupo.append(foto)
 
             # Generar la lista de rutas del grupo.
