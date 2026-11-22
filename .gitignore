@@ -19,6 +19,9 @@ config.ini
 # Ignorar la DLL grande
 PyQt/libmpv-2.dll
 
+# Ignorar las exportaciones de bibliotecas
+*.fbk
+
 # Permitir sólo ciertos tipos de archivos
 !*.py
 !*.txt
