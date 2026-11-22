@@ -273,8 +273,11 @@ class Bridge(QObject):
         for i, ruta_completa in enumerate(archivos):
             nombre = os.path.basename(ruta_completa)
             ruta_conver = os.path.normpath(ruta_completa)
+            print("RUTA TABLA:", ruta_conver)
 
             coincidencia = self.indice_ruta.get(ruta_conver)
+
+            print("COINCIDENCIA:", coincidencia is not None)
 
             hash_val = coincidencia['hash'] if coincidencia else ""
             fecha_val = coincidencia.get('fecha', "") if coincidencia else ""
