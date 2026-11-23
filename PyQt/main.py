@@ -1092,6 +1092,7 @@ class MapaWindow(QMainWindow):
             self.bridge.recargar_datos()
 
             self.generar_mapa_manual()
+            self.iniciar_generacion_mapa_grupos()
 
             QMessageBox.information(self, "Importación", "Biblioteca importada correctamente.")
 
@@ -1123,7 +1124,8 @@ class MapaWindow(QMainWindow):
         self.worker_actual.cancelar()
 
         self.dialogo_transferencia.actualizar_estado("Cancelando...")
-        self.dialogo_transferencia.close()
+
+        self.dialogo_transferencia.habilitar_botones(True)
 
     # ============================================================
     # Abrir cuadro de diálogo de gestor de provincias

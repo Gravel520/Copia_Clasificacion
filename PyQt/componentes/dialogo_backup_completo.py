@@ -8,6 +8,10 @@ from PyQt5.QtWidgets import (QDialog, QLabel, QPushButton, QFileDialog,
 
 from PyQt5.QtCore import pyqtSignal
 
+from copia_clasificador_fotos import cargar_json_unico
+
+from config_paths import ruta_json_unico
+
 
 class DialogoTransferencia(QDialog):
     exportarSolicitado = pyqtSignal(str)
@@ -36,6 +40,7 @@ class DialogoTransferencia(QDialog):
         self.btn_exportar = QPushButton("Exportar")
         self.btn_importar = QPushButton("Importar")
         self.btn_cancelar = QPushButton("Cancelar")
+        self.btn_cerrar = QPushButton("Cerrar")
 
         layout.addWidget(self.lbl_estado)
         layout.addWidget(self.barra)
@@ -45,16 +50,20 @@ class DialogoTransferencia(QDialog):
         botones.addWidget(self.btn_exportar)
         botones.addWidget(self.btn_importar)
         botones.addWidget(self.btn_cancelar)
+        botones.addWidget(self.btn_cerrar)
 
         layout.addLayout(botones)
 
         self.btn_exportar.clicked.connect(self.exportar)
         self.btn_importar.clicked.connect(self.importar)
         self.btn_cancelar.clicked.connect(self.cancelar_operacion)
+        self.btn_cerrar.clicked.connect(self.accept)
+
+        self.habilitar_botones(True)
+        self.comprobar_datos()
 
     def exportar(self):
-        self.btn_exportar.setEnabled(False)
-        self.btn_importar.setEnabled(False)
+        self.habilitar_botones(False)
         
         archivo, _ = QFileDialog.getSaveFileName(self, "Exportar Biblioteca", "", "Biblioteca (*.fbk)")
 
@@ -64,8 +73,7 @@ class DialogoTransferencia(QDialog):
         self.exportarSolicitado.emit(archivo)
 
     def importar(self):
-        self.btn_importar.setEnabled(False)
-        self.btn_exportar.setEnabled(False)
+        self.habilitar_botones(False)
 
         archivo, _ = QFileDialog.getOpenFileName(self, "Importar Biblioteca", "", "Biblioteca (*.fbk)")
 
@@ -83,11 +91,21 @@ class DialogoTransferencia(QDialog):
     def operacion_finalizada(self, ok, mensaje):
         if ok:
             QMessageBox.information(self, "Biblioteca", "Operación completada.")
-            self.btn_exportar.setEnabled(True)
-            self.btn_importar.setEnabled(True)
+            self.habilitar_botones(True)
 
         else:
             QMessageBox.critical(self, "Error", mensaje)
 
     def cancelar_operacion(self):
         self.cancelarSolicitado.emit()
+
+    def habilitar_botones(self, valor):
+        self.btn_exportar.setEnabled(valor)
+        self.btn_importar.setEnabled(valor)
+        self.btn_cerrar.setEnabled(valor)
+        self.btn_cancelar.setEnabled(not valor)
+
+    def comprobar_datos(self):
+        data = cargar_json_unico(ruta_json_unico())
+        clasificados = data["stats"]["total_clasificados"]
+        self.btn_exportar.setEnabled(clasificados > 0)
