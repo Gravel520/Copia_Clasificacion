@@ -5,7 +5,7 @@ Script en Python.
 import os
 import shutil
 
-def copiar_carpeta_cancelable(origen, destino, cancelado_callback=None):
+def copiar_carpeta_cancelable(origen, destino, cancelado_callback=None, archivo_callback=None):
     os.makedirs(destino, exist_ok=True)
 
     for root, dirs, files in os.walk(origen):
@@ -27,3 +27,6 @@ def copiar_carpeta_cancelable(origen, destino, cancelado_callback=None):
             destino_archivo = os.path.join(destino_actual, archivo)
 
             shutil.copy2(origen_archivo, destino_archivo)
+            
+            if archivo_callback:
+                archivo_callback(origen_archivo)

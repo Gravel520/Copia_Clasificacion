@@ -27,23 +27,47 @@ class DialogoTransferencia(QDialog):
 
         layout = QVBoxLayout(self)
 
-        self.lbl_estado = QLabel("Esperando...")
-        self.lbl_estado.setStyleSheet("""
+        css_style = """
             QLabel {
                 font-size: 11pt;
                 color: #2c3e50;
                 font-weight: bold;
             }
-        """)
-        self.barra = QProgressBar()
+        """
+
+        self.lbl_estado = QLabel("Esperando...")
+        self.lbl_estado.setStyleSheet(css_style)
+        self.lbl_archivo = QLabel("")
+        self.lbl_archivo.setStyleSheet(css_style)
+        self.lbl_tiempo = QLabel("Tiempo restante: --:--")
+        self.lbl_tiempo.setStyleSheet(css_style)
+
+        self.barra_metadatos = QProgressBar()
+        self.barra_miniaturas = QProgressBar()
+        self.barra_fotos = QProgressBar()
+        self.barra_comprension = QProgressBar()
+
+        layout.addWidget(self.lbl_estado)
+
+        layout.addWidget(QLabel("Metadatos"))
+        layout.addWidget(self.barra_metadatos)
+
+        layout.addWidget(QLabel("Miniaturas"))
+        layout.addWidget(self.barra_miniaturas)
+
+        layout.addWidget(QLabel("Carpetas/archivos"))
+        layout.addWidget(self.barra_fotos)
+
+        layout.addWidget(QLabel("Compresión"))
+        layout.addWidget(self.barra_comprension)
+
+        layout.addWidget(self.lbl_tiempo)
+        layout.addWidget(self.lbl_archivo)
 
         self.btn_exportar = QPushButton("Exportar")
         self.btn_importar = QPushButton("Importar")
         self.btn_cancelar = QPushButton("Cancelar")
         self.btn_cerrar = QPushButton("Cerrar")
-
-        layout.addWidget(self.lbl_estado)
-        layout.addWidget(self.barra)
 
         botones = QHBoxLayout()
 
@@ -82,16 +106,31 @@ class DialogoTransferencia(QDialog):
         
         self.importarSolicitado.emit(archivo)
 
-    def actualizar_progreso(self, valor):
-        self.barra.setValue(valor)
+    def actualizar_metadatos(self, valor):
+        self.barra_metadatos.setValue(valor)
+
+    def actualizar_miniaturas(self, valor):
+        self.barra_miniaturas.setValue(valor)
+
+    def actualizar_fotos(self, valor):
+        self.barra_fotos.setValue(valor)
+
+    def actualizar_comprension(self, valor):
+        self.barra_comprension.setValue(valor)
+
+    def actualizar_tiempo(self, texto):
+        self.lbl_tiempo.setText(f"Tiempo restante: {texto}")
+
+    def actualizar_archivo(self, texto):
+        self.lbl_archivo.setText(texto)
 
     def actualizar_estado(self, texto):
         self.lbl_estado.setText(texto)
 
     def operacion_finalizada(self, ok, mensaje):
         if ok:
+            self.habilitar_botones(True)            
             QMessageBox.information(self, "Biblioteca", "Operación completada.")
-            self.habilitar_botones(True)
 
         else:
             QMessageBox.critical(self, "Error", mensaje)

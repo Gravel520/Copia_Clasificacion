@@ -1018,7 +1018,7 @@ class MapaWindow(QMainWindow):
         self.dialogo_transferencia.exportarSolicitado.connect(self.iniciar_exportacion)
         self.dialogo_transferencia.importarSolicitado.connect(self.iniciar_importacion)
         self.dialogo_transferencia.cancelarSolicitado.connect(self.cancelar_transferencia)
-        self.dialogo_transferencia.show()
+        self.dialogo_transferencia.exec_()
 
     def iniciar_exportacion(self, archivo_destino):
         self.hilo_exportacion = QThread()
@@ -1038,7 +1038,13 @@ class MapaWindow(QMainWindow):
         
         self.hilo_exportacion.started.connect(self.worker_exportacion.run)
         
-        self.worker_exportacion.progreso.connect(self.dialogo_transferencia.actualizar_progreso)
+        self.worker_exportacion.progreso_metadatos.connect(self.dialogo_transferencia.actualizar_metadatos)
+        self.worker_exportacion.progreso_miniaturas.connect(self.dialogo_transferencia.actualizar_miniaturas)
+        self.worker_exportacion.progreso_fotos.connect(self.dialogo_transferencia.actualizar_fotos)
+        self.worker_exportacion.progreso_compresion.connect(self.dialogo_transferencia.actualizar_comprension)
+        self.worker_exportacion.archivo_actual.connect(self.dialogo_transferencia.actualizar_archivo)
+        self.worker_exportacion.tiempo_restante.connect(self.dialogo_transferencia.actualizar_tiempo)
+
         self.worker_exportacion.estado.connect(self.dialogo_transferencia.actualizar_estado)
         
         self.worker_exportacion.finalizado.connect(self.exportacion_finalizada)
