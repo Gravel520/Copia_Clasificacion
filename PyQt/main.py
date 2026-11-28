@@ -1072,7 +1072,13 @@ class MapaWindow(QMainWindow):
 
         self.hilo_importacion.started.connect(self.worker_importacion.run)
 
-        self.worker_importacion.progreso.connect(self.dialogo_transferencia.actualizar_progreso)
+        self.worker_importacion.progreso_descompresion.connect(self.dialogo_transferencia.actualizar_descomprension)
+        self.worker_importacion.progreso_fotos.connect(self.dialogo_transferencia.actualizar_fotos)
+        self.worker_importacion.progreso_metadatos.connect(self.dialogo_transferencia.actualizar_metadatos)
+        self.worker_importacion.progreso_miniaturas.connect(self.dialogo_transferencia.actualizar_miniaturas)
+        self.worker_importacion.tiempo_restante.connect(self.dialogo_transferencia.actualizar_tiempo)
+        self.worker_importacion.archivo_actual.connect(self.dialogo_transferencia.actualizar_archivo)
+
         self.worker_importacion.estado.connect(self.dialogo_transferencia.actualizar_estado)
 
         self.worker_importacion.finalizado.connect(self.importacion_finalizada)
@@ -1088,17 +1094,23 @@ class MapaWindow(QMainWindow):
             return
         
         if ok:
+            self.dialogo_transferencia.habilitar_botones(True)
             QMessageBox.information(self, "Exportación", "Biblioteca exportada correctamente.")
 
         else:
             QMessageBox.critical(self, "Error", mensaje)
 
     def importacion_finalizada(self, ok, mensaje):
+        if mensaje == "CANCELADO":
+            QMessageBox.information(self, "Importación", "Operación cancelada por el usuario.")
+            return
+        
         if ok:
             self.bridge.recargar_datos()
 
             self.generar_mapa_manual()
             self.iniciar_generacion_mapa_grupos()
+            self.dialogo_transferencia.habilitar_botones(True)
 
             QMessageBox.information(self, "Importación", "Biblioteca importada correctamente.")
 

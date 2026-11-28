@@ -2,6 +2,10 @@
 Script en Python.
 '''
 
+import sys
+
+from pathlib import Path
+
 from PyQt5.QtWidgets import (QDialog, QLabel, QPushButton, QFileDialog,
                              QVBoxLayout, QHBoxLayout, QProgressBar,
                              QMessageBox)
@@ -38,14 +42,14 @@ class DialogoTransferencia(QDialog):
         self.lbl_estado = QLabel("Esperando...")
         self.lbl_estado.setStyleSheet(css_style)
         self.lbl_archivo = QLabel("")
-        self.lbl_archivo.setStyleSheet(css_style)
+        #self.lbl_archivo.setStyleSheet(css_style)
         self.lbl_tiempo = QLabel("Tiempo restante: --:--")
         self.lbl_tiempo.setStyleSheet(css_style)
 
         self.barra_metadatos = QProgressBar()
         self.barra_miniaturas = QProgressBar()
         self.barra_fotos = QProgressBar()
-        self.barra_comprension = QProgressBar()
+        self.barra_compresion = QProgressBar()
 
         layout.addWidget(self.lbl_estado)
 
@@ -58,8 +62,8 @@ class DialogoTransferencia(QDialog):
         layout.addWidget(QLabel("Carpetas/archivos"))
         layout.addWidget(self.barra_fotos)
 
-        layout.addWidget(QLabel("Compresión"))
-        layout.addWidget(self.barra_comprension)
+        layout.addWidget(QLabel("Compresión / Descompresión"))
+        layout.addWidget(self.barra_compresion)
 
         layout.addWidget(self.lbl_tiempo)
         layout.addWidget(self.lbl_archivo)
@@ -83,27 +87,35 @@ class DialogoTransferencia(QDialog):
         self.btn_cancelar.clicked.connect(self.cancelar_operacion)
         self.btn_cerrar.clicked.connect(self.accept)
 
+        # Obtenemos la ruta padre para añadirla a "copia_seguridad", que es
+        #   donde tenemos el archivo de la exportación.
+        if getattr(sys, "frozen", False):
+            ruta_app = Path(sys.executable).parent
+        else:
+            ruta_app = Path(__file__).resolve().parent
+
+        self.ruta_destino = ruta_app / "copia_seguridad"
+        self.ruta_destino.mkdir(parents=True, exist_ok=True)
+
         self.habilitar_botones(True)
         self.comprobar_datos()
 
-    def exportar(self):
-        self.habilitar_botones(False)
-        
-        archivo, _ = QFileDialog.getSaveFileName(self, "Exportar Biblioteca", "", "Biblioteca (*.fbk)")
+    def exportar(self):       
+        archivo, _ = QFileDialog.getSaveFileName(self, "Exportar Biblioteca", str(self.ruta_destino), "Biblioteca (*.fbk)")
 
         if not archivo:
             return
         
+        self.habilitar_botones(False)        
         self.exportarSolicitado.emit(archivo)
 
     def importar(self):
-        self.habilitar_botones(False)
-
-        archivo, _ = QFileDialog.getOpenFileName(self, "Importar Biblioteca", "", "Biblioteca (*.fbk)")
+        archivo, _ = QFileDialog.getOpenFileName(self, "Importar Biblioteca", str(self.ruta_destino), "Biblioteca (*.fbk)")
 
         if not archivo:
             return
         
+        self.habilitar_botones(False)        
         self.importarSolicitado.emit(archivo)
 
     def actualizar_metadatos(self, valor):
@@ -116,7 +128,10 @@ class DialogoTransferencia(QDialog):
         self.barra_fotos.setValue(valor)
 
     def actualizar_comprension(self, valor):
-        self.barra_comprension.setValue(valor)
+        self.barra_compresion.setValue(valor)
+
+    def actualizar_descomprension(self, valor):
+        self.barra_compresion.setValue(valor)
 
     def actualizar_tiempo(self, texto):
         self.lbl_tiempo.setText(f"Tiempo restante: {texto}")
@@ -126,14 +141,6 @@ class DialogoTransferencia(QDialog):
 
     def actualizar_estado(self, texto):
         self.lbl_estado.setText(texto)
-
-    def operacion_finalizada(self, ok, mensaje):
-        if ok:
-            self.habilitar_botones(True)            
-            QMessageBox.information(self, "Biblioteca", "Operación completada.")
-
-        else:
-            QMessageBox.critical(self, "Error", mensaje)
 
     def cancelar_operacion(self):
         self.cancelarSolicitado.emit()

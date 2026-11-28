@@ -11,7 +11,7 @@ import time
 
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from utils.copia_cancelable import copiar_carpeta_cancelable
+from utils.utils_biblioteca import copiar_carpeta_cancelable, formatear_segundos
 
 
 class ExportadorBiblioteca(QObject):
@@ -37,7 +37,6 @@ class ExportadorBiblioteca(QObject):
         self.progreso_metadatos_actual = 0
         self.progreso_miniaturas_actual = 0
         self.progreso_fotos_actual = 0
-        self.progreso_compresion_actual = 0
 
         self.ruta_biblioteca = ruta_biblioteca
         self.ruta_json = ruta_json
@@ -59,13 +58,11 @@ class ExportadorBiblioteca(QObject):
             self.tiempo_total_estimado = (
                 self.calcular_estimacion_inicial()
             )
-            print("TIEMPO ESTIMADO:",
-                  self.formatear_segundos(self.tiempo_total_estimado))
 
             self.inicio = time.time()
 
             self.tiempo_restante.emit(
-                self.formatear_segundos(
+                formatear_segundos(
                     self.tiempo_total_estimado
                 )
             )
@@ -135,11 +132,11 @@ class ExportadorBiblioteca(QObject):
 
                     copiar_carpeta_cancelable(origen, destino, lambda: self.cancelado, self._foto_copiada)
 
-                    manifest = {
-                        "version": "1.0",
-                        "total_carpetas": len(carpetas),
-                        "miniaturas": True
-                    }
+                manifest = {
+                    "version": "1.0",
+                    "total_carpetas": len(carpetas),
+                    "miniaturas": True
+                }
 
                 with open(os.path.join(metadata_dir, "manifest.json"), "w", encoding="utf-8") as f:
                     json.dump(manifest, f, indent=4, ensure_ascii=False)
@@ -165,11 +162,8 @@ class ExportadorBiblioteca(QObject):
                             raise InterruptedError("CANCELADO")
                         
                         zipf.write(archivo, arcname)
-                        self.actualizar_tiempo_restante()
 
                         porcentaje = int((i + 1) * 100 / total_zip)
-
-                        self.progreso_compresion_actual = (porcentaje)
 
                         self.progreso_compresion.emit(porcentaje)
                         self.actualizar_tiempo_restante()
@@ -205,10 +199,12 @@ class ExportadorBiblioteca(QObject):
     def _foto_copiada(self, ruta):
         if not os.path.exists(ruta):
             return
+        
+        tam = os.path.getsize(ruta)
+
+        self.bytes_copiados += tam
 
         porcentaje = int(self.bytes_copiados * 100 / self.total_bytes)
-
-        self.progreso_fotos_actual = (porcentaje)
 
         self.progreso_fotos.emit(porcentaje)
 
@@ -263,20 +259,8 @@ class ExportadorBiblioteca(QObject):
         )
 
         self.tiempo_restante.emit(
-            self.formatear_segundos(restante)
+            formatear_segundos(restante)
         )
-    
-    def formatear_segundos(self, segundos):
-        segundos = max(0, int(segundos))
-        horas = segundos // 3600
-
-        minutos = (segundos % 3600) // 60
-        segundos = segundos % 60
-
-        if horas:
-            return (f"{horas:02d}:{minutos:02d}:{segundos:02d}")
-        
-        return (f"{minutos:02d}:{segundos:02d}")
     
     def cancelar(self):
         self.cancelado = True
